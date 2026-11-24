@@ -478,7 +478,7 @@ async function pageMusteri(id) {
   const pays = sales.length ? await q(sb.from('satis_odenisleri').select('*').in('satis_id', sales.map(s => s.id)).order('tarix').order('id')) : [];
   const w = canWrite();
   $('.topbar').innerHTML = `<div><h2>${esc(m.ad)}</h2><div class="sub">${esc(m.unvan || '')}${m.telefon ? ' · ' + esc(m.telefon) : ''}</div></div>
-    <div class="tools"><a class="btn" href="#/musteriler">← Siyahı</a>${w ? `<button class="btn" id="ed">Məlumatı düzəlt</button><button class="btn primary" id="yeni">${ico('plus')}Yeni satış</button>` : ''}
+    <div class="tools"><a class="btn" href="#/musteriler">← Siyahı</a>${w ? `${num(m.qaliq) > 0 ? `<button class="btn green" id="odal">${ico('cash')}Ödəniş al</button>` : ''}<button class="btn" id="ed">Məlumatı düzəlt</button><button class="btn primary" id="yeni">${ico('plus')}Yeni satış</button>` : ''}
     <button class="btn" onclick="window.print()">${ico('print')}Çap / PDF</button></div>`;
   const satNo = Object.fromEntries(sales.map(s => [s.id, s.satis_no]));
   // hesab çıxarışı: satışlar (+) və ödənişlər (−) tarix sırası ilə
@@ -503,6 +503,7 @@ async function pageMusteri(id) {
       <tbody>${hereket.map(h => { bal += (h.borc || 0) - (h.od || 0); return `<tr><td>${fd(h.t)}</td><td>${esc(h.ad)}</td><td class="n">${h.borc ? fmt(h.borc) : ''}</td><td class="n">${h.od ? fmt(h.od) : ''}</td><td class="n"><b>${fmt(bal)}</b></td></tr>`; }).join('')}</tbody></table></div>`;
   $$('[data-s]').forEach(tr => tr.onclick = () => satisModal(+tr.dataset.s));
   if ($('#yeni')) $('#yeni').onclick = () => yeniSatis(id);
+  if ($('#odal')) $('#odal').onclick = () => odenisAl(m, sales);
   if ($('#ed')) $('#ed').onclick = () => {
     const md = modal('Müştəri məlumatı', `<form id="mf"><div class="field"><label class="f">Ad Soyad</label><input class="in" name="ad" value="${esc(m.ad)}" required></div>
       <div class="row2"><div class="field"><label class="f">Ünvan</label><input class="in" name="un" value="${esc(m.unvan || '')}"></div>
@@ -515,6 +516,58 @@ async function pageMusteri(id) {
       catch (er) { fail(er); }
     };
   };
+}
+
+/* ---------- Müştəridən ödəniş al (bir və ya bir neçə satışa) ---------- */
+function odenisAl(m, sales) {
+  const acik = sales.filter(s => num(s.qaliq) > 0.001).sort((a, b) => a.tarix < b.tarix ? -1 : a.tarix > b.tarix ? 1 : a.id - b.id);
+  const cem = acik.reduce((a, s) => a + num(s.qaliq), 0);
+  const md = modal(`Ödəniş al — ${esc(m.ad)}`, `<form id="oa">
+    <div class="info" style="margin-bottom:14px"><div><span>Qalıq borc</span><b class="neg">${man(cem)}</b></div><div><span>Açıq satış</span><b>${acik.length}</b></div></div>
+    ${acik.length > 1 ? `<div class="field"><label class="f">Hansı satışa</label><select class="in" name="s">
+      <option value="auto">Avtomatik — əvvəl köhnə borc bağlansın</option>
+      ${acik.map(s => `<option value="${s.id}">${esc(s.satis_no)} · ${fd(s.tarix)} · ${esc(s.mal || '')} — qalıq ${fmt(s.qaliq)}</option>`).join('')}</select></div>`
+      : `<p class="muted" style="margin-top:0">Satış: <b>${esc(acik[0].satis_no)}</b> · ${fd(acik[0].tarix)} · ${esc(acik[0].mal || '')}</p>`}
+    <div class="row2"><div class="field"><label class="f">Məbləğ</label><input class="in" type="number" step="0.01" min="0.01" name="mb" required autofocus>
+      <div style="margin-top:6px"><button type="button" class="btn sm" id="tam">Hamısı: ${fmt(cem)}</button></div></div>
+    <div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${today()}" required></div></div>
+    <div class="field"><label class="f">Qeyd (istəyə bağlı)</label><input class="in" name="q"></div>
+    <div class="muted" id="bolgu" style="font-size:13px"></div></form>`,
+    `<button class="btn" data-close>Ləğv et</button><button class="btn green" id="ok">Ödənişi yaz</button>`);
+  const f = $('#oa', md);
+  const plan = () => {
+    const mb = Math.round(num(f.mb.value) * 100) / 100;
+    if (!(mb > 0)) return [];
+    if (f.s && f.s.value !== 'auto') return [{ s: acik.find(x => x.id === +f.s.value), m: mb }];
+    if (acik.length === 1) return [{ s: acik[0], m: mb }];
+    const out = []; let qal = mb;
+    for (const s of acik) { if (qal <= 0.001) break; const m_ = Math.min(qal, Math.round(num(s.qaliq) * 100) / 100); out.push({ s, m: m_ }); qal = Math.round((qal - m_) * 100) / 100; }
+    if (qal > 0.001) out[out.length - 1].m = Math.round((out[out.length - 1].m + qal) * 100) / 100;
+    return out;
+  };
+  const goster = () => {
+    const pl = plan();
+    $('#bolgu', md).innerHTML = pl.length > 1 ? 'Bölgü: ' + pl.map(x => `${esc(x.s.satis_no)} — <b>${fmt(x.m)}</b>`).join(', ') : '';
+  };
+  f.mb.oninput = goster; if (f.s) f.s.onchange = goster;
+  $('#tam', md).onclick = () => { f.mb.value = Math.round(cem * 100) / 100; goster(); };
+  $('#ok', md).onclick = async () => {
+    if (!f.reportValidity()) return;
+    const pl = plan(), mb = num(f.mb.value);
+    const hed = f.s && f.s.value !== 'auto' ? num(pl[0].s.qaliq) : cem;
+    if (mb > hed + 0.001 && !confirm(`Məbləğ qalıq borcdan (${fmt(hed)}) çoxdur. Yenə də yazılsın?`)) return;
+    $('#ok', md).disabled = true;
+    try {
+      const ids = [];
+      for (const x of pl) {
+        const np = await q(sb.from('satis_odenisleri').insert({ satis_id: x.s.id, tarix: f.t.value, mebleg: x.m, qeyd: f.q.value.trim() || null }).select().single());
+        ids.push(np.id);
+      }
+      closeModal(); S.cache = {}; toast(`${fmt(mb)} ₼ ödəniş yazıldı`);
+      if (confirm('Ödəniş yazıldı. Müştəri üçün qəbz çap edilsin?')) location.hash = '#/qebz/' + ids.join(','); else refresh();
+    } catch (er) { fail(er); $('#ok', md).disabled = false; }
+  };
+  setTimeout(() => f.mb.focus(), 50);
 }
 
 /* =====================================================================
@@ -1405,6 +1458,13 @@ const imza = (a, b) => `<div style="display:flex;justify-content:space-between;g
 
 async function pageQebz(id) {
   shell('', 'Ödəniş qəbzi', '', `<button class="btn" onclick="history.back()">← Geri</button><button class="btn primary" onclick="window.print()">${ico('print')}Çap / PDF</button>`);
+  const ids = String(id).split(',').map(Number).filter(Boolean);
+  const kartlar = [];
+  for (const pid of ids) kartlar.push(await qebzKart(pid));
+  $('#page').innerHTML = kartlar.join('<div style="height:24px;break-after:page"></div>');
+}
+
+async function qebzKart(id) {
   const p = await q(sb.from('satis_odenisleri').select('*').eq('id', +id).single());
   const [s, A, evvel] = await Promise.all([
     q(sb.from('v_satislar').select('*').eq('id', p.satis_id).single()), ayarlar(),
@@ -1414,7 +1474,7 @@ async function pageQebz(id) {
   const odenilenBuDaxil = num(s.ilkin) + evvel.slice(0, idx + 1).reduce((a, x) => a + num(x.mebleg), 0);
   const qaliq = num(s.deyer) - odenilenBuDaxil;
   const firma = A.firma_adi || CFG.FIRMA_ADI;
-  $('#page').innerHTML = `<div class="card" style="max-width:640px;margin:0 auto;padding:30px 34px">
+  return `<div class="card" style="max-width:640px;margin:0 auto;padding:30px 34px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-bottom:2px solid var(--brand);padding-bottom:12px">
       <div><div style="font-size:20px;font-weight:700;color:var(--brand)">${esc(firma)}</div><div class="muted" style="font-size:13px">${esc(A.firma_unvan || '')}${A.firma_telefon ? ' · ' + esc(A.firma_telefon) : ''}${A.firma_voen ? '<br>VÖEN: ' + esc(A.firma_voen) : ''}</div></div>
       <div style="text-align:right"><div style="font-size:18px;font-weight:700">QƏBZ № ${p.id}</div><div class="muted">${fd(p.tarix)}</div></div></div>
