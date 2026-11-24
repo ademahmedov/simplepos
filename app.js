@@ -6,6 +6,8 @@
 'use strict';
 
 const CFG = window.SAT_CONFIG || {};
+if (!CFG.FIRMA_ADI) CFG.FIRMA_ADI = 'SimplePOS';
+document.title = CFG.FIRMA_ADI;
 const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
 const S = { user: null, rol: null, ad: '', cache: {} };
 const AYLAR = ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'];
@@ -83,7 +85,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 /* ---------------- giriş ---------------- */
 function loginView(msg) {
   app.innerHTML = `<div class="login-wrap"><form class="login-card" id="lf">
-    <h1>${esc(CFG.FIRMA_ADI || 'Sat Proqram')}</h1><p>Hesabınıza daxil olun</p>
+    <h1>${esc(CFG.FIRMA_ADI)}</h1><p>Hesabınıza daxil olun</p>
     <div class="field"><label class="f">E-poçt</label><input class="in" type="email" name="e" autocomplete="username" required></div>
     <div class="field"><label class="f">Şifrə</label><input class="in" type="password" name="p" autocomplete="current-password" required></div>
     <button class="btn primary" style="width:100%;justify-content:center;padding:11px">Daxil ol</button>
@@ -116,18 +118,19 @@ async function start() {
 const NAV = [
   ['panel', 'Panel', 'panel'], ['satislar', 'Satışlar', 'sale'], ['musteriler', 'Müştərilər', 'users'],
   ['rasxodlar', 'Rasxodlar', 'exp'], ['isciler', 'İşçilər', 'worker'], ['odenisler', 'Ödənişlər', 'cash'], ['cixaris', 'Çıxarış', 'print'],
+  ['kassa', 'Kassa', 'cash'], ['sifarisler', 'Sifarişlər', 'sale'], ['hesabat', 'Aylıq hesabat', 'print'],
 ];
 const MOBNAV = ['panel', 'satislar', 'musteriler', 'rasxodlar', 'isciler'];
-const SOON = [['Kassa', 'cash'], ['Sifarişlər', 'sale']];
+
 const NAVQISA = { panel: 'Panel', satislar: 'Satış', musteriler: 'Müştəri', rasxodlar: 'Rasxod', isciler: 'İşçi' };
 
 function shell(active, title, sub, tools, body) {
   const navA = NAV.map(([k, t, i]) => `<a href="#/${k}" class="${active === k ? 'active' : ''}">${ico(i)}${t}</a>`).join('');
   app.innerHTML = `<div class="shell">
-   <aside class="side"><div class="logo">${esc(CFG.FIRMA_ADI || 'Sat Proqram')}<small>${S.rol === 'sahibkar' ? 'Sahibkar baxışı' : 'Mühasib'}</small></div>
-    <nav>${navA.split('<a href="#/rasxodlar"')[0]}<div class="sec">Xərclər və işçilər</div><a href="#/rasxodlar"${navA.split('<a href="#/rasxodlar"')[1]}<div class="sec">Növbəti mərhələ</div>${SOON.map(([t, i]) => `<a class="soon">${ico(i)}${t}</a>`).join('')}</nav>
+   <aside class="side"><div class="logo">${esc(CFG.FIRMA_ADI)}<small>${S.rol === 'sahibkar' ? 'Sahibkar baxışı' : 'Mühasib'}</small></div>
+    <nav>${navA.split('<a href="#/rasxodlar"')[0]}<div class="sec">Xərclər və işçilər</div><a href="#/rasxodlar"${navA.split('<a href="#/rasxodlar"')[1].split('<a href="#/kassa"')[0]}<div class="sec">Kassa və hesabatlar</div><a href="#/kassa"${navA.split('<a href="#/kassa"')[1]}</nav>
     <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><button id="out">Çıxış</button></div></aside>
-   <div class="mobile-bar"><b>${esc(CFG.FIRMA_ADI || 'Sat Proqram')}</b><button id="out2">Çıxış</button></div>
+   <div class="mobile-bar"><b>${esc(CFG.FIRMA_ADI)}</b><button id="out2">Çıxış</button></div>
    <main class="main"><div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
    <div id="page">${body || '<div class="empty"><div class="spinner" style="margin:auto"></div></div>'}</div></main>
    <nav class="bottom-nav">${NAV.filter(n => MOBNAV.includes(n[0])).map(([k, t, i]) => `<a href="#/${k}" class="${active === k || (k === 'isciler' && ['odenisler','cixaris'].includes(active)) ? 'active' : ''}">${ico(i)}${NAVQISA[k]}</a>`).join('')}</nav>
@@ -144,7 +147,8 @@ function route() {
   const params = new URLSearchParams(qs || '');
   const [p, id] = path.split('/');
   const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id),
-    rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params) }[p] || pagePanel;
+    rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
+    kassa: () => pageKassa(), sifarisler: () => pageSifarisler(params), hesabat: () => pageHesabat(params) }[p] || pagePanel;
   Promise.resolve(run()).catch(fail);
 }
 window.addEventListener('hashchange', route);
@@ -337,7 +341,7 @@ function satisDuzelt(s) {
   };
 }
 
-async function yeniSatis(musteriId) {
+async function yeniSatis(musteriId, pref) {
   const mus = S.cache.mus || (S.cache.mus = await all(() => sb.from('v_musteriler').select('id,ad,telefon,unvan,qaliq').order('id')));
   let secilen = musteriId ? mus.find(x => x.id === musteriId) : null;
   const m = modal('Yeni satış', `<form id="sf">
@@ -382,6 +386,11 @@ async function yeniSatis(musteriId) {
   const f = $('#sf', m);
   const qal = () => { $('#qal', m).textContent = f.d.value ? `Kreditə qalan: ${man(num(f.d.value) - num(f.i.value))}` : ''; };
   f.d.oninput = qal; f.i.oninput = qal;
+  if (pref) {
+    $('#mtip button[data-t="yeni"]', m).click();
+    f.ad.value = pref.ad || ''; f.un.value = pref.unvan || ''; f.tel.value = pref.tel || '';
+    f.mal.value = pref.mal || ''; if (pref.deyer) f.d.value = pref.deyer; qal();
+  }
   $$('[data-close]', m).forEach(b => b.onclick = closeModal);
   $('#ok', m).onclick = async () => {
     if (!f.reportValidity()) return;
@@ -396,6 +405,7 @@ async function yeniSatis(musteriId) {
         mid = nm.id;
       }
       const ns = await q(sb.from('satislar').insert({ musteri_id: mid, tarix: f.t.value, mal: f.mal.value.trim() || null, deyer: num(f.d.value), ilkin: num(f.i.value), qeyd: f.q.value.trim() || null }).select().single());
+      if (pref && pref.sifarisId) await q(sb.from('sifarisler').update({ status: 'Təhvil verildi' }).eq('id', pref.sifarisId));
       closeModal(); toast(`Satış yazıldı: ${ns.satis_no}`); refresh();
     } catch (er) { fail(er); btn.disabled = false; }
   };
@@ -819,6 +829,205 @@ async function pageCixaris(id, params) {
       <thead><tr><th>Tarix</th><th>Əməliyyat</th><th class="n">Hesablandı</th><th class="n">Verildi / tutuldu</th><th class="n">Qalıq</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="5" class="empty">Bu dövrdə əməliyyat yoxdur</td></tr>'}</tbody>
       <tfoot><tr><td colspan="2">Cəm</td><td class="n">${fmt(hes)}</td><td class="n">${fmt(ver)}</td><td class="n">${fmt(son)}</td></tr></tfoot></table></div>`;
+}
+
+/* =====================================================================
+   KASSA
+   ===================================================================== */
+async function pageKassa() {
+  const w = canWrite();
+  shell('kassa', 'Kassa', 'Pul hansı ayda real olaraq kassaya girib-çıxıbsa, o ayda görünür',
+    `${w ? `<button class="btn green" id="emel">${ico('plus')}Digər əməliyyat</button><button class="btn" id="ayar">Başlanğıc</button>` : ''}
+     <button class="btn" onclick="window.print()">${ico('print')}Çap / PDF</button>`);
+  if ($('#emel')) $('#emel').onclick = () => digerForm(null);
+  const [aylar, diger, ayar] = await Promise.all([
+    q(sb.from('v_kassa').select('*').order('ay')),
+    q(sb.from('kassa_diger').select('*').order('tarix', { ascending: false }).order('id', { ascending: false })),
+    q(sb.from('ayarlar').select('*')),
+  ]);
+  const A = Object.fromEntries(ayar.map(a => [a.acar, a.deyer]));
+  const son = aylar[aylar.length - 1] || {};
+  const bas = r => num(r.ay_sonu_kassa) - num(r.medaxil) + num(r.mexaric);
+  if ($('#ayar')) $('#ayar').onclick = () => {
+    const m = modal('Kassanın başlanğıcı', `<form id="kf"><p class="muted">Kassa hesabı bu tarixdən başlayır. O gün kassada olan pulu yazın.</p>
+      <div class="row2"><div class="field"><label class="f">Başlanğıc tarixi</label><input class="in" type="date" name="t" value="${A.kassa_baslangic || ''}" required></div>
+      <div class="field"><label class="f">O gün kassada olan pul</label><input class="in" type="number" step="0.01" name="m" value="${num(A.kassa_ilkin)}" required></div></div></form>`,
+      `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
+    $('#ok', m).onclick = async () => {
+      const f = $('#kf', m); if (!f.reportValidity()) return;
+      try {
+        await q(sb.from('ayarlar').update({ deyer: ayBasi(f.t.value) }).eq('acar', 'kassa_baslangic'));
+        await q(sb.from('ayarlar').update({ deyer: String(num(f.m.value)) }).eq('acar', 'kassa_ilkin'));
+        closeModal(); toast('Yadda saxlanıldı'); refresh();
+      } catch (er) { fail(er); }
+    };
+  };
+  $('#page').innerHTML = `
+    <div class="grid kpis">
+      <div class="card kpi"><div class="lbl">Hazırda kassada</div><div class="val ${num(son.ay_sonu_kassa) < 0 ? 'neg' : ''}">${man(son.ay_sonu_kassa)}</div><div class="cmp">Başlanğıc: ${fd(A.kassa_baslangic)} · ${man(A.kassa_ilkin)}</div></div>
+      <div class="card kpi"><div class="lbl">Bu ay daxil olan</div><div class="val">${man(son.medaxil)}</div></div>
+      <div class="card kpi"><div class="lbl">Bu ay çıxan</div><div class="val">${man(son.mexaric)}</div></div>
+      <div class="card kpi"><div class="lbl">Bu ay fərq</div><div class="val ${num(son.medaxil) - num(son.mexaric) < 0 ? 'neg' : 'pos'}">${man(num(son.medaxil) - num(son.mexaric))}</div></div>
+    </div>
+    <div class="tbl-wrap" style="margin-top:16px"><table class="t">
+      <thead><tr><th>Ay</th><th class="n hide-m">Ayın əvvəli</th><th class="n hide-m">İlkin ödənişlər</th><th class="n hide-m">Müştəri ödənişləri</th><th class="n hide-m">Digər mədaxil</th><th class="n">Daxil olan</th>
+        <th class="n hide-m">Rasxod</th><th class="n hide-m">Maaş</th><th class="n hide-m">Sahib</th><th class="n hide-m">Digər məxaric</th><th class="n">Çıxan</th><th class="n">Ayın sonu</th></tr></thead>
+      <tbody>${aylar.slice().reverse().map(r => `<tr><td style="white-space:nowrap">${ayAdi(r.ay)}</td><td class="n hide-m">${fmt(bas(r))}</td><td class="n hide-m">${fmt(r.ilkin)}</td><td class="n hide-m">${fmt(r.musteri_odenisi)}</td><td class="n hide-m">${fmt(r.diger_medaxil)}</td><td class="n"><b>${fmt(r.medaxil)}</b></td>
+        <td class="n hide-m">${fmt(r.rasxod)}</td><td class="n hide-m">${fmt(r.maas)}</td><td class="n hide-m">${fmt(r.sahib)}</td><td class="n hide-m">${fmt(r.diger_mexaric)}</td><td class="n"><b>${fmt(r.mexaric)}</b></td>
+        <td class="n ${num(r.ay_sonu_kassa) < 0 ? 'neg' : ''}"><b>${fmt(r.ay_sonu_kassa)}</b></td></tr>`).join('')}</tbody></table></div>
+    <h3 style="margin:22px 0 10px">Digər kassa əməliyyatları <span class="muted" style="font-weight:400;font-size:13px">(kredit, bank, sahibin qoyduğu pul və s.)</span></h3>
+    <div class="tbl-wrap">${diger.length ? `<table class="t"><thead><tr><th>Tarix</th><th>Növ</th><th>Açıqlama</th><th class="n">Məbləğ</th></tr></thead>
+      <tbody>${diger.map(d => `<tr class="${w ? 'click' : ''}" data-d="${d.id}"><td>${fd(d.tarix)}</td><td><span class="badge ${d.nov === 'Mədaxil' ? 'b-green' : 'b-red'}">${d.nov}</span></td><td>${esc(d.aciqlama || '')}</td><td class="n">${fmt(d.mebleg)}</td></tr>`).join('')}</tbody></table>`
+      : '<div class="empty">Hələ digər əməliyyat yoxdur</div>'}</div>`;
+  if (w) $$('[data-d]').forEach(tr => tr.onclick = () => digerForm(diger.find(d => d.id === +tr.dataset.d)));
+}
+
+function digerForm(d) {
+  const m = modal(d ? 'Əməliyyatı düzəlt' : 'Digər kassa əməliyyatı', `<form id="gf">
+    <div class="field"><label class="f">Növ</label><select class="in" name="n"><option ${!d || d.nov === 'Mədaxil' ? 'selected' : ''}>Mədaxil</option><option ${d && d.nov === 'Məxaric' ? 'selected' : ''}>Məxaric</option></select></div>
+    <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${d ? d.tarix : today()}" required></div>
+    <div class="field"><label class="f">Məbləğ</label><input class="in" type="number" step="0.01" min="0.01" name="m" value="${d ? d.mebleg : ''}" required></div></div>
+    <div class="field"><label class="f">Açıqlama</label><input class="in" name="a" value="${esc(d ? d.aciqlama || '' : '')}" placeholder="məs. Sahib kassaya pul qoydu"></div></form>`,
+    `${d ? '<button class="btn danger" id="sil" style="margin-right:auto">Sil</button>' : ''}<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
+  const f = $('#gf', m);
+  $('#ok', m).onclick = async () => {
+    if (!f.reportValidity()) return;
+    const row = { nov: f.n.value, tarix: f.t.value, mebleg: num(f.m.value), aciqlama: f.a.value.trim() || null };
+    try { if (d) await q(sb.from('kassa_diger').update(row).eq('id', d.id)); else await q(sb.from('kassa_diger').insert(row)); closeModal(); toast('Yadda saxlanıldı'); refresh(); }
+    catch (er) { fail(er); }
+  };
+  if ($('#sil', m)) $('#sil', m).onclick = async () => {
+    if (!confirm('Bu əməliyyat silinsin?')) return;
+    try { await q(sb.from('kassa_diger').delete().eq('id', d.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); }
+  };
+}
+
+/* =====================================================================
+   SİFARİŞLƏR
+   ===================================================================== */
+const SIF_STATUS = ['Gözləyir', 'Hazırdır', 'Təhvil verildi', 'Ləğv edildi'];
+const sifBadge = s => `<span class="badge ${s === 'Gözləyir' ? 'b-amber' : s === 'Hazırdır' ? 'b-blue' : s === 'Təhvil verildi' ? 'b-green' : 'b-gray'}">${s}</span>`;
+
+async function pageSifarisler(params) {
+  const fil = params.get('f') || 'aktiv';
+  shell('sifarisler', 'Sifarişlər', '', `<input class="in search" id="axtar" placeholder="Axtar: müştəri, mal, telefon">
+    <div class="seg" id="fil">${[['aktiv', 'Aktiv'], ['hamisi', 'Hamısı']].map(([k, t]) => `<button data-f="${k}" class="${fil === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+    ${canWrite() ? `<button class="btn primary" id="yeni">${ico('plus')}Yeni sifariş</button>` : ''}
+    <button class="btn" onclick="window.print()">${ico('print')}Çap</button>`);
+  $$('#fil button').forEach(b => b.onclick = () => location.hash = '#/sifarisler?f=' + b.dataset.f);
+  if ($('#yeni')) $('#yeni').onclick = () => sifarisForm(null);
+  const rows = await all(() => sb.from('sifarisler').select('*').order('tarix', { ascending: false }).order('id', { ascending: false }));
+  const draw = () => {
+    const s = ($('#axtar').value || '').toLocaleLowerCase('az');
+    let list = fil === 'aktiv' ? rows.filter(r => ['Gözləyir', 'Hazırdır'].includes(r.status)) : rows;
+    if (s) list = list.filter(r => [r.musteri, r.mal, r.telefon, r.unvan, r.aciqlama].join(' ').toLocaleLowerCase('az').includes(s));
+    $('.topbar .sub').textContent = `${list.length} sifariş · cəmi ${man(list.reduce((a, r) => a + num(r.qiymet), 0))}`;
+    $('#page').innerHTML = `<div class="tbl-wrap">${list.length ? `<table class="t">
+      <thead><tr><th>Tarix</th><th>Müştəri</th><th>Sifariş edilən mal</th><th class="hide-m">Açıqlama</th><th class="n">Qiymət</th><th>Vəziyyət</th></tr></thead>
+      <tbody>${list.map(r => `<tr class="${canWrite() ? 'click' : ''}" data-s="${r.id}"><td>${fd(r.tarix)}</td>
+        <td><div class="cell-main">${esc(r.musteri || '—')}</div><div class="cell-sub">${esc(r.unvan || '')}${r.telefon ? ' · ' + esc(r.telefon) : ''}</div></td>
+        <td>${esc(r.mal || '')}</td><td class="hide-m">${esc(r.aciqlama || '')}</td><td class="n">${r.qiymet != null ? fmt(r.qiymet) : ''}</td><td>${sifBadge(r.status)}</td></tr>`).join('')}</tbody></table>`
+      : '<div class="empty">Sifariş yoxdur</div>'}</div>`;
+    if (canWrite()) $$('[data-s]').forEach(tr => tr.onclick = () => sifarisForm(rows.find(r => r.id === +tr.dataset.s)));
+  };
+  $('#axtar').oninput = draw;
+  draw();
+}
+
+function sifarisForm(r) {
+  const m = modal(r ? 'Sifariş' : 'Yeni sifariş', `<form id="pf2">
+    <div class="field"><label class="f">Müştərinin adı</label><input class="in" name="ad" value="${esc(r ? r.musteri || '' : '')}" required></div>
+    <div class="row2"><div class="field"><label class="f">Ünvan</label><input class="in" name="un" value="${esc(r ? r.unvan || '' : '')}"></div>
+    <div class="field"><label class="f">Telefon</label><input class="in" name="tel" value="${esc(r ? r.telefon || '' : '')}"></div></div>
+    <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${r ? r.tarix : today()}" required></div>
+    <div class="field"><label class="f">Qiymət</label><input class="in" type="number" step="0.01" min="0" name="q" value="${r && r.qiymet != null ? r.qiymet : ''}"></div></div>
+    <div class="field"><label class="f">Sifariş edilən mal</label><input class="in" name="mal" value="${esc(r ? r.mal || '' : '')}" required></div>
+    <div class="field"><label class="f">Açıqlama</label><input class="in" name="a" value="${esc(r ? r.aciqlama || '' : '')}" placeholder="ölçü, rəng, təhvil tarixi…"></div>
+    <div class="field"><label class="f">Vəziyyət</label><select class="in" name="s">${SIF_STATUS.map(s => `<option ${(r ? r.status : 'Gözləyir') === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></form>`,
+    `${r ? '<button class="btn danger" id="sil" style="margin-right:auto">Sil</button>' : ''}${r && r.status !== 'Təhvil verildi' ? '<button class="btn green" id="sat">Satışa çevir</button>' : ''}<button class="btn" data-close>Bağla</button><button class="btn primary" id="ok">Yadda saxla</button>`);
+  const f = $('#pf2', m);
+  const row = () => ({ musteri: f.ad.value.trim(), unvan: f.un.value.trim() || null, telefon: f.tel.value.trim() || null, tarix: f.t.value,
+    qiymet: f.q.value === '' ? null : num(f.q.value), mal: f.mal.value.trim(), aciqlama: f.a.value.trim() || null, status: f.s.value });
+  $('#ok', m).onclick = async () => {
+    if (!f.reportValidity()) return;
+    try { if (r) await q(sb.from('sifarisler').update(row()).eq('id', r.id)); else await q(sb.from('sifarisler').insert(row())); closeModal(); toast('Yadda saxlanıldı'); refresh(); }
+    catch (er) { fail(er); }
+  };
+  if ($('#sil', m)) $('#sil', m).onclick = async () => {
+    if (!confirm('Bu sifariş silinsin?')) return;
+    try { await q(sb.from('sifarisler').delete().eq('id', r.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); }
+  };
+  if ($('#sat', m)) $('#sat', m).onclick = () => {
+    const x = row();
+    yeniSatis(null, { ad: x.musteri, unvan: x.unvan, tel: x.telefon, mal: x.mal, deyer: x.qiymet, sifarisId: r.id });
+  };
+}
+
+/* =====================================================================
+   AYLIQ HESABAT (PDF)
+   ===================================================================== */
+async function pageHesabat(params) {
+  const ay = params.get('ay') || ayBasi(today());
+  const aylar = await q(sb.from('v_kassa').select('*').order('ay', { ascending: false }));
+  shell('hesabat', 'Aylıq hesabat', '', `<select class="in" id="ay" style="width:auto">${aylar.map(a => `<option value="${a.ay}" ${a.ay === ay ? 'selected' : ''}>${ayAdi(a.ay)}</option>`).join('')}</select>
+    <button class="btn primary" onclick="window.print()">${ico('print')}PDF / Çap</button>`);
+  $('#ay').onchange = e => location.hash = '#/hesabat?ay=' + e.target.value;
+  const A = aylar.find(a => a.ay === ay) || {};
+  const son = aySonu(ay);
+  const [sat, pays, rx, kat, iod, isc, mus] = await Promise.all([
+    all(() => sb.from('v_satislar').select('*').gte('tarix', ay).lte('tarix', son).order('tarix').order('id')),
+    all(() => sb.from('satis_odenisleri').select('*').gte('tarix', ay).lte('tarix', son).order('tarix').order('id')),
+    all(() => sb.from('rasxodlar').select('*').gte('tarix', ay).lte('tarix', son).order('tarix').order('id')),
+    q(sb.from('v_rasxod_kateqoriya').select('*').eq('ay', ay)),
+    all(() => sb.from('isci_odenisleri').select('*').gte('tarix', ay).lte('tarix', son).order('tarix').order('id')),
+    q(sb.from('isciler').select('id,ad,nov')),
+    all(() => sb.from('v_musteriler').select('id,qaliq,gecikme_gun').order('id')),
+  ]);
+  const satIds = [...new Set(pays.map(p => p.satis_id))];
+  const paySat = satIds.length ? await all(() => sb.from('v_satislar').select('id,satis_no,musteri').in('id', satIds).order('id')) : [];
+  const sMap = Object.fromEntries(paySat.map(s => [s.id, s]));
+  const iMap = Object.fromEntries(isc.map(i => [i.id, i]));
+  const xalis = num(A.medaxil) - num(A.mexaric);
+  const borc = mus.reduce((a, m) => a + num(m.qaliq), 0);
+  const gec = mus.filter(m => num(m.qaliq) > 0 && m.gecikme_gun > 0);
+  const sum = (l, k) => l.reduce((a, r) => a + num(r[k]), 0);
+  const row2 = (a, b, cls) => `<tr><td>${a}</td><td class="n ${cls || ''}">${b}</td></tr>`;
+  const sec = (title, body) => `<div class="card" style="padding:0;margin-top:16px;overflow:auto"><h3 style="padding:16px 20px 0">${title}</h3>${body}</div>`;
+  $('#page').innerHTML = `
+    <div class="card" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div><div style="font-size:20px;font-weight:700;color:var(--brand)">${esc(CFG.FIRMA_ADI)}</div><div class="muted">Aylıq hesabat — ${ayAdi(ay)}</div></div>
+      <div class="muted" style="text-align:right">Hazırlanıb: ${fd(today())}<br>${esc(S.ad)}</div></div></div>
+    <div class="grid two">
+      <div class="card" style="padding:0"><h3 style="padding:16px 20px 0">Ümumi göstəricilər</h3><table class="t"><tbody>
+        ${row2('Satış (malın dəyəri)', man(A.satis))}${row2('Satış sayı', fmt(A.satis_sayi))}
+        ${row2('İlkin ödənişlər', man(A.ilkin))}${row2('Müştəri ödənişləri (kredit)', man(A.musteri_odenisi))}${row2('Digər mədaxil', man(A.diger_medaxil))}
+        ${row2('<b>Kassaya daxil olan</b>', '<b>' + man(A.medaxil) + '</b>')}
+        ${row2('Xərclər (rasxod)', man(A.rasxod))}${row2('İşçilərə maaş', man(A.maas))}${row2('Sahib götürmələri', man(A.sahib))}${row2('Digər məxaric', man(A.diger_mexaric))}
+        ${row2('<b>Kassadan çıxan</b>', '<b>' + man(A.mexaric) + '</b>')}
+        ${row2('<b>Fərq (daxil − çıxan)</b>', '<b>' + man(xalis) + '</b>', xalis < 0 ? 'neg' : 'pos')}
+        ${row2('Ay sonu kassa', man(A.ay_sonu_kassa), num(A.ay_sonu_kassa) < 0 ? 'neg' : '')}
+      </tbody></table></div>
+      <div>
+        <div class="card" style="padding:0"><h3 style="padding:16px 20px 0">Müştəri borcları (bu günə)</h3><table class="t"><tbody>
+          ${row2('Ümumi qalıq borc', man(borc))}${row2('Gecikən borc (30+ gün)', man(gec.reduce((a, m) => a + num(m.qaliq), 0)))}${row2('Gecikən müştəri sayı', fmt(gec.length))}
+          ${row2('Bu ayın satışlarından qalan borc', man(A.satisdan_qalan))}</tbody></table></div>
+        <div class="card" style="padding:0;margin-top:16px"><h3 style="padding:16px 20px 0">Xərclər kateqoriyalar üzrə</h3><table class="t"><tbody>
+          ${KATS.map(k => { const r = kat.find(x => x.kateqoriya === k); return row2(k, man(r ? r.cem : 0)); }).join('')}</tbody>
+          <tfoot><tr><td>Cəm</td><td class="n">${man(sum(kat, 'cem'))}</td></tr></tfoot></table></div>
+      </div>
+    </div>
+    ${sec(`Ayın satışları (${sat.length})`, sat.length ? `<table class="t"><thead><tr><th>№</th><th>Tarix</th><th>Müştəri</th><th class="hide-m">Mal</th><th class="n">Dəyəri</th><th class="n">İlkin</th><th class="n">Qalıq</th></tr></thead>
+      <tbody>${sat.map(s => `<tr><td class="muted">${esc(s.satis_no)}</td><td>${fd(s.tarix)}</td><td>${esc(s.musteri)}</td><td class="hide-m">${esc(s.mal || '')}</td><td class="n">${fmt(s.deyer)}</td><td class="n">${fmt(s.ilkin)}</td><td class="n">${fmt(s.qaliq)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="3">Cəm</td><td class="hide-m"></td><td class="n">${fmt(sum(sat, 'deyer'))}</td><td class="n">${fmt(sum(sat, 'ilkin'))}</td><td class="n">${fmt(sum(sat, 'qaliq'))}</td></tr></tfoot></table>` : '<div class="empty">Satış yoxdur</div>')}
+    ${sec(`Müştərilərdən alınan kredit ödənişləri (${pays.length})`, pays.length ? `<table class="t"><thead><tr><th>Tarix</th><th>Müştəri</th><th>Satış</th><th class="n">Məbləğ</th></tr></thead>
+      <tbody>${pays.map(p => `<tr><td>${fd(p.tarix)}</td><td>${esc(sMap[p.satis_id] ? sMap[p.satis_id].musteri : '')}</td><td class="muted">${esc(sMap[p.satis_id] ? sMap[p.satis_id].satis_no : '')}</td><td class="n">${fmt(p.mebleg)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="3">Cəm</td><td class="n">${fmt(sum(pays, 'mebleg'))}</td></tr></tfoot></table>` : '<div class="empty">Ödəniş yoxdur</div>')}
+    ${sec(`Xərclər (${rx.length})`, rx.length ? `<table class="t"><thead><tr><th>Tarix</th><th>Açıqlama</th><th class="hide-m">Kateqoriya</th><th class="n">Məbləğ</th></tr></thead>
+      <tbody>${rx.map(r => `<tr><td>${fd(r.tarix)}</td><td>${esc(r.aciqlama || '')}</td><td class="hide-m">${esc(r.kateqoriya)}</td><td class="n">${fmt(r.mebleg)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="2">Cəm</td><td class="hide-m"></td><td class="n">${fmt(sum(rx, 'mebleg'))}</td></tr></tfoot></table>` : '<div class="empty">Xərc yoxdur</div>')}
+    ${sec(`İşçi və sahib ödənişləri (${iod.length})`, iod.length ? `<table class="t"><thead><tr><th>Tarix</th><th>Ad</th><th>Növ</th><th class="n">Məbləğ</th></tr></thead>
+      <tbody>${iod.map(o => `<tr><td>${fd(o.tarix)}</td><td>${esc(iMap[o.isci_id] ? iMap[o.isci_id].ad : '')}${iMap[o.isci_id] && iMap[o.isci_id].nov === 'Sahib' ? ' <span class="muted">(sahib)</span>' : ''}</td><td>${o.nov}</td><td class="n">${fmt(o.mebleg)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="3">Cəm</td><td class="n">${fmt(sum(iod, 'mebleg'))}</td></tr></tfoot></table>` : '<div class="empty">Ödəniş yoxdur</div>')}`;
 }
 
 /* ---------------- başla ---------------- */
