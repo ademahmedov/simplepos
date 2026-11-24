@@ -156,3 +156,103 @@ table.t tfoot td{font-weight:700;background:#f8fafc;border-top:1px solid var(--l
   body{background:#fff}
   .card,.tbl-wrap{box-shadow:none;border:1px solid #ddd}
 }
+
+/* =====================================================================
+   MEBEL TEMASI — isti krem fon, qoz ağacı menyu, palıd vurğu
+   ===================================================================== */
+:root{
+  --ink:#2b2118; --ink2:#5a4a3c; --muted:#8c7a68; --line:#eadfcf; --bg:#f6f0e6; --card:#fffdf9;
+  --brand:#3a2a1f; --brand2:#4a3626; --oak:#a8693a; --oak2:#8e552c; --sand:#efe4d2;
+  --blue:#3f6f72; --green:#4f7a4a; --red:#b0413e; --amber:#b7832b;
+  --c1:#a8693a; --c2:#9fb592;
+  --radius:14px; --shadow:0 1px 2px rgba(58,42,31,.06),0 4px 14px rgba(58,42,31,.06);
+  --serif:"Noto Serif","Georgia",serif;
+}
+body{font-family:"Inter","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--bg)}
+a{color:var(--oak2)}
+h1,h2,h3,.topbar h2,.login-card h1,.side .logo span{font-family:var(--serif);letter-spacing:.1px}
+.topbar h2{font-size:24px;font-weight:700;color:var(--brand)}
+.topbar .sub{color:var(--muted)}
+
+/* yan menyu: qoz ağacı */
+.side{background:linear-gradient(180deg,#3d2c20 0%,#2f2219 100%);background-image:
+  repeating-linear-gradient(92deg,rgba(255,255,255,.018) 0 2px,transparent 2px 9px),
+  linear-gradient(180deg,#3d2c20 0%,#2f2219 100%)}
+.side .logo{display:flex;align-items:center;gap:11px;padding:22px 18px 20px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px}
+.side .logo span{font-size:20px;font-weight:700;color:#f6e9d6}
+.side .logo small{color:#c9ab8a;opacity:1;font-family:"Inter",sans-serif;font-size:11.5px;letter-spacing:.4px}
+.logo-ico{width:34px;height:34px;color:#d9a46c;flex-shrink:0}
+.side nav a{color:#e7d6c1;border-radius:10px}
+.side nav a:hover{background:rgba(217,164,108,.12)}
+.side nav a.active{background:linear-gradient(90deg,#d9a46c,#c48a52);color:#2b1d12;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.side nav .sec{color:#b89a7a;opacity:.85}
+.side .who{border-top:1px solid rgba(255,255,255,.08);color:#d8c4ad}
+.side .who b{color:#f6e9d6}
+.side .who button{border-color:rgba(217,164,108,.5);color:#f0d9bd}
+
+/* kartlar */
+.card{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+.card h3{color:var(--brand);font-size:16px}
+.kpi{position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--oak),#d9a46c)}
+.kpi .lbl{text-transform:uppercase;font-size:11.5px;letter-spacing:.6px;color:var(--muted);font-weight:600}
+.kpi .val{font-family:var(--serif);font-size:26px;color:var(--brand)}
+.kpi .val.neg{color:var(--red)} .kpi .val.pos{color:var(--green)}
+.kpi .cmp{color:var(--muted)}
+
+/* düymələr */
+.btn{border-color:var(--line);background:var(--card);color:var(--ink2);border-radius:10px}
+.btn:hover{border-color:#d6c4ab;background:#fff}
+.btn.primary{background:linear-gradient(180deg,var(--oak),var(--oak2));border-color:var(--oak2);color:#fff;box-shadow:0 2px 6px rgba(142,85,44,.25)}
+.btn.primary:hover{background:linear-gradient(180deg,#b4743f,#93592e)}
+.btn.green{background:#5b7f4f;border-color:#4f7a4a;color:#fff}
+.btn.danger{color:var(--red)}
+
+/* sahələr */
+input.in,select.in,textarea.in{border-color:#e0d3c0;background:#fffefb;border-radius:10px}
+input.in:focus,select.in:focus,textarea.in:focus{border-color:var(--oak);box-shadow:0 0 0 3px rgba(168,105,58,.15)}
+label.f{color:var(--ink2)}
+.seg{background:var(--sand)}
+.seg button.on{color:var(--brand)}
+
+/* cədvəllər */
+.tbl-wrap{border:1px solid var(--line);box-shadow:var(--shadow);background:var(--card)}
+table.t th{background:#f8f1e6;color:var(--ink2);border-bottom-color:var(--line)}
+table.t td{border-bottom-color:#f1e8db}
+table.t tr.click:hover td{background:#fbf5ec}
+table.t tfoot td{background:#f8f1e6;border-top-color:var(--line)}
+
+/* nişanlar */
+.b-red{background:#f8e5e2;color:#97302c}.b-green{background:#e8efe1;color:#3f6a3a}.b-amber{background:#f7ecd6;color:#8a5f16}
+.b-gray{background:#efe8de;color:#6b5b4b}.b-blue{background:#e3eeee;color:#335d60}
+.chip{background:#f3e6d4;color:var(--oak2)}
+.info div{background:#faf4ea}
+.suggest div:hover,.suggest div.sel{background:#f6ead9}
+
+/* giriş */
+.login-wrap{background:
+  radial-gradient(ellipse at top left,rgba(217,164,108,.35),transparent 55%),
+  repeating-linear-gradient(95deg,rgba(255,255,255,.025) 0 2px,transparent 2px 11px),
+  linear-gradient(160deg,#3d2c20 0%,#24190f 100%)}
+.login-card{background:#fffdf9;border-radius:18px;border:1px solid #f0e4d2;text-align:center}
+.login-card form,.login-card .field{text-align:left}
+.login-card h1{color:var(--brand);font-size:28px}
+.login-logo{width:58px;height:58px;margin:0 auto 10px;border-radius:16px;background:linear-gradient(160deg,#4a3626,#2f2219);display:flex;align-items:center;justify-content:center}
+.login-logo .logo-ico{width:36px;height:36px}
+
+/* modal, bildiriş */
+.overlay{background:rgba(43,33,24,.5)}
+.modal{background:#fffdf9}
+.modal .mh h3{font-family:var(--serif);color:var(--brand)}
+#toast{background:#3a2a1f}
+
+/* mobil */
+.mobile-bar{background:linear-gradient(90deg,#3d2c20,#2f2219)}
+.mobile-bar b{display:flex;align-items:center;gap:8px;font-family:var(--serif);color:#f6e9d6}
+.mobile-bar .logo-ico{width:24px;height:24px}
+.bottom-nav{background:#fffdf9;border-top-color:var(--line)}
+.bottom-nav a.active{color:var(--oak2)}
+.spinner{border-color:var(--line);border-top-color:var(--oak)}
+@media print{ .kpi::before{display:none} .card,.tbl-wrap{border:1px solid #ddd} }
+.modal .mf{flex-wrap:wrap}
+@media (max-width:760px){ .modal .mf .btn{flex:1 1 auto;justify-content:center} }

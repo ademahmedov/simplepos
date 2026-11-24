@@ -66,6 +66,7 @@ const ICON = {
   plus: '<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>',
   print: '<path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>'
 };
+const LOGO = `<svg class="logo-ico" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 22v-5a5 5 0 0 1 5-5h18a5 5 0 0 1 5 5v5"/><path d="M6 24a4 4 0 0 1 8 0v4h20v-4a4 4 0 0 1 8 0v10H6z"/><path d="M10 34v4M38 34v4"/></svg>`;
 const ico = k => `<svg class="ico" viewBox="0 0 24 24" fill="currentColor">${ICON[k]}</svg>`;
 
 /* ---------------- modal ---------------- */
@@ -85,7 +86,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 /* ---------------- giriş ---------------- */
 function loginView(msg) {
   app.innerHTML = `<div class="login-wrap"><form class="login-card" id="lf">
-    <h1>${esc(CFG.FIRMA_ADI)}</h1><p>Hesabınıza daxil olun</p>
+    <div class="login-logo">${LOGO}</div><h1>${esc(CFG.FIRMA_ADI)}</h1><p>Mebel satışı və kredit uçotu</p>
     <div class="field"><label class="f">E-poçt</label><input class="in" type="email" name="e" autocomplete="username" required></div>
     <div class="field"><label class="f">Şifrə</label><input class="in" type="password" name="p" autocomplete="current-password" required></div>
     <button class="btn primary" style="width:100%;justify-content:center;padding:11px">Daxil ol</button>
@@ -129,10 +130,10 @@ const NAVQISA = { panel: 'Panel', satislar: 'Satış', musteriler: 'Müştəri',
 function shell(active, title, sub, tools, body) {
   const navA = NAV.map(([k, t, i]) => `<a href="#/${k}" class="${active === k ? 'active' : ''}">${ico(i)}${t}</a>`).join('');
   app.innerHTML = `<div class="shell">
-   <aside class="side"><div class="logo">${esc(CFG.FIRMA_ADI)}<small>${S.rol === 'sahibkar' ? 'Sahibkar baxışı' : 'Mühasib'}</small></div>
+   <aside class="side"><div class="logo">${LOGO}<div><span>${esc(CFG.FIRMA_ADI)}</span><small>${S.rol === 'sahibkar' ? 'Sahibkar baxışı' : 'Mühasib paneli'}</small></div></div>
     <nav>${navA.split('<a href="#/rasxodlar"')[0]}<div class="sec">Xərclər və işçilər</div><a href="#/rasxodlar"${navA.split('<a href="#/rasxodlar"')[1].split('<a href="#/kassa"')[0]}<div class="sec">Kassa və hesabatlar</div><a href="#/kassa"${navA.split('<a href="#/kassa"')[1].split('<a href="#/jurnal"')[0]}<div class="sec">İdarəetmə</div><a href="#/jurnal"${navA.split('<a href="#/jurnal"')[1]}</nav>
     <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><button id="out">Çıxış</button></div></aside>
-   <div class="mobile-bar"><b>${esc(CFG.FIRMA_ADI)}</b><button id="out2">Çıxış</button></div>
+   <div class="mobile-bar"><b>${LOGO}${esc(CFG.FIRMA_ADI)}</b><button id="out2">Çıxış</button></div>
    <main class="main"><div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
    <div id="page">${body || '<div class="empty"><div class="spinner" style="margin:auto"></div></div>'}</div></main>
    <nav class="bottom-nav">${NAV.filter(n => MOBNAV.includes(n[0])).map(([k, t, i]) => `<a href="#/${k}" class="${active === k || (k === 'isciler' && ['odenisler','cixaris'].includes(active)) ? 'active' : ''}">${ico(i)}${NAVQISA[k]}</a>`).join('')}</nav>
@@ -200,10 +201,10 @@ async function pagePanel() {
   const son12 = aylar.slice(-12);
   const mx = Math.max(1, ...son12.map(x => Math.max(num(x.satis), num(x.medaxil))));
   const chart = `<div class="bars">${son12.map(x => `<div class="col" title="${ayAdi(x.ay)}: satış ${man(x.satis)}, daxil olan ${man(x.medaxil)}">
-      <div class="pair"><div class="bar" style="height:${num(x.satis) / mx * 100}%;background:var(--blue)"></div>
-      <div class="bar" style="height:${num(x.medaxil) / mx * 100}%;background:#7fb3a0"></div></div>
+      <div class="pair"><div class="bar" style="height:${num(x.satis) / mx * 100}%;background:var(--c1)"></div>
+      <div class="bar" style="height:${num(x.medaxil) / mx * 100}%;background:var(--c2)"></div></div>
       <div class="lbl">${ayQisa(x.ay)}</div></div>`).join('')}</div>
-      <div class="legend"><span><i style="background:var(--blue)"></i>Satış</span><span><i style="background:#7fb3a0"></i>Kassaya daxil olan</span></div>`;
+      <div class="legend"><span><i style="background:var(--c1)"></i>Satış</span><span><i style="background:var(--c2)"></i>Kassaya daxil olan</span></div>`;
 
   const KATS = ['Material','Yanacaq','Nəqliyyat','Kirayə','Kommunal','Vergi','Digər'];
   const katCem = kat.reduce((s, k) => s + num(k.cem), 0);
@@ -308,7 +309,7 @@ async function satisModal(id) {
     ${pays.length ? `<div class="tbl-wrap" style="box-shadow:none;border:1px solid var(--line)"><table class="t"><thead><tr><th>#</th><th>Tarix</th><th class="n">Məbləğ</th><th>Qeyd</th><th></th></tr></thead><tbody>
       ${pays.map((p, i) => `<tr><td class="muted">${i + 1}</td><td>${fd(p.tarix)} ${p.texmini ? '<span class="badge b-gray" title="Excel-də tarixi yazılmamışdı, təxmini qoyulub">təxmini</span>' : ''}</td><td class="n">${fmt(p.mebleg)}</td><td>${esc(p.qeyd || '')}</td>
       <td class="n" style="white-space:nowrap"><a class="btn sm" href="#/qebz/${p.id}">Qəbz</a> ${w ? `<button class="btn sm danger" data-del="${p.id}">Sil</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : '<div class="muted">Hələ ödəniş yoxdur.</div>'}
-    ${w && num(s.qaliq) > 0 ? `<form id="pf" style="margin-top:16px;background:#f8fafc;border-radius:10px;padding:14px">
+    ${w && num(s.qaliq) > 0 ? `<form id="pf" style="margin-top:16px;background:#faf4ea;border-radius:10px;padding:14px">
       <b style="display:block;margin-bottom:10px">Yeni ödəniş</b>
       <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${today()}" required></div>
       <div class="field"><label class="f">Məbləğ (qalıq ${fmt(s.qaliq)})</label><input class="in" type="number" step="0.01" min="0.01" name="m" required></div></div>
@@ -684,7 +685,7 @@ async function isciForm(i) {
     </form>
     ${i ? `<h4 style="margin:10px 0 8px">Maaş dəyişiklikləri</h4>
       ${deg.length ? `<table class="t" style="margin-bottom:10px"><tbody>${deg.map(d => `<tr><td>${fd(d.tarixden)}-dən</td><td class="n">${fmt(d.maas)}</td><td class="n"><button class="btn sm danger" data-dd="${d.id}">Sil</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">Maaş dəyişikliyi yoxdur.</p>'}
-      <form id="df" class="row2" style="align-items:end;background:#f8fafc;padding:12px;border-radius:10px">
+      <form id="df" class="row2" style="align-items:end;background:#faf4ea;padding:12px;border-radius:10px">
         <div class="field" style="margin:0"><label class="f">Tarixdən</label><input class="in" type="date" name="t" value="${today()}" required></div>
         <div class="field" style="margin:0"><label class="f">Yeni maaş</label><div style="display:flex;gap:8px"><input class="in" type="number" step="0.01" min="0" name="m" required><button class="btn">Əlavə et</button></div></div>
       </form>` : ''}`,
@@ -772,7 +773,7 @@ async function odenisForm(o, isciId) {
     <div class="field"><label class="f">Məbləğ</label><input class="in" type="number" step="0.01" min="0.01" name="m" value="${o ? o.mebleg : ''}" required></div></div>
     <div class="field"><label class="f">Növ</label><div class="seg" id="nov">${ODENIS_NOV.map(n => `<button type="button" data-n="${n}" class="${(o ? o.nov : 'Avans') === n ? 'on' : ''}">${n}</button>`).join('')}</div></div>
     <div class="field"><label class="f">Qeyd (istəyə bağlı)</label><input class="in" name="q" value="${esc(o ? o.qeyd || '' : '')}"></div>
-    <div id="sonra" style="background:#f8fafc;border-radius:10px;padding:10px 12px;display:none"></div></form>`,
+    <div id="sonra" style="background:#faf4ea;border-radius:10px;padding:10px 12px;display:none"></div></form>`,
     `${o ? '<button class="btn danger" id="sil" style="margin-right:auto">Sil</button>' : ''}<button class="btn" data-close>Ləğv et</button><button class="btn green" id="ok">Yadda saxla</button>`);
   const f = $('#of', m); let nov = o ? o.nov : 'Avans';
   const info = () => {
@@ -1059,7 +1060,7 @@ function ayArtir(d, n) {
   return iso(new Date(y, m - 1 + n, Math.min(g, son)));
 }
 function qrafikSaheleri(ayliq, ilk, maya) {
-  return `<div style="background:#f8fafc;border-radius:10px;padding:12px 12px 2px;margin-bottom:14px">
+  return `<div style="background:#faf4ea;border-radius:10px;padding:12px 12px 2px;margin-bottom:14px">
     <b style="display:block;margin-bottom:8px">Ödəniş qrafiki <span class="muted" style="font-weight:400">(nağd satışda boş saxlayın)</span></b>
     <div class="row2"><div class="field"><label class="f">Aylıq ödəniş</label><input class="in" type="number" step="0.01" min="0.01" name="ay" value="${ayliq != null ? ayliq : ''}"></div>
     <div class="field"><label class="f">İlk ödəniş tarixi</label><input class="in" type="date" name="ilk" value="${ilk || ''}"></div></div>
