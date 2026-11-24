@@ -1231,6 +1231,7 @@ async function pageAyarlar() {
       <div>
         <div class="card"><h3>Ehtiyat nüsxə</h3><p class="muted" style="margin-top:-6px;font-size:13px">Bütün məlumatları (müştərilər, satışlar, ödənişlər, xərclər, işçilər, kassa, sifarişlər) bir Excel faylına yükləyir.</p>
           <button class="btn green" id="xls">Excel-ə yüklə</button> <span class="muted" id="xlsinfo"></span></div>
+        ${w ? '<div class="card" style="margin-top:16px" id="tg"><h3>Telegram xülasəsi</h3><div class="muted">Yüklənir…</div></div>' : ''}
         <div class="card" style="margin-top:16px;padding:0"><h3 style="padding:18px 20px 0">İstifadəçilər</h3>
           <table class="t"><tbody>${ist.map(i => `<tr><td><div class="cell-main">${esc(i.email || i.ad || '')}</div>${i.id === S.user.id ? '<div class="cell-sub">siz</div>' : ''}</td>
             <td style="width:200px">${w && i.id !== S.user.id ? `<select class="in" data-u="${i.id}">${Object.entries(rolAd).map(([k, v]) => `<option value="${k}" ${i.rol === k ? 'selected' : ''}>${v}</option>`).join('')}</select>` : `<span class="badge ${i.rol === 'muhasib' ? 'b-blue' : i.rol === 'bloklu' ? 'b-red' : 'b-gray'}">${rolAd[i.rol] || i.rol}</span>`}</td></tr>`).join('')}</tbody></table>
@@ -1251,6 +1252,77 @@ async function pageAyarlar() {
     try { await q(sb.from('istifadeciler').update({ rol: sel.value }).eq('id', sel.dataset.u)); toast('Hüquq dəyişdirildi'); } catch (er) { fail(er); }
   });
   $('#xls').onclick = () => excelIxrac().catch(fail);
+  if (w) telegramKart().catch(er => { $('#tg').innerHTML = '<h3>Telegram xülasəsi</h3><div class="muted">Hələ qurulmayıb (bazada 6_telegram.sql işlədilməlidir).</div>'; console.warn(er); });
+}
+
+/* ---------- Telegram gündəlik xülasə ---------- */
+async function telegramKart() {
+  const box = $('#tg');
+  const [T] = await q(sb.from('telegram').select('*'));
+  const al = await q(sb.from('telegram_alicilar').select('*').order('elave'));
+  const api = (m, tk = T && T.token) => fetch(`https://api.telegram.org/bot${tk}/${m}`).then(r => r.json());
+  const saat = T ? T.saat : 20;
+  const qosulub = T && T.token;
+  box.innerHTML = `<h3>Telegram xülasəsi</h3>
+    <p class="muted" style="margin-top:-6px;font-size:13px">Hər gün seçdiyiniz saatda Telegram-a günün satışları, kassa, xərclər, borclar və sabah ödəniş edəcək müştərilər göndərilir.</p>
+    ${qosulub ? `<div class="info" style="margin-bottom:12px"><div><small style="display:block">Bot</small><b>${T.bot ? `<a href="https://t.me/${esc(T.bot)}" target="_blank">@${esc(T.bot)}</a>` : 'qoşulub'}</b></div>
+       <div><small style="display:block">Göndərmə saatı (Bakı)</small><b><select class="in" id="tgsaat" style="padding:4px 8px;width:auto">${Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${h === saat ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('')}</select></b></div></div>` :
+      `<ol style="font-size:13.5px;padding-left:18px;margin:0 0 12px;line-height:1.7">
+        <li>Telegram-da <a href="https://t.me/BotFather" target="_blank"><b>@BotFather</b></a>-i açın, <b>/newbot</b> yazın.</li>
+        <li>Bota ad verin (məs. <i>SimplePOS hesabat</i>), sonra sonu <b>bot</b> ilə bitən istifadəçi adı (məs. <i>simplepos_hesabat_bot</i>).</li>
+        <li>BotFather-in verdiyi uzun kodu (token) aşağıya yapışdırın.</li></ol>`}
+    <form id="tgf" class="field" style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1"><label class="f">${qosulub ? 'Tokeni dəyiş' : 'Bot tokeni'}</label><input class="in" type="password" name="tk" autocomplete="off" placeholder="${qosulub ? '••••••••' : '123456789:ABC…'}"></div>
+      <button class="btn ${qosulub ? '' : 'primary'}">Yoxla və saxla</button></form>
+    ${qosulub ? `<div style="margin-top:14px"><label class="f">Kimə göndərilir</label>
+      ${al.length ? `<table class="t"><tbody>${al.map(a => `<tr><td>${esc(a.ad || a.chat_id)}</td><td style="width:60px;text-align:right"><button class="btn danger" data-tgsil="${a.chat_id}" style="padding:4px 10px">Sil</button></td></tr>`).join('')}</tbody></table>`
+        : '<div class="muted" style="font-size:13px">Hələ heç kim yoxdur.</div>'}
+      <p class="muted" style="font-size:13px;margin:10px 0 8px">Mesaj almaq istəyən hər kəs Telegram-da ${T.bot ? `<a href="https://t.me/${esc(T.bot)}" target="_blank">@${esc(T.bot)}</a>` : 'bota'} yazıb <b>Start</b> bassın, sonra buradan “Alıcıları tap” düyməsini basın.</p>
+      <button class="btn" id="tgtap">Alıcıları tap</button> <span id="tgyeni"></span></div>
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="tgbax">Önizləmə</button><button class="btn green" id="tggon">İndi göndər</button></div>
+      <pre id="tgpre" style="display:none;white-space:pre-wrap;font-family:inherit;font-size:13px;background:#faf4ea;border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px"></pre>` : ''}`;
+
+  $('#tgf').onsubmit = async e => {
+    e.preventDefault();
+    const tk = e.target.tk.value.trim();
+    if (!/^\d+:[\w-]{20,}$/.test(tk)) return toast('Token düzgün deyil — BotFather-in verdiyi kodu tam yapışdırın');
+    try {
+      const r = await api('getMe', tk);
+      if (!r.ok) return toast('Telegram bu tokeni qəbul etmədi');
+      await q(sb.from('telegram').update({ token: tk, bot: r.result.username }).eq('id', 1));
+      try { await q(sb.rpc('telegram_saat_qur', { h: saat })); } catch (_) {}
+      toast('Bot qoşuldu: @' + r.result.username); telegramKart();
+    } catch (er) { fail(er); }
+  };
+  if (!qosulub) return;
+  $('#tgsaat').onchange = async e => { try { await q(sb.rpc('telegram_saat_qur', { h: +e.target.value })); toast('Hər gün ' + e.target.selectedOptions[0].text + '-da göndəriləcək'); } catch (er) { fail(er); } };
+  $$('[data-tgsil]').forEach(b => b.onclick = async () => { try { await q(sb.from('telegram_alicilar').delete().eq('chat_id', b.dataset.tgsil)); telegramKart(); } catch (er) { fail(er); } });
+  $('#tgtap').onclick = async () => {
+    try {
+      const r = await api('getUpdates');
+      if (!r.ok) return toast('Telegram cavab vermədi: ' + (r.description || ''));
+      const var_ = new Set(al.map(a => String(a.chat_id))), tap = new Map();
+      for (const u of r.result) {
+        const c = (u.message || u.my_chat_member || u.edited_message || {}).chat;
+        if (c && !var_.has(String(c.id))) tap.set(String(c.id), c.title || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.username || String(c.id));
+      }
+      $('#tgyeni').innerHTML = tap.size ? [...tap].map(([id, ad]) => `<button class="btn primary" data-tgel="${id}" data-ad="${esc(ad)}" style="margin:4px 4px 0 0">+ ${esc(ad)}</button>`).join('')
+        : '<span class="muted" style="font-size:13px">Yeni yazan tapılmadı — bota Start basıb bir neçə saniyə sonra yenidən yoxlayın.</span>';
+      $$('[data-tgel]').forEach(b => b.onclick = async () => {
+        try {
+          await q(sb.from('telegram_alicilar').insert({ chat_id: +b.dataset.tgel, ad: b.dataset.ad }));
+          await api(`sendMessage?chat_id=${b.dataset.tgel}&text=${encodeURIComponent('✅ ' + (CFG.FIRMA_ADI || 'SimplePOS') + ' — gündəlik xülasə bu çata göndəriləcək.')}`);
+          toast(b.dataset.ad + ' əlavə olundu'); telegramKart();
+        } catch (er) { fail(er); }
+      });
+    } catch (er) { fail(er); }
+  };
+  $('#tgbax').onclick = async () => {
+    try { const t = await q(sb.rpc('telegram_metn')); const pre = $('#tgpre'); pre.style.display = 'block'; pre.innerHTML = String(t).replace(/<(?!\/?b>)/g, '&lt;'); } catch (er) { fail(er); }
+  };
+  $('#tggon').onclick = async () => {
+    try { const n = await q(sb.rpc('telegram_gonder')); toast(n ? n + ' alıcıya göndərildi' : 'Əvvəlcə alıcı əlavə edin'); } catch (er) { fail(er); }
+  };
 }
 
 /* ---------- Excel-ə ixrac (xarici kitabxanasız .xlsx) ---------- */
