@@ -270,7 +270,7 @@ function shell(active, title, sub, tools, body) {
   app.innerHTML = `<div class="shell">
    <aside class="side"><div class="logo">${LOGO}<div><span>${esc(CFG.FIRMA_ADI)}</span><small>${S.magaza ? esc(S.magaza.ad) : 'Admin'}</small></div></div>
     <nav>${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? '<div class="sec">Dükan</div>' : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? `${navA.split('<a href="#/rasxodlar"')[0]}<div class="sec">Xərclər və işçilər</div><a href="#/rasxodlar"${navA.split('<a href="#/rasxodlar"')[1].split('<a href="#/kassa"')[0]}<div class="sec">Kassa və hesabatlar</div><a href="#/kassa"${navA.split('<a href="#/kassa"')[1].split('<a href="#/jurnal"')[0]}<div class="sec">İdarəetmə</div><a href="#/jurnal"${navA.split('<a href="#/jurnal"')[1]}` : ''}</nav>
-    <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'muhasib' ? 'Mühasib' : S.rol === 'sahibkar' ? 'Yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
+    <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'sahibkar' ? 'Yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
    <div class="mobile-bar"><button id="geri" class="mb-geri" ${active === 'menyu' || (S.rol === 'kuryer' && active === 'yigim') ? 'style="visibility:hidden"' : ''}>‹ Geri</button><b>${LOGO}${esc(firmaAdi())}</b><button id="out2">Çıxış</button></div>
    <main class="main">${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
    <div id="page">${body || '<div class="empty"><div class="spinner" style="margin:auto"></div></div>'}</div></main>
@@ -370,7 +370,7 @@ async function pageSaticilar(params) {
 /* ---------------- telefon üçün kafel menyu ---------------- */
 function pageMenyu() {
   if (S.rol === 'kuryer') { location.hash = '#/yigim'; return; }
-  shell('menyu', firmaAdi(), S.rol === 'muhasib' ? 'Mühasib' : 'Yalnız baxış', '');
+  shell('menyu', firmaAdi(), canWrite() ? '' : (S.rol === 'sahibkar' ? 'Yalnız baxış' : ''), '');
   const ad = Object.fromEntries(NAV.map(n => [n[0], n]));
   const kafel = k => { const n = ad[k]; return n ? `<a class="kafel" href="#/${k}">${ico(n[2])}<span>${n[1]}</span></a>` : ''; };
   $('#page').innerHTML = `
