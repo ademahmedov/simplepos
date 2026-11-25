@@ -1927,6 +1927,101 @@ async function pageMuqavile(id) {
     <p class="muted no-print" style="font-size:12px;margin-top:24px">Bu, nümunə müqavilə şablonudur. Mətni "Ayarlar → Müqavilənin şərtləri" bölməsində dəyişə bilərsiniz; hüquqi məsələlərdə hüquqşünasla məsləhətləşin.</p></div>`;
 }
 
+/* =====================================================================
+   SÜTUN FİLTRLƏRİ — bütün cədvəllərdə (ERP kimi): başlıq altında axtarış,
+   az dəyərli sütunlarda siyahı, başlığa basanda sıralama, cəmlər yenilənir
+   ===================================================================== */
+const FLT = {};   // səhifə + sütun → dəyər (cədvəl yenidən çəkiləndə qorunur)
+const SRT = {};
+const azLow = t => String(t || '').toLocaleLowerCase('az').trim();
+function xanaMetni(td) { return (td ? td.innerText : '').replace(/\s+/g, ' ').trim(); }
+function ededle(t) {
+  const x = String(t).replace(/[\s ₼%]/g, '').replace('−', '-').replace(/ədəd|gün|ay/g, '');
+  if (!/^-?\d+(,\d+)?(\.\d+)?$/.test(x)) return null;
+  return Number(x.replace(',', '.'));
+}
+function tarixle(t) { const m = String(t).match(/^(\d{2})\.(\d{2})\.(\d{4})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : null; }
+function uygun(deyer, f) {
+  if (!f) return true;
+  if (f.startsWith('=')) return azLow(deyer) === azLow(f.slice(1));
+  const m = f.replace(/\s/g, '').match(/^(>=|<=|>|<)(-?[\d.,]+)$/) || f.replace(/\s/g, '').match(/^(-?[\d.,]+)-(-?[\d.,]+)$/);
+  if (m) {
+    const n = ededle(deyer); if (n == null) return false;
+    if (m[1] && /^[<>]/.test(m[1])) { const v = Number(m[2].replace(',', '.'));
+      return m[1] === '>' ? n > v : m[1] === '<' ? n < v : m[1] === '>=' ? n >= v : n <= v; }
+    return n >= Number(m[1].replace(',', '.')) && n <= Number(m[2].replace(',', '.'));
+  }
+  return azLow(deyer).includes(azLow(f));
+}
+function tabloFiltr(tb) {
+  tb.dataset.flt = '1';
+  const thead = tb.tHead, body = tb.tBodies[0];
+  if (!thead || !body || !thead.rows[0]) return;
+  const ths = Array.from(thead.rows[0].cells);
+  const rows = () => Array.from(body.rows).filter(r => r.cells.length === ths.length);
+  if (rows().length < 3 || tb.closest('.cek,.modal')) return;
+  const acar = location.hash.split('?')[0] + '|' + ths.map(th => th.innerText.trim()).join('/');
+  const st = FLT[acar] || (FLT[acar] = {});
+  const fr = thead.insertRow(-1); fr.className = 'flt-row no-print';
+  ths.forEach((th, i) => {
+    const c = document.createElement('th'); c.className = th.className.replace(/\bn\b/, '') ; fr.appendChild(c);
+    if (!th.innerText.trim()) return;
+    const vals = [...new Set(rows().map(r => xanaMetni(r.cells[i])).filter(Boolean))];
+    const reqem = vals.length && vals.every(v => ededle(v) != null);
+    if (!reqem && vals.length > 1 && vals.length <= 12 && rows().length > vals.length) {
+      c.innerHTML = `<select data-fi="${i}"><option value="">Hamısı</option>${vals.sort((a, b) => a.localeCompare(b, 'az')).map(v => `<option value="=${esc(v)}">${esc(v.length > 28 ? v.slice(0, 26) + '…' : v)}</option>`).join('')}</select>`;
+    } else {
+      c.innerHTML = `<input data-fi="${i}" placeholder="${reqem ? '>100, 50-200' : 'süz…'}" title="${reqem ? 'Rəqəm: >1000, <500, 100-500 və ya sadəcə yazın' : 'Mətnin bir hissəsini yazın'}">`;
+    }
+    const el = c.firstChild; if (st[i]) el.value = st[i];
+    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { st[i] = el.value; tetbiq(); });
+    el.addEventListener('click', e => e.stopPropagation());
+    th.classList.add('srt'); th.title = 'Sıralamaq üçün basın';
+    th.addEventListener('click', () => {
+      const cur = SRT[acar]; SRT[acar] = cur && cur.i === i ? (cur.d === 1 ? { i, d: -1 } : null) : { i, d: 1 };
+      sirala(); tetbiq();
+    });
+  });
+  // cəm sətri: hansı sütunlar yenilənə bilər
+  const foot = tb.tFoot && tb.tFoot.rows[0] ? tb.tFoot.rows[0] : null;
+  const fCell = [];   // sütun nömrəsi → cəm xanası (colspan nəzərə alınır)
+  if (foot) { let k = 0; Array.from(foot.cells).forEach(c => { if (c.colSpan === 1) fCell[k] = c; k += c.colSpan; }); }
+  const cemSut = foot ? ths.map((th, i) => !!fCell[i] && i > 0 && fCell[i].classList.contains('n') && ededle(xanaMetni(fCell[i])) != null
+    && rows().every(r => !xanaMetni(r.cells[i]) || ededle(xanaMetni(r.cells[i])) != null)) : [];
+  const ilkFoot = foot ? foot.cells[0].innerHTML : '';
+  const host = tb.closest('.tbl-wrap') || tb;
+  let info = host.previousElementSibling && host.previousElementSibling.classList.contains('flt-info') ? host.previousElementSibling : null;
+  if (!info) { info = document.createElement('div'); info.className = 'flt-info no-print'; host.parentElement.insertBefore(info, host); }
+  function sirala() {
+    $$('th.srt', thead).forEach(th => th.classList.remove('asc', 'desc'));
+    const sr = SRT[acar]; if (!sr) return;
+    ths[sr.i].classList.add(sr.d === 1 ? 'asc' : 'desc');
+    const key = r => { const t = xanaMetni(r.cells[sr.i]); const n = ededle(t); if (n != null) return [0, n]; const d = tarixle(t); return d ? [1, d] : [2, azLow(t)]; };
+    const arr = rows().map(r => [key(r), r]);
+    arr.sort((a, b) => { const x = a[0], y = b[0]; if (x[0] !== y[0]) return (x[0] - y[0]) * sr.d;
+      return (x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0) * sr.d; });
+    arr.forEach(([, r]) => body.appendChild(r));
+  }
+  function tetbiq() {
+    const aktiv = Object.entries(st).filter(([, v]) => v);
+    let gor = 0; const hamisi = rows();
+    hamisi.forEach(r => { const ok = aktiv.every(([i, v]) => uygun(xanaMetni(r.cells[+i]), v)); r.style.display = ok ? '' : 'none'; if (ok) gor++; });
+    if (foot) {
+      cemSut.forEach((ok, i) => { if (!ok) return;
+        const c = hamisi.filter(r => r.style.display !== 'none').reduce((a, r) => a + (ededle(xanaMetni(r.cells[i])) || 0), 0);
+        const t = fCell[i]; const b = t.querySelector('b') || t; b.textContent = fmt(Math.round(c * 100) / 100) + (/₼/.test(t.innerText) ? ' ₼' : ''); });
+      foot.cells[0].innerHTML = aktiv.length ? `${gor} sətir (süzülüb)` : ilkFoot;
+    }
+    info.innerHTML = aktiv.length ? `<span>${gor} / ${hamisi.length} sətir göstərilir</span> <a href="#" class="flt-sil">Filtrləri təmizlə ✕</a>` : '';
+    const sil = info.querySelector('.flt-sil');
+    if (sil) sil.onclick = e => { e.preventDefault(); Object.keys(st).forEach(k => delete st[k]); $$('[data-fi]', fr).forEach(x => x.value = ''); tetbiq(); };
+  }
+  sirala(); tetbiq();
+}
+let fltT = null;
+new MutationObserver(() => { clearTimeout(fltT); fltT = setTimeout(() => $$('#page table.t:not([data-flt])').forEach(tabloFiltr), 60); })
+  .observe(document.getElementById('app'), { childList: true, subtree: true });
+
 /* ---------------- başla ---------------- */
 if (!CFG.SUPABASE_URL || CFG.SUPABASE_URL.includes('SIZIN-LAYIHE')) {
   app.innerHTML = '<div class="login-wrap"><div class="login-card"><h1>Quraşdırma lazımdır</h1><p>config.js faylına Supabase ünvanını və açarını yazın.</p></div></div>';
