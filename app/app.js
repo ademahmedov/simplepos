@@ -917,7 +917,7 @@ async function pageMehsullar(params) {
     const t = ($('#axtar').value || '').toLocaleLowerCase('az'), k = $('#kat').value, pas = $('#passiv').checked, az = $('#azal').checked;
     const list = rows.filter(r => (pas || r.aktiv) && (!az || azdir(r)) && (!k || r.kateqoriya === k) && (!t || [r.ad, r.kod, r.kateqoriya].join(' ').toLocaleLowerCase('az').includes(t)));
     $('.topbar .sub').textContent = `${list.length} məhsul`;
-    $('#page').innerHTML = rows.length ? (list.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Məhsul</th><th class="hide-m">Kateqoriya</th><th class="hide-m">Kod</th><th class="n">Qiymət</th><th class="n hide-m">Maya</th><th class="n hide-m">Mənfəət</th><th class="n hide-m">Satılıb</th><th class="n">Anbarda</th></tr></thead>
+    $('#page').innerHTML = rows.length ? (list.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Məhsul</th><th class="hide-m">Kateqoriya</th><th class="hide-m">Barkod / kod</th><th class="n">Qiymət</th><th class="n hide-m">Maya</th><th class="n hide-m">Mənfəət</th><th class="n hide-m">Satılıb</th><th class="n">Anbarda</th></tr></thead>
       <tbody>${list.map(r => { const mf = r.maya != null && num(r.qiymet) > 0 ? (num(r.qiymet) - num(r.maya)) / num(r.qiymet) * 100 : null;
         return `<tr class="${w ? 'click' : ''}" data-p="${r.id}" style="${r.aktiv ? '' : 'opacity:.55'}"><td><div class="cell-main">${esc(r.ad)}</div>${r.qeyd ? `<div class="cell-sub">${esc(r.qeyd)}</div>` : ''}${r.aktiv ? '' : '<span class="badge b-gray">passiv</span>'}</td>
         <td class="hide-m">${esc(r.kateqoriya || '')}</td><td class="hide-m muted">${esc(r.kod || '')}</td><td class="n"><b>${fmt(r.qiymet)}</b></td>
@@ -941,7 +941,7 @@ function mehsulForm(r, kats) {
     <div class="field"><label class="f">Məhsulun adı</label><input class="in" name="ad" value="${esc(r ? r.ad : '')}" required placeholder="məs. Künc divan Milano"></div>
     <div class="row2"><div class="field"><label class="f">Kateqoriya</label><input class="in" name="kat" list="katlist" value="${esc(r && r.kateqoriya || '')}" placeholder="məs. Divanlar">
       <datalist id="katlist">${kats.map(k => `<option value="${esc(k)}">`).join('')}</datalist></div>
-    <div class="field"><label class="f">Kod / artikul <span class="muted" style="font-weight:400">(istəyə bağlı)</span></label><input class="in" name="kod" value="${esc(r && r.kod || '')}"></div></div>
+    <div class="field"><label class="f">Barkod / kod <span class="muted" style="font-weight:400">(oxuyucu ilə oxudun)</span></label><div style="display:flex;gap:6px"><input class="in" name="kod" value="${esc(r && r.kod || '')}" placeholder="məs. 4760001234567"><button type="button" class="btn" id="kcam" title="Kamera ilə oxu">📷</button></div></div></div>
     <div class="row2"><div class="field"><label class="f">Satış qiyməti</label><input class="in" type="number" step="0.01" min="0" name="qy" value="${r ? r.qiymet : ''}" required></div>
     <div class="field"><label class="f">Maya dəyəri <span class="muted" style="font-weight:400">(istəyə bağlı)</span></label><input class="in" type="number" step="0.01" min="0" name="my" value="${r && r.maya != null ? r.maya : ''}"></div></div>
     <div class="field"><label class="f">Qeyd (ölçü, rəng və s.)</label><input class="in" name="q" value="${esc(r && r.qeyd || '')}"></div>
@@ -954,6 +954,8 @@ function mehsulForm(r, kats) {
     `${r ? '<button class="btn danger" id="sil" style="margin-right:auto">Sil</button>' : ''}<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
   const f = $('#pf', m);
   setTimeout(() => f.ad.focus(), 50);
+  f.kod.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); f.qy.focus(); } };   // oxuyucunun Enter-i formu göndərməsin
+  $('#kcam', m).onclick = () => kameraOxu(k => { f.kod.value = k; f.qy.focus(); });
   if (r && $('#hrk', m)) Promise.all([
     q(sb.from('anbar_hereketleri').select('*').eq('mehsul_id', r.id).order('tarix', { ascending: false }).limit(15)),
     q(sb.from('satis_mallari').select('miqdar,satis_id').eq('mehsul_id', r.id).order('id', { ascending: false }).limit(15)),
@@ -966,7 +968,12 @@ function mehsulForm(r, kats) {
   }).catch(() => {});
   $('#ok', m).onclick = async () => {
     if (!f.reportValidity()) return;
-    const v = { ad: f.ad.value.trim(), kateqoriya: f.kat.value.trim() || null, kod: f.kod.value.trim() || null, qiymet: num(f.qy.value),
+    const kodT = f.kod.value.trim();
+    if (kodT && kats !== undefined) {
+      try { const eyni = await q(sb.from('mehsullar').select('id,ad').eq('kod', kodT)); const b = eyni.find(x => !r || x.id !== r.id);
+        if (b && !confirm(`Bu barkod artıq "${b.ad}" məhsulundadır. Yenə də yadda saxlanılsın?`)) return; } catch (_) {}
+    }
+    const v = { ad: f.ad.value.trim(), kateqoriya: f.kat.value.trim() || null, kod: kodT || null, qiymet: num(f.qy.value),
                 maya: f.my.value === '' ? null : num(f.my.value), qeyd: f.q.value.trim() || null, anbar_izle: f.ai.checked, min_qaliq: num(f.mq.value) };
     if (r) v.aktiv = f.ak.checked;
     try {
@@ -993,6 +1000,7 @@ function malMedaxili(mehs) {
     <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${today()}" required></div>
     <div class="field"><label class="f">Təchizatçı / haradan</label><input class="in" name="tc" placeholder="məs. İstehsalat sexi, Bakı anbarı"></div></div>
     <div class="field"><label class="f">Məhsullar</label><input class="in" id="max" placeholder="Məhsul adı və ya kodu yazın…" autocomplete="off">
+      <button type="button" class="btn sm" id="mcam" style="margin-top:6px">📷 Kamera ilə barkod</button>
       <div class="suggest" id="msug" style="display:none"></div><div id="msetir"></div></div>
     <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><input type="checkbox" name="my" checked> Məhsulun maya dəyərini bu alış qiymətinə yenilə</label>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="rx"> Pulu kassadan ödənilib — cəmi "Rasxodlar"a yaz</label>
@@ -1022,7 +1030,16 @@ function malMedaxili(mehs) {
       sug.style.display = 'none'; e.target.value = ''; ciz(); e.target.focus();
     });
   };
-  $('#max', m).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const d = $('[data-id]', sug); if (d) d.click(); } };
+  const mBarkod = t => {
+    t = String(t || '').trim(); if (!t) return;
+    const x = akt.find(z => barkodBerabar(z, t));
+    if (x) { const v = set.find(z => z.id === x.id); if (v) v.miqdar += 1; else set.push({ id: x.id, ad: x.ad, anbar_izle: x.anbar_izle, anbar: x.anbar, miqdar: 1, qiymet: x.maya != null ? num(x.maya) : 0 });
+      sug.style.display = 'none'; $('#max', m).value = ''; ciz(); toast('+ ' + x.ad, 1500); $('#max', m).focus(); return; }
+    const d = $('[data-id]', sug); if (d && sug.style.display !== 'none') return d.click();
+    toast(`"${t}" barkodu ilə məhsul tapılmadı`, 4000);
+  };
+  $('#max', m).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); mBarkod(e.target.value); } };
+  $('#mcam', m).onclick = () => kameraOxu(mBarkod);
   $('#ok', m).onclick = async () => {
     if (!f.reportValidity()) return;
     if (!set.length) return toast('Ən azı bir məhsul seçin');
@@ -1826,15 +1843,25 @@ async function setirRedaktor(m, f, setirler, qal) {
     psug.innerHTML = list.length ? list.map(x => `<div data-pid="${x.id}"><b>${esc(x.ad)}</b> <span class="muted">${esc(x.kateqoriya || '')}${x.kod ? ' · ' + esc(x.kod) : ''}</span>
         ${x.anbar_izle ? `<span class="badge ${num(x.anbar) > 0 ? 'b-green' : 'b-red'}">anbarda ${fmt(x.anbar)}</span>` : ''} <span style="float:right"><b>${fmt(x.qiymet)} ₼</b></span></div>`).join('')
       : `<div class="muted" style="cursor:default">Kataloqda yoxdur${canWrite() ? ' — "Məhsullar" bölməsindən əlavə edin' : ''}</div>`;
-    $$('[data-pid]', psug).forEach(d => d.onclick = () => {
-      const x = mehs.find(z => z.id === +d.dataset.pid);
-      const var_ = setirler.find(z => z.mehsul_id === x.id);
-      if (var_) var_.miqdar += 1; else setirler.push({ mehsul_id: x.id, ad: x.ad, miqdar: 1, qiymet: num(x.qiymet), maya: x.maya == null ? null : num(x.maya) });
-      if (x.anbar_izle && (var_ ? var_.miqdar : 1) > num(x.anbar)) toast(`Diqqət: "${x.ad}" anbarda ${fmt(x.anbar)} ədəddir`, 4000);
-      psug.style.display = 'none'; e.target.value = ''; yenile(); e.target.focus();
-    });
+    $$('[data-pid]', psug).forEach(d => d.onclick = () => elaveEt(mehs.find(z => z.id === +d.dataset.pid)));
   };
-  $('#pax', m).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const d = $('[data-pid]', psug); if (d) d.click(); } };
+  const elaveEt = x => {
+    const var_ = setirler.find(z => z.mehsul_id === x.id);
+    if (var_) var_.miqdar += 1; else setirler.push({ mehsul_id: x.id, ad: x.ad, miqdar: 1, qiymet: num(x.qiymet), maya: x.maya == null ? null : num(x.maya) });
+    if (x.anbar_izle && (var_ ? var_.miqdar : 1) > num(x.anbar)) toast(`Diqqət: "${x.ad}" anbarda ${fmt(x.anbar)} ədəddir`, 4000);
+    else toast(`+ ${x.ad}${var_ ? ' (' + fmt(var_.miqdar) + ' ədəd)' : ''}`, 1500);
+    psug.style.display = 'none'; $('#pax', m).value = ''; yenile(); $('#pax', m).focus();
+  };
+  // barkod oxuyucu kodu yazıb Enter basır: dəqiq uyğunluq varsa dərhal əlavə olunur
+  const barkodla = t => {
+    t = String(t || '').trim(); if (!t) return;
+    const x = mehs.find(z => barkodBerabar(z, t));
+    if (x) return elaveEt(x);
+    const d = $('[data-pid]', psug); if (d && psug.style.display !== 'none') return d.click();
+    toast(`"${t}" barkodu ilə məhsul tapılmadı`, 4000); $('#pax', m).select();
+  };
+  $('#pax', m).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); barkodla(e.target.value); } };
+  $('#pcam', m).onclick = () => kameraOxu(barkodla);
   yenile(false);
   return yenile;
 }
@@ -1889,8 +1916,36 @@ async function saticiDoldur(sel, cari) {
   sel.innerHTML = '<option value="">— seçilməyib —</option>' + aktiv.map(i => `<option value="${i.id}" ${i.id === sec ? 'selected' : ''}>${esc(i.ad)}</option>`).join('');
   sel.onchange = () => { try { localStorage.setItem('son_satici', sel.value); } catch (_) {} };
 }
+const barkodBerabar = (x, t) => !!x.kod && String(x.kod).trim().toLowerCase() === String(t).trim().toLowerCase();
+async function kameraOxu(cb) {
+  if (!('BarcodeDetector' in window) || !navigator.mediaDevices) {
+    toast('Bu brauzer kamera ilə barkod oxumur. USB barkod oxuyucudan istifadə edin və ya telefonda Chrome ilə açın.', 6000); return;
+  }
+  let formatlar = ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'itf', 'qr_code'];
+  try { const d = await BarcodeDetector.getSupportedFormats(); formatlar = formatlar.filter(f => d.includes(f)); } catch (_) {}
+  const det = new BarcodeDetector({ formats: formatlar });
+  const ov = document.createElement('div'); ov.className = 'overlay kamera-ov';
+  ov.innerHTML = `<div class="modal" style="max-width:480px"><div class="mh"><h3>Barkodu kameraya tutun</h3><button class="x" type="button">×</button></div>
+    <div class="mb" style="padding:0;position:relative;background:#000"><video playsinline muted style="width:100%;display:block;max-height:60vh;object-fit:cover"></video>
+    <div style="position:absolute;left:10%;right:10%;top:45%;height:2px;background:rgba(255,80,60,.9);box-shadow:0 0 8px rgba(255,80,60,.9)"></div></div>
+    <div class="mf"><span class="muted" style="font-size:13px;margin-right:auto">Barkod xəttə düşəndə avtomatik oxunur</span><button class="btn" type="button" data-x>Bağla</button></div></div>`;
+  document.body.appendChild(ov);
+  let stream = null, dayan = false;
+  const bitir = () => { dayan = true; if (stream) stream.getTracks().forEach(t => t.stop()); ov.remove(); };
+  ov.querySelector('.x').onclick = bitir; ov.querySelector('[data-x]').onclick = bitir;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const v = ov.querySelector('video'); v.srcObject = stream; await v.play();
+    const dovr = async () => {
+      if (dayan) return;
+      try { const r = await det.detect(v); if (r.length) { const kod = r[0].rawValue; bitir(); if (navigator.vibrate) navigator.vibrate(80); cb(kod); return; } } catch (_) {}
+      setTimeout(dovr, 200);
+    };
+    dovr();
+  } catch (er) { bitir(); toast('Kameranı açmaq olmadı: ' + (er.message || er), 5000); }
+}
 const MEHSUL_SAHESI = `<div class="field"><label class="f">Məhsullar <span class="muted" style="font-weight:400">(kataloqdan seçin və ya aşağıda əl ilə yazın)</span></label>
-      <input class="in" id="pax" placeholder="Məhsul adı və ya kodu yazın…" autocomplete="off">
+      <div style="display:flex;gap:6px"><input class="in" id="pax" placeholder="Məhsul adı, kodu və ya barkodu oxudun…" autocomplete="off"><button type="button" class="btn" id="pcam" title="Kamera ilə barkod oxu">📷</button></div>
       <div class="suggest" id="psug" style="display:none"></div>
       <div id="psetir"></div></div>`;
 // Zamin sahələri
@@ -2556,7 +2611,7 @@ function mehsulIdxal() {
     izah: 'Eyni adlı məhsul artıq varsa, onun qiyməti, maya dəyəri və kateqoriyası yenilənir; yoxdursa əlavə olunur.',
     saheler: [{ k: 'ad', ad: 'Məhsulun adı', lazim: true, ox: ['ad', 'məhsul', 'mehsul', 'mal', 'malınadı', 'name'] }, { k: 'qiymet', ad: 'Satış qiyməti', lazim: true, tip: 'eded', ox: ['qiymət', 'qiymet', 'satışqiyməti', 'price'] },
       { k: 'maya', ad: 'Maya dəyəri', tip: 'eded', ox: ['maya', 'alış', 'alis', 'alışqiyməti', 'cost'] }, { k: 'kateqoriya', ad: 'Kateqoriya', ox: ['kateqoriya', 'qrup', 'növ', 'category'] },
-      { k: 'kod', ad: 'Kod', ox: ['kod', 'artikul', 'barkod', 'code', 'sku'] }],
+      { k: 'kod', ad: 'Barkod / kod', ox: ['barkod', 'barcode', 'kod', 'artikul', 'code', 'sku', 'ean'] }],
     numune: [['Künc divan Milano', 1450, 980, 'Divanlar', 'DV-01'], ['Mətbəx dəsti 2.4 m', 2100, 1500, 'Mətbəx', '']],
     yaz: async (rows, ir) => {
       const var_ = await all(() => sb.from('mehsullar').select('id,ad').order('id')); const ix = new Map(var_.map(x => [azLow(x.ad), x.id]));

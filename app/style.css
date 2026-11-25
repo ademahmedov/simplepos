@@ -349,3 +349,4 @@ details.zamin summary{cursor:pointer;font-weight:600}
 .yigim{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
 .yigim .yg{padding:14px 16px}
 @media (max-width:760px){ .yigim{grid-template-columns:1fr} }
+.kamera-ov{z-index:300}
