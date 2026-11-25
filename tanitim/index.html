@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SimplePOS — mebel dükanları üçün satış və kredit uçotu</title>
+<meta name="description" content="Mebel dükanları üçün onlayn proqram: hissə-hissə satış, ödəniş qrafiki, gecikən borclar, anbar, kassa, çek və müqavilə. 14 gün pulsuz.">
+<meta name="theme-color" content="#3a2a1f">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif:wght@600;700&display=swap">
+<style>
+  :root{--ink:#2b2118;--muted:#8c7a68;--line:#eadfcf;--bg:#f6f0e6;--card:#fffdf9;--brand:#3a2a1f;--oak:#a8693a;--oak2:#8e552c;--gold:#d9a46c;--green:#4f7a4a}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}
+  a{color:inherit}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+  header{background:linear-gradient(160deg,#3d2c20 0%,#24190f 100%);color:#f6e9d6;position:relative;overflow:hidden}
+  header::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(95deg,rgba(255,255,255,.025) 0 2px,transparent 2px 11px),radial-gradient(ellipse at top left,rgba(217,164,108,.35),transparent 55%)}
+  nav{position:relative;display:flex;justify-content:space-between;align-items:center;padding:18px 0}
+  .logo{display:flex;align-items:center;gap:10px;font-family:"Noto Serif",serif;font-size:22px;font-weight:700}
+  .logo svg{width:34px;height:34px;color:var(--gold)}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:12px;font-weight:600;text-decoration:none;border:1px solid transparent;font-size:15px}
+  .btn.p{background:linear-gradient(180deg,#c48a52,var(--oak2));color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+  .btn.g{border-color:rgba(246,233,214,.4);color:#f6e9d6}
+  .btn.d{background:var(--brand);color:#fff}
+  .hero{position:relative;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:50px 0 80px}
+  .hero h1{font-family:"Noto Serif",serif;font-size:44px;line-height:1.15;margin:0 0 16px;color:#fff}
+  .hero p{font-size:18px;color:#e5d3bd;margin:0 0 26px}
+  .cta{display:flex;gap:12px;flex-wrap:wrap}
+  .not{font-size:13px;color:#c9ab8a;margin-top:14px}
+  .ekran{background:#fffdf9;border-radius:16px;box-shadow:0 30px 60px rgba(0,0,0,.35);padding:14px;color:var(--ink);transform:rotate(-1.5deg)}
+  .ekran .bar{display:flex;gap:6px;margin-bottom:10px}.ekran .bar i{width:10px;height:10px;border-radius:50%;background:#e3d6c3}
+  .kp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .kp div{background:#faf4ea;border-radius:10px;padding:10px 12px;border-left:4px solid var(--oak)}
+  .kp small{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600}
+  .kp b{font-family:"Noto Serif",serif;font-size:20px}
+  .sira{display:flex;justify-content:space-between;font-size:13px;padding:7px 4px;border-bottom:1px solid var(--line)}
+  .badge{font-size:11px;padding:2px 8px;border-radius:20px;background:#f8e5e2;color:#97302c;font-weight:600}
+  section{padding:70px 0}
+  h2{font-family:"Noto Serif",serif;font-size:32px;text-align:center;margin:0 0 10px;color:var(--brand)}
+  .alt{text-align:center;color:var(--muted);margin:0 auto 40px;max-width:640px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .kart{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 1px 2px rgba(58,42,31,.06),0 6px 18px rgba(58,42,31,.06)}
+  .kart .ik{width:44px;height:44px;border-radius:12px;background:#f3e6d4;color:var(--oak2);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px}
+  .kart h3{margin:0 0 6px;font-size:17px}
+  .kart p{margin:0;color:#5a4a3c;font-size:14.5px}
+  .addim{counter-reset:a;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .addim div{background:var(--card);border-radius:16px;padding:22px;border:1px solid var(--line);position:relative}
+  .addim div::before{counter-increment:a;content:counter(a);position:absolute;top:-16px;left:22px;width:34px;height:34px;border-radius:50%;background:var(--oak);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+  .qiymet{max-width:460px;margin:0 auto;text-align:center;background:var(--card);border:2px solid var(--oak);border-radius:20px;padding:30px}
+  .qiymet .q{font-family:"Noto Serif",serif;font-size:40px;color:var(--brand);margin:6px 0}
+  .qiymet ul{list-style:none;padding:0;margin:18px 0 24px;text-align:left}
+  .qiymet li{padding:6px 0;border-bottom:1px solid var(--line)}.qiymet li::before{content:"✓ ";color:var(--green);font-weight:700}
+  footer{background:var(--brand);color:#d8c4ad;padding:30px 0;font-size:14px}
+  footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
+  @media (max-width:860px){ .hero{grid-template-columns:1fr;padding:20px 0 50px} .hero h1{font-size:32px} .grid,.addim{grid-template-columns:1fr} .ekran{transform:none} section{padding:50px 0} }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <nav><div class="logo"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 22v-5a5 5 0 0 1 5-5h18a5 5 0 0 1 5 5v5"/><path d="M6 24a4 4 0 0 1 8 0v4h20v-4a4 4 0 0 1 8 0v10H6z"/><path d="M10 34v4M38 34v4"/></svg>SimplePOS</div>
+      <a class="btn g" href="../app/">Daxil ol</a></nav>
+    <div class="hero">
+      <div>
+        <h1>Mebel dükanınızın kredit satışlarını dəftərsiz idarə edin</h1>
+        <p>Hissə-hissə satış, ödəniş qrafiki, gecikən borclar, anbar, kassa, çek və müqavilə — hamısı bir yerdə, telefonda və kompüterdə.</p>
+        <div class="cta"><a class="btn p" href="../app/#qeyd">Pulsuz sınayın</a><a class="btn g" href="#imkanlar">İmkanlara baxın</a></div>
+        <div class="not" id="sinaqnot">14 gün pulsuz · kart tələb olunmur · quraşdırma lazım deyil</div>
+      </div>
+      <div class="ekran" aria-hidden="true">
+        <div class="bar"><i></i><i></i><i></i></div>
+        <div class="kp"><div><small>Satış — bu ay</small><b>29 170 ₼</b></div><div><small>Kassaya daxil</small><b>22 050 ₼</b></div>
+          <div><small>Müştəri borcu</small><b>248 903 ₼</b></div><div><small>Bu həftə gözlənilən</small><b>3 150 ₼</b></div></div>
+        <div style="margin-top:10px">
+          <div class="sira"><span>Kamran Əliyev · Künc divan</span><span class="badge">12 gün keçib</span></div>
+          <div class="sira"><span>Nigar Quliyeva · Mətbəx dəsti</span><span class="badge" style="background:#f7ecd6;color:#8a5f16">Bu gün</span></div>
+          <div class="sira" style="border:0"><span>Elnur Babayev · Yataq dəsti</span><span class="badge" style="background:#e8efe1;color:#3f6a3a">Ödənilib</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="imkanlar">
+  <div class="wrap">
+    <h2>Mebel satışı üçün lazım olan hər şey</h2>
+    <p class="alt">Excel cədvəlləri və dəftərlər əvəzinə — hər rəqəm avtomatik hesablanır.</p>
+    <div class="grid">
+      <div class="kart"><div class="ik">📅</div><h3>Ödəniş qrafiki</h3><p>Aylıq məbləği yazın — qrafik, növbəti ödəniş tarixi və gecikmə avtomatik hesablanır.</p></div>
+      <div class="kart"><div class="ik">⏰</div><h3>Gecikən borclar</h3><p>Kim neçə gün gecikib, nə qədər borcu var — bir baxışda. İstəsəniz gecikmə cəriməsi də hesablanır.</p></div>
+      <div class="kart"><div class="ik">🧾</div><h3>Çek və müqavilə</h3><p>Satış çeki (80 mm və ya A4), ödəniş qəbzi və zaminli kredit müqaviləsi bir kliklə çap olunur.</p></div>
+      <div class="kart"><div class="ik">📦</div><h3>Məhsullar və anbar</h3><p>Malları bir dəfə yazın, satışda seçin. Anbar qalığı, mədaxil və "bitmək üzrədir" xəbərdarlığı.</p></div>
+      <div class="kart"><div class="ik">💰</div><h3>Kassa və xərclər</h3><p>Hər ay kassaya nə girib-çıxıb, günlük kassa bağlanışı, xərclər kateqoriyalar üzrə.</p></div>
+      <div class="kart"><div class="ik">👥</div><h3>İşçilər və satıcılar</h3><p>Maaş, avans, bonus; hər satıcının satışı və faizi. Pul yığan kuryer üçün ayrıca rejim.</p></div>
+      <div class="kart"><div class="ik">📊</div><h3>Excel kimi cədvəllər</h3><p>Hər sütunda filtr, axtarış, sıralama; istənilən cədvəli Excel və PDF-ə çıxarın, Excel-dən yükləyin.</p></div>
+      <div class="kart"><div class="ik">📱</div><h3>Telefonda da</h3><p>Proqram yükləmədən — brauzerdə açılır. Dükanda kompüterdən, yolda telefondan işləyin.</p></div>
+      <div class="kart"><div class="ik">🔒</div><h3>Məlumatınız sizindir</h3><p>Hər dükan yalnız öz məlumatını görür. Hər gün Telegram-a xülasə, istənilən vaxt Excel ehtiyat nüsxəsi.</p></div>
+    </div>
+  </div>
+</section>
+
+<section style="background:#efe4d2">
+  <div class="wrap">
+    <h2>Başlamaq 3 dəqiqə çəkir</h2>
+    <p class="alt">Heç nə quraşdırmaq lazım deyil.</p>
+    <div class="addim">
+      <div><h3>Qeydiyyatdan keçin</h3><p>Dükanın adını, telefonu və e-poçtunuzu yazın — hesab dərhal açılır.</p></div>
+      <div><h3>Məlumatları yükləyin</h3><p>Müştəriləri, məhsulları və köhnə satışları Excel-dən bir dəfəyə yükləyin və ya əl ilə əlavə edin.</p></div>
+      <div><h3>İşçiləri dəvət edin</h3><p>Satıcı, kassir və kuryer dəvət kodu ilə qoşulur; hər birinin öz hüququ olur.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Qiymət</h2>
+    <p class="alt">Sadə və aydın — gizli ödəniş yoxdur.</p>
+    <div class="qiymet">
+      <div style="color:var(--muted);font-weight:600">Bir dükan, limitsiz istifadəçi</div>
+      <div class="q" id="qiymet">Əlaqə saxlayın</div>
+      <ul><li>Bütün imkanlar daxildir</li><li>Limitsiz müştəri, satış və məhsul</li><li>Telefon və kompüterdə</li><li>Pulsuz sınaq müddəti</li><li>Qurulmada pulsuz kömək</li></ul>
+      <a class="btn d" href="../app/#qeyd">Pulsuz sınayın</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div><b style="color:#f6e9d6">SimplePOS</b> — mebel dükanları üçün satış və kredit uçotu</div>
+    <div id="elaqe"></div>
+  </div>
+</footer>
+
+<script src="../app/config.js"></script>
+<script>
+(async () => {
+  try {
+    const C = window.SAT_CONFIG || {};
+    const r = await fetch(C.SUPABASE_URL + '/rest/v1/sistem?select=acar,deyer', { headers: { apikey: C.SUPABASE_ANON_KEY } });
+    const S = Object.fromEntries((await r.json()).map(x => [x.acar, x.deyer || '']));
+    const e = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    if (S.qiymet) document.getElementById('qiymet').textContent = S.qiymet;
+    if (S.sinaq_gun) document.getElementById('sinaqnot').textContent = `${S.sinaq_gun} gün pulsuz · kart tələb olunmur · quraşdırma lazım deyil`;
+    const w = (S.elaqe_whatsapp || '').replace(/\D/g, '');
+    document.getElementById('elaqe').innerHTML = [S.elaqe_telefon && `📞 <a href="tel:${e(S.elaqe_telefon.replace(/\s/g, ''))}">${e(S.elaqe_telefon)}</a>`,
+      w && `<a href="https://wa.me/${w}" target="_blank">WhatsApp</a>`].filter(Boolean).join(' · ');
+  } catch (_) {}
+})();
+</script>
+</body>
+</html>
