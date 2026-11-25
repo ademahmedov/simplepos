@@ -360,3 +360,11 @@ details.zamin summary{cursor:pointer;font-weight:600}
 .etk-bk .bk-svg{width:100%;height:100%;max-height:100%}
 .etk-q{font-size:11pt;font-weight:700}
 @media print{ .etk-vereq.a4 .etk{border-color:transparent} }
+
+/* Qiymət növləri */
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:520px){.row3{grid-template-columns:1fr 1fr}}
+.qnov-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:13px}
+.qnov-bar .seg button{padding:5px 10px;font-size:12.5px}
+select.qsel{display:block;margin-top:4px;padding:3px 6px;font-size:12px;height:auto;width:auto;max-width:100%}
+.etk-kq{font-weight:400;font-size:.8em;color:#666}
