@@ -59,6 +59,16 @@ async function all(make) {
 }
 
 const ICON = {
+  kassaI: '<path d="M21 18v1a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1h-9a2 2 0 00-2 2v8a2 2 0 002 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/>',
+  chart: '<path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/>',
+  cal: '<path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 16H5V10h14v10zM7 12h5v5H7z"/>',
+  trend: '<path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>',
+  hist: '<path d="M13 3a9 9 0 00-9 9H1l3.89 3.89.07.14L9 12H6a7 7 0 112.05 4.95l-1.42 1.42A9 9 0 1013 3zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>',
+  gear: '<path d="M19.14 12.94a7.07 7.07 0 000-1.88l2.03-1.58a.48.48 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96a7 7 0 00-1.62-.94l-.36-2.54A.48.48 0 0013.9 2h-3.84a.48.48 0 00-.48.41l-.36 2.54a7.3 7.3 0 00-1.62.94l-2.39-.96a.48.48 0 00-.59.22L2.7 8.47a.47.47 0 00.12.61l2.03 1.58a7.4 7.4 0 000 1.88l-2.03 1.58a.48.48 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54a7 7 0 001.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 00-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1112 8.4a3.6 3.6 0 010 7.2z"/>',
+  doc: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>',
+  clip: '<path d="M19 3h-4.18A3 3 0 0012 1a3 3 0 00-2.82 2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-7 0a1 1 0 110 2 1 1 0 010-2zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>',
+  wallet: '<path d="M21 7.28V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-2.28A2 2 0 0022 15V9a2 2 0 00-1-1.72zM20 9v6h-7V9h7zM5 19V5h14v2h-6a2 2 0 00-2 2v6a2 2 0 002 2h6v2H5zm11-5.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>',
+  grid: '<path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/>',
   down: '<path d="M5 20h14v-2H5v2zm7-4l5-5h-3V3h-4v8H7l5 5z"/>',
   up: '<path d="M5 20h14v-2H5v2zM12 2l-5 5h3v8h4V7h3l-5-5z"/>',
   box: '<path d="M20 7l-8-4-8 4v10l8 4 8-4V7zm-8-1.76L16.76 7.5 12 9.88 7.24 7.5 12 5.24zM6 9.12l5 2.5v6.76l-5-2.5V9.12zm7 9.26v-6.76l5-2.5v6.76l-5 2.5z"/>',
@@ -228,7 +238,7 @@ async function start() {
   } catch (e) { return loginView('Baza ilə əlaqə alınmadı: ' + e.message); }
   document.title = firmaAdi() + ' · ' + CFG.FIRMA_ADI;
   if (!S.magaza) location.hash = '#/admin';
-  else if (!location.hash || /access_token|type=/.test(location.hash)) location.hash = '#/panel';
+  else if (!location.hash || /access_token|type=/.test(location.hash)) location.hash = window.innerWidth <= 760 ? '#/menyu' : '#/panel';
   route();
 }
 
@@ -244,13 +254,14 @@ function abuneBanner() {
 /* ---------------- çərçivə ---------------- */
 const NAV = [
   ['panel', 'Panel', 'panel'], ['satislar', 'Satışlar', 'sale'], ['musteriler', 'Müştərilər', 'users'], ['mehsullar', 'Məhsullar', 'box'],
-  ['rasxodlar', 'Rasxodlar', 'exp'], ['isciler', 'İşçilər', 'worker'], ['odenisler', 'Ödənişlər', 'cash'], ['cixaris', 'Çıxarış', 'print'],
-  ['kassa', 'Kassa', 'cash'], ['sifarisler', 'Sifarişlər', 'sale'], ['hesabat', 'Aylıq hesabat', 'print'],
-  ['teqvim', 'Ödəniş təqvimi', 'panel'], ['menfeet', 'Mənfəət', 'cash'], ['jurnal', 'Jurnal', 'print'], ['ayarlar', 'Ayarlar', 'users'],
+  ['rasxodlar', 'Rasxodlar', 'exp'], ['isciler', 'İşçilər', 'worker'], ['odenisler', 'Ödənişlər', 'wallet'], ['cixaris', 'Çıxarış', 'doc'],
+  ['kassa', 'Kassa', 'kassaI'], ['sifarisler', 'Sifarişlər', 'clip'], ['hesabat', 'Aylıq hesabat', 'chart'],
+  ['teqvim', 'Ödəniş təqvimi', 'cal'], ['menfeet', 'Mənfəət', 'trend'], ['jurnal', 'Jurnal', 'hist'], ['ayarlar', 'Ayarlar', 'gear'],
 ];
-const MOBNAV = ['panel', 'satislar', 'musteriler', 'rasxodlar', 'isciler'];
+const MOBNAV = ['menyu', 'panel', 'satislar', 'musteriler', 'mehsullar'];
 
-const NAVQISA = { panel: 'Panel', satislar: 'Satış', musteriler: 'Müştəri', rasxodlar: 'Rasxod', isciler: 'İşçi' };
+const NAVQISA = { menyu: 'Menyu', panel: 'Panel', satislar: 'Satış', musteriler: 'Müştəri', mehsullar: 'Məhsul', rasxodlar: 'Rasxod', isciler: 'İşçi' };
+const NAVBOLME = [['Satış', ['panel', 'satislar', 'musteriler', 'mehsullar']], ['Xərclər və işçilər', ['rasxodlar', 'isciler', 'odenisler', 'cixaris']], ['Kassa və hesabatlar', ['kassa', 'sifarisler', 'hesabat', 'teqvim', 'menfeet']], ['İdarəetmə', ['jurnal', 'ayarlar']]];
 
 function shell(active, title, sub, tools, body) {
   const navA = NAV.map(([k, t, i]) => `<a href="#/${k}" class="${active === k ? 'active' : ''}">${ico(i)}${t}</a>`).join('');
@@ -261,7 +272,7 @@ function shell(active, title, sub, tools, body) {
    <div class="mobile-bar"><b>${LOGO}${esc(firmaAdi())}</b><button id="out2">Çıxış</button></div>
    <main class="main">${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
    <div id="page">${body || '<div class="empty"><div class="spinner" style="margin:auto"></div></div>'}</div></main>
-   <nav class="bottom-nav" ${S.magaza ? '' : 'style="display:none"'}>${NAV.filter(n => MOBNAV.includes(n[0])).map(([k, t, i]) => `<a href="#/${k}" class="${active === k || (k === 'isciler' && ['odenisler','cixaris'].includes(active)) ? 'active' : ''}">${ico(i)}${NAVQISA[k]}</a>`).join('')}</nav>
+   <nav class="bottom-nav" ${S.magaza ? '' : 'style="display:none"'}>${[['menyu', 'Menyu', 'grid'], ...NAV].filter(n => MOBNAV.includes(n[0])).sort((a, b) => MOBNAV.indexOf(a[0]) - MOBNAV.indexOf(b[0])).map(([k, t, i]) => `<a href="#/${k}" class="${active === k || (k === 'isciler' && ['odenisler','cixaris'].includes(active)) ? 'active' : ''}">${ico(i)}${NAVQISA[k]}</a>`).join('')}</nav>
   </div>`;
   const out = async () => { await sb.auth.signOut(); S.cache = {}; location.hash = ''; loginView(); };
   $('#out').onclick = out; $('#out2').onclick = out;
@@ -274,7 +285,7 @@ function route() {
   const [path, qs] = h.split('?');
   const params = new URLSearchParams(qs || '');
   const [p, id] = path.split('/');
-  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id),
+  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id),
     rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
     kassa: () => pageKassa(), sifarisler: () => pageSifarisler(params), hesabat: () => pageHesabat(params),
     teqvim: () => pageTeqvim(params), menfeet: () => pageMenfeet(), jurnal: () => pageJurnal(params), ayarlar: () => pageAyarlar(),
@@ -284,6 +295,19 @@ function route() {
   Promise.resolve(run()).catch(fail);
 }
 window.addEventListener('hashchange', route);
+
+/* ---------------- telefon üçün kafel menyu ---------------- */
+function pageMenyu() {
+  shell('menyu', firmaAdi(), S.rol === 'muhasib' ? 'Mühasib' : 'Yalnız baxış', '');
+  const ad = Object.fromEntries(NAV.map(n => [n[0], n]));
+  const kafel = k => { const n = ad[k]; return n ? `<a class="kafel" href="#/${k}">${ico(n[2])}<span>${n[1]}</span></a>` : ''; };
+  $('#page').innerHTML = `
+    ${canWrite() ? `<div class="kafel-tez"><button class="btn primary" id="ts">${ico('plus')}Yeni satış</button><button class="btn" id="tm">${ico('plus')}Yeni müştəri</button></div>` : ''}
+    ${S.admin ? `<div class="kafel-bas">Sistem</div><div class="kafeller"><a class="kafel" href="#/admin">${ico('panel')}<span>Admin panel</span></a></div>` : ''}
+    ${NAVBOLME.map(([b, ks]) => `<div class="kafel-bas">${b}</div><div class="kafeller">${ks.map(kafel).join('')}</div>`).join('')}`;
+  if ($('#ts')) $('#ts').onclick = () => yeniSatis();
+  if ($('#tm')) $('#tm').onclick = () => yeniMusteri();
+}
 
 /* ---------------- status ---------------- */
 function statusBadge(m) {

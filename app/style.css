@@ -333,3 +333,14 @@ table.t td .btn.sm{vertical-align:middle;padding:4px 9px}table.t td .btn.sm .ico
 .card[style*="padding:0"] > .flt-pager{padding:0 16px 12px}
 @media screen{ table.t tr.pg-gizli{display:none} }
 @media (max-width:760px){ .flt-axtar{min-width:0;flex:1} .flt-sol{flex:1 1 100%} }
+/* telefon menyusu — kafellər */
+.kafel-tez{display:flex;gap:8px;margin-bottom:6px}
+.kafel-tez .btn{flex:1;justify-content:center;padding:12px}
+.kafel-bas{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:600;margin:18px 2px 8px}
+.kafeller{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.kafel{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:92px;padding:12px 8px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);color:var(--ink);text-decoration:none;text-align:center;font-weight:600;font-size:13.5px;line-height:1.25}
+.kafel .ico{width:28px;height:28px;color:var(--oak)}
+.kafel:active{transform:scale(.97);background:#f6ead9}
+.kafel:hover{border-color:#d6c4ab}
+@media (max-width:760px){ .kafeller{grid-template-columns:repeat(3,1fr);gap:8px} .kafel{min-height:84px;font-size:12.5px;padding:10px 4px} }
+@media (max-width:360px){ .kafeller{grid-template-columns:repeat(2,1fr)} }
