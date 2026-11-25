@@ -256,13 +256,13 @@ function abuneBanner() {
 /* ---------------- çərçivə ---------------- */
 const NAV = [
   ['panel', 'Panel', 'panel'], ['satislar', 'Satışlar', 'sale'], ['musteriler', 'Müştərilər', 'users'], ['mehsullar', 'Məhsullar', 'box'],
-  ['rasxodlar', 'Rasxodlar', 'exp'], ['isciler', 'İşçilər', 'worker'], ['odenisler', 'Ödənişlər', 'wallet'], ['cixaris', 'Çıxarış', 'doc'],
+  ['rasxodlar', 'Xərclər', 'exp'], ['isciler', 'İşçilər', 'worker'], ['odenisler', 'Ödənişlər', 'wallet'], ['cixaris', 'Çıxarış', 'doc'],
   ['kassa', 'Kassa', 'kassaI'], ['sifarisler', 'Sifarişlər', 'clip'], ['hesabat', 'Aylıq hesabat', 'chart'],
   ['teqvim', 'Ödəniş təqvimi', 'cal'], ['menfeet', 'Mənfəət', 'trend'], ['yigim', 'Yığım siyahısı', 'wallet'], ['saticilar', 'Satıcılar', 'chart'], ['jurnal', 'Jurnal', 'hist'], ['ayarlar', 'Ayarlar', 'gear'],
 ];
 const MOBNAV = ['menyu', 'panel', 'satislar', 'musteriler', 'mehsullar'];
 
-const NAVQISA = { menyu: 'Menyu', panel: 'Panel', satislar: 'Satış', musteriler: 'Müştəri', mehsullar: 'Məhsul', rasxodlar: 'Rasxod', isciler: 'İşçi' };
+const NAVQISA = { menyu: 'Menyu', panel: 'Panel', satislar: 'Satış', musteriler: 'Müştəri', mehsullar: 'Məhsul', rasxodlar: 'Xərc', isciler: 'İşçi' };
 const NAVBOLME = [['Satış', ['panel', 'satislar', 'musteriler', 'mehsullar']], ['Xərclər və işçilər', ['rasxodlar', 'isciler', 'odenisler', 'cixaris']], ['Kassa və hesabatlar', ['kassa', 'yigim', 'sifarisler', 'hesabat', 'teqvim', 'menfeet', 'saticilar']], ['İdarəetmə', ['jurnal', 'ayarlar']]];
 
 function shell(active, title, sub, tools, body) {
@@ -451,7 +451,7 @@ async function pagePanel() {
      ${kpi(`Satış — ${ayAdi(buAy)}`, A.satis, B.satis)}
      ${kpi('Satış sayı', A.satis_sayi, B.satis_sayi, { count: true })}
      ${kpi('Kassaya daxil olan pul', A.medaxil, B.medaxil)}
-     ${kpi('Xərclər (rasxod)', A.rasxod, B.rasxod)}
+     ${kpi('Xərclər', A.rasxod, B.rasxod)}
      ${kpi('İşçilərə verilən maaş', A.maas, B.maas)}
      ${kpi('Sahib götürmələri', A.sahib, B.sahib)}
      ${kpi('Daxil olan − çıxan', xalis(A), xalis(B), { sign: true })}
@@ -1016,7 +1016,7 @@ function malMedaxili(mehs) {
       <button type="button" class="btn sm" id="mcam" style="margin-top:6px">📷 Kamera ilə barkod</button>
       <div class="suggest" id="msug" style="display:none"></div><div id="msetir"></div></div>
     <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><input type="checkbox" name="my" checked> Məhsulun maya dəyərini bu alış qiymətinə yenilə</label>
-    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="rx"> Pulu kassadan ödənilib — cəmi "Rasxodlar"a yaz</label>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="rx"> Pulu kassadan ödənilib — cəmi "Xərclər"ə yaz</label>
     <div class="field" style="margin-top:10px"><label class="f">Qeyd</label><input class="in" name="q"></div></form>`,
     `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Anbara yaz</button>`, true);
   const f = $('#mf', m), set = [];
@@ -1348,7 +1348,7 @@ const KATS = ['Material', 'Yanacaq', 'Nəqliyyat', 'Kirayə', 'Kommunal', 'Vergi
 async function pageRasxodlar(params) {
   const ay = params.get('ay') || ayBasi(today());
   const aylar = await q(sb.from('v_aylar').select('ay').order('ay', { ascending: false }));
-  shell('rasxodlar', 'Rasxodlar', ay === 'hamisi' ? 'Bütün aylar' : ayAdi(ay),
+  shell('rasxodlar', 'Xərclər', ay === 'hamisi' ? 'Bütün aylar' : ayAdi(ay),
     `<input class="in search" id="axtar" placeholder="Axtar: açıqlama, kim">
      <select class="in" id="ay" style="width:auto"><option value="hamisi">Bütün aylar</option>${aylar.map(a => `<option value="${a.ay}" ${a.ay === ay ? 'selected' : ''}>${ayAdi(a.ay)}</option>`).join('')}</select>
      ${canWrite() ? `<button class="btn" id="idx">${ico('up')}Excel-dən yüklə</button><button class="btn primary" id="yeni">${ico('plus')}Yeni xərc</button>` : ''}
@@ -1752,7 +1752,7 @@ async function pageKassa0() {
     </div>
     <div class="tbl-wrap" style="margin-top:16px"><table class="t">
       <thead><tr><th>Ay</th><th class="n hide-m">Ayın əvvəli</th><th class="n hide-m">İlkin ödənişlər</th><th class="n hide-m">Müştəri ödənişləri</th><th class="n hide-m">Digər mədaxil</th><th class="n">Daxil olan (nağd)</th><th class="n hide-m">POS</th>
-        <th class="n hide-m">Rasxod</th><th class="n hide-m">Maaş</th><th class="n hide-m">Sahib</th><th class="n hide-m">Digər məxaric</th><th class="n">Çıxan</th><th class="n">Ayın sonu</th></tr></thead>
+        <th class="n hide-m">Xərc</th><th class="n hide-m">Maaş</th><th class="n hide-m">Sahib</th><th class="n hide-m">Digər məxaric</th><th class="n">Çıxan</th><th class="n">Ayın sonu</th></tr></thead>
       <tbody>${aylar.slice().reverse().map(r => `<tr><td style="white-space:nowrap">${ayAdi(r.ay)}</td><td class="n hide-m">${fmt(bas(r))}</td><td class="n hide-m">${fmt(r.ilkin)}</td><td class="n hide-m">${fmt(r.musteri_odenisi)}</td><td class="n hide-m">${fmt(r.diger_medaxil)}</td><td class="n"><b>${fmt(r.medaxil)}</b></td><td class="n hide-m">${fmt(r.pos)}</td>
         <td class="n hide-m">${fmt(r.rasxod)}</td><td class="n hide-m">${fmt(r.maas)}</td><td class="n hide-m">${fmt(r.sahib)}</td><td class="n hide-m">${fmt(r.diger_mexaric)}</td><td class="n"><b>${fmt(r.mexaric)}</b></td>
         <td class="n ${num(r.ay_sonu_kassa) < 0 ? 'neg' : ''}"><b>${fmt(r.ay_sonu_kassa)}</b></td></tr>`).join('')}</tbody></table></div>
@@ -1883,7 +1883,7 @@ async function pageHesabat(params) {
         ${row2('Satış (malın dəyəri)', man(A.satis))}${row2('Satış sayı', fmt(A.satis_sayi))}
         ${row2('İlkin ödənişlər', man(A.ilkin))}${row2('Müştəri ödənişləri (kredit)', man(A.musteri_odenisi))}${row2('Digər mədaxil', man(A.diger_medaxil))}
         ${row2('<b>Kassaya daxil olan</b>', '<b>' + man(A.medaxil) + '</b>')}
-        ${row2('Xərclər (rasxod)', man(A.rasxod))}${row2('İşçilərə maaş', man(A.maas))}${row2('Sahib götürmələri', man(A.sahib))}${row2('Digər məxaric', man(A.diger_mexaric))}
+        ${row2('Xərclər', man(A.rasxod))}${row2('İşçilərə maaş', man(A.maas))}${row2('Sahib götürmələri', man(A.sahib))}${row2('Digər məxaric', man(A.diger_mexaric))}
         ${row2('<b>Kassadan çıxan</b>', '<b>' + man(A.mexaric) + '</b>')}
         ${row2('<b>Fərq (daxil − çıxan)</b>', '<b>' + man(xalis) + '</b>', xalis < 0 ? 'neg' : 'pos')}
         ${row2('Ay sonu kassa', man(A.ay_sonu_kassa), num(A.ay_sonu_kassa) < 0 ? 'neg' : '')}
@@ -2514,10 +2514,10 @@ async function excelIxrac() {
     ['Müştərilər', ['ID', 'Ad', 'Ünvan', 'Telefon', 'Satış sayı', 'Cəm', 'Verilən', 'Qalıq borc', 'Son ödəniş/alış', 'Gecikmə (gün)'], mus.map(m => [m.id, m.ad, m.unvan, m.telefon, m.satis_sayi, num(m.cem), num(m.verilen), num(m.qaliq), m.son_tarix, m.gecikme_gun])],
     ['Satışlar', ['№', 'Tarix', 'Müştəri', 'Ünvan', 'Telefon', 'Mal', 'Dəyəri', 'İlkin', 'Ödənilən', 'Qalıq', 'Son ödəniş'], sat.map(s => [s.satis_no, s.tarix, s.musteri, s.unvan, s.telefon, s.mal, num(s.deyer), num(s.ilkin), num(s.odenilen), num(s.qaliq), s.son_odenis])],
     ['Müştəri ödənişləri', ['Tarix', 'Satış №', 'Müştəri', 'Məbləğ', 'Qeyd'], pay.map(p => [p.tarix, sM[p.satis_id] && sM[p.satis_id].satis_no, sM[p.satis_id] && sM[p.satis_id].musteri, num(p.mebleg), p.qeyd])],
-    ['Rasxodlar', ['Tarix', 'Açıqlama', 'Kim verib', 'Kateqoriya', 'Məbləğ'], rx.map(r => [r.tarix, r.aciqlama, r.kim, r.kateqoriya, num(r.mebleg)])],
+    ['Xərclər', ['Tarix', 'Açıqlama', 'Kim verib', 'Kateqoriya', 'Məbləğ'], rx.map(r => [r.tarix, r.aciqlama, r.kim, r.kateqoriya, num(r.mebleg)])],
     ['İşçilər', ['Ad', 'Vəzifə', 'Növ', 'İşə giriş', 'Çıxış', 'Cari maaş', 'Status', 'Veriləcək'], isc.map(i => [i.ad, i.vezife, i.nov, i.ise_giris, i.cixis, num(i.cari_maas), i.status, i.verilecek == null ? '' : num(i.verilecek)])],
     ['İşçi ödənişləri', ['Tarix', 'Ad', 'Növ', 'Məbləğ', 'Qeyd'], iod.map(o => [o.tarix, iM[o.isci_id] && iM[o.isci_id].ad, o.nov, num(o.mebleg), o.qeyd])],
-    ['Kassa', ['Ay', 'İlkin ödənişlər', 'Müştəri ödənişləri', 'Digər mədaxil', 'Daxil olan', 'Rasxod', 'Maaş', 'Sahib', 'Digər məxaric', 'Çıxan', 'Ay sonu'], kas.map(k => [k.ay, num(k.ilkin), num(k.musteri_odenisi), num(k.diger_medaxil), num(k.medaxil), num(k.rasxod), num(k.maas), num(k.sahib), num(k.diger_mexaric), num(k.mexaric), num(k.ay_sonu_kassa)])],
+    ['Kassa', ['Ay', 'İlkin ödənişlər', 'Müştəri ödənişləri', 'Digər mədaxil', 'Daxil olan', 'Xərc', 'Maaş', 'Sahib', 'Digər məxaric', 'Çıxan', 'Ay sonu'], kas.map(k => [k.ay, num(k.ilkin), num(k.musteri_odenisi), num(k.diger_medaxil), num(k.medaxil), num(k.rasxod), num(k.maas), num(k.sahib), num(k.diger_mexaric), num(k.mexaric), num(k.ay_sonu_kassa)])],
     ['Məhsullar', ['Ad', 'Kateqoriya', 'Kod', ...qAdlari(), 'Maya', 'Aktiv', 'Satılıb (ədəd)', 'Satış cəmi'], meh.map(x => [x.ad, x.kateqoriya, x.kod, num(x.qiymet), ...[2, 3, 4].map(n => x['qiymet' + n] == null ? '' : num(x['qiymet' + n])), x.maya == null ? '' : num(x.maya), x.aktiv ? 'Bəli' : 'Xeyr', num(x.satilib), num(x.satis_cemi)])],
     ['Sifarişlər', ['Tarix', 'Müştəri', 'Ünvan', 'Telefon', 'Mal', 'Açıqlama', 'Qiymət', 'Vəziyyət'], sif.map(r => [r.tarix, r.musteri, r.unvan, r.telefon, r.mal, r.aciqlama, r.qiymet == null ? '' : num(r.qiymet), r.status])],
   ];
