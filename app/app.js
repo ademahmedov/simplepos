@@ -1475,7 +1475,7 @@ function qrafikSaheleri(ayliq, ilk, maya) {
     <div class="row2"><div class="field"><label class="f">Aylıq ödəniş</label><input class="in" type="number" step="0.01" min="0.01" name="ay" value="${ayliq != null ? ayliq : ''}"></div>
     <div class="field"><label class="f">İlk ödəniş tarixi</label><input class="in" type="date" name="ilk" value="${ilk || ''}"></div></div>
     <div class="muted" id="qinfo2" style="margin:-6px 0 10px;font-size:13px"></div>
-    <div class="field"><label class="f">Maya dəyəri <span class="muted" style="font-weight:400">(istəyə bağlı — mənfəət üçün)</span></label><input class="in" type="number" step="0.01" min="0" name="maya" value="${maya != null ? maya : ''}"></div></div>`;
+    <input type="hidden" name="maya" value="${maya != null ? maya : ''}"></div>`;
 }
 function qrafikIzle(f, yeni) {
   const info = () => {
