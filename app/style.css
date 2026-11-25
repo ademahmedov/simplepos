@@ -275,3 +275,15 @@ table.t th.srt.desc::after{content:" ▼";font-size:10px;color:var(--oak)}
 .flt-info .flt-sil{color:var(--red)}
 @media (max-width:760px){ table.t thead tr.flt-row th.hide-m{display:none} }
 table.t thead tr.flt-row th{position:sticky;top:39px;z-index:1}
+/* Excel kimi xətlər: bütün cədvəllərdə şaquli və üfüqi ayırıcılar */
+table.t{border-collapse:collapse}
+table.t th,table.t td{border:1px solid #e2d5c2}
+table.t thead th{border-bottom:2px solid #d6c4ab}
+table.t tbody tr:nth-child(even) td{background:#fdf9f3}
+table.t tbody tr.click:hover td{background:#f6ead9}
+table.t tfoot td{border-top:2px solid #d6c4ab}
+.tbl-wrap table.t tr > :first-child{border-left:0}
+.tbl-wrap table.t tr > :last-child{border-right:0}
+.tbl-wrap table.t thead tr:first-child th{border-top:0}
+.tbl-wrap table.t tbody tr:last-child td,.tbl-wrap table.t tfoot tr:last-child td{border-bottom:0}
+@media print{ table.t th,table.t td{border:1px solid #bbb!important} }

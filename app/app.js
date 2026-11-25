@@ -1938,6 +1938,7 @@ function xanaMetni(td) { return (td ? td.innerText : '').replace(/\s+/g, ' ').tr
 function ededle(t) {
   const x = String(t).replace(/[\s ₼%]/g, '').replace('−', '-').replace(/ədəd|gün|ay/g, '');
   if (!/^-?\d+(,\d+)?(\.\d+)?$/.test(x)) return null;
+  if (/^0\d{3,}/.test(x) || /^\+?994/.test(String(t).trim())) return null;   // telefon nömrəsi rəqəm sayılmasın
   return Number(x.replace(',', '.'));
 }
 function tarixle(t) { const m = String(t).match(/^(\d{2})\.(\d{2})\.(\d{4})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : null; }
