@@ -368,3 +368,16 @@ details.zamin summary{cursor:pointer;font-weight:600}
 .qnov-bar .seg button{padding:5px 10px;font-size:12.5px}
 select.qsel{display:block;margin-top:4px;padding:3px 6px;font-size:12px;height:auto;width:auto;max-width:100%}
 .etk-kq{font-weight:400;font-size:.8em;color:#666}
+
+/* telefon: yuxarıda Geri, aşağıda yalnız Menyu */
+@media (max-width:760px){
+  .mobile-bar{display:grid!important;grid-template-columns:1fr auto 1fr;gap:8px}
+  .mobile-bar b{justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw}
+  .mobile-bar #out2{justify-self:end}
+  .mobile-bar .mb-geri{justify-self:start;font-size:14px!important;font-weight:600;padding:5px 12px!important}
+  .bottom-nav{justify-content:center;background:transparent!important;border-top:0!important;pointer-events:none;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+  .bottom-nav a{flex:0 0 auto!important;pointer-events:auto;flex-direction:row!important;gap:8px!important;padding:12px 26px!important;font-size:15px!important;font-weight:600;
+    background:linear-gradient(180deg,#8a5a34,#6f4526);color:#fff8ee!important;border-radius:999px;box-shadow:0 6px 18px rgba(60,35,15,.35)}
+  .bottom-nav a .ico{width:20px;height:20px}
+  .bottom-nav a.active{display:none!important}
+}

@@ -271,18 +271,23 @@ function shell(active, title, sub, tools, body) {
    <aside class="side"><div class="logo">${LOGO}<div><span>${esc(CFG.FIRMA_ADI)}</span><small>${S.magaza ? esc(S.magaza.ad) : 'Admin'}</small></div></div>
     <nav>${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? '<div class="sec">Dükan</div>' : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? `${navA.split('<a href="#/rasxodlar"')[0]}<div class="sec">Xərclər və işçilər</div><a href="#/rasxodlar"${navA.split('<a href="#/rasxodlar"')[1].split('<a href="#/kassa"')[0]}<div class="sec">Kassa və hesabatlar</div><a href="#/kassa"${navA.split('<a href="#/kassa"')[1].split('<a href="#/jurnal"')[0]}<div class="sec">İdarəetmə</div><a href="#/jurnal"${navA.split('<a href="#/jurnal"')[1]}` : ''}</nav>
     <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'muhasib' ? 'Mühasib' : S.rol === 'sahibkar' ? 'Yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
-   <div class="mobile-bar"><b>${LOGO}${esc(firmaAdi())}</b><button id="out2">Çıxış</button></div>
+   <div class="mobile-bar"><button id="geri" class="mb-geri" ${active === 'menyu' || (S.rol === 'kuryer' && active === 'yigim') ? 'style="visibility:hidden"' : ''}>‹ Geri</button><b>${LOGO}${esc(firmaAdi())}</b><button id="out2">Çıxış</button></div>
    <main class="main">${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
    <div id="page">${body || '<div class="empty"><div class="spinner" style="margin:auto"></div></div>'}</div></main>
-   <nav class="bottom-nav" ${S.magaza && S.rol !== 'kuryer' ? '' : 'style="display:none"'}>${[['menyu', 'Menyu', 'grid'], ...NAV].filter(n => MOBNAV.includes(n[0])).sort((a, b) => MOBNAV.indexOf(a[0]) - MOBNAV.indexOf(b[0])).map(([k, t, i]) => `<a href="#/${k}" class="${active === k || (k === 'isciler' && ['odenisler','cixaris'].includes(active)) ? 'active' : ''}">${ico(i)}${NAVQISA[k]}</a>`).join('')}</nav>
+   <nav class="bottom-nav" ${S.magaza && S.rol !== 'kuryer' ? '' : 'style="display:none"'}><a href="#/menyu" class="${active === 'menyu' ? 'active' : ''}">${ico('grid')}Menyu</a></nav>
   </div>`;
   const out = async () => { await sb.auth.signOut(); S.cache = {}; location.hash = ''; loginView(); };
   $('#out').onclick = out; $('#out2').onclick = out;
+  $('#geri').onclick = geri;
 }
+// Telefon "Geri" düyməsi: proqram daxilində gəzilən səhifələrin siyahısı
+const YOL = [];
+function yolQeyd() { const h = location.hash || '#/'; if (YOL[YOL.length - 1] !== h) YOL.push(h); if (YOL.length > 60) YOL.shift(); }
+function geri() { YOL.pop(); location.hash = YOL.pop() || '#/menyu'; }
 
 function route() {
   if (!S.user) return;
-  closeModal();
+  closeModal(); yolQeyd();
   const h = location.hash.replace(/^#\/?/, '');
   const [path, qs] = h.split('?');
   const params = new URLSearchParams(qs || '');
