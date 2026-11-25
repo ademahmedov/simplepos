@@ -464,7 +464,7 @@ async function satisModal(id) {
   if ($('#ed', m)) $('#ed', m).onclick = () => satisDuzelt(Object.assign({}, s, { ayliq: qr && qr.ayliq, ilk_odenis: qr && qr.ilk_odenis, maya: qr && qr.maya }));
 }
 
-function satisDuzelt(s) {
+function satisDuzelt(s, birbasa) {
   const m = modal(`Satışı düzəlt — ${esc(s.satis_no)}`, `<form id="ef">
     <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${s.tarix}" required></div>
     <div class="field"><label class="f">Götürdüyü mal</label><input class="in" name="mal" value="${esc(s.mal || '')}"></div></div>
@@ -473,13 +473,13 @@ function satisDuzelt(s) {
     ${qrafikSaheleri(s.ayliq, s.ilk_odenis, s.maya)}
     <div class="field"><label class="f">Qeyd</label><input class="in" name="q" value="${esc(s.qeyd || '')}"></div></form>`,
     `<button class="btn danger" id="sil" style="margin-right:auto">Satışı sil</button><button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
-  $$('[data-close]', m).forEach(b => b.onclick = () => satisModal(s.id));
+  $$('[data-close]', m).forEach(b => b.onclick = () => birbasa ? closeModal() : satisModal(s.id));
   qrafikIzle($('#ef', m));
   $('#ok', m).onclick = async () => {
     const f = $('#ef', m); if (!f.reportValidity()) return;
     try {
       await q(sb.from('satislar').update(Object.assign({ tarix: f.t.value, mal: f.mal.value.trim() || null, deyer: num(f.d.value), ilkin: num(f.i.value), qeyd: f.q.value.trim() || null }, qrafikDeyerleri(f))).eq('id', s.id));
-      toast('Satış yeniləndi'); refresh(); satisModal(s.id);
+      toast('Satış yeniləndi'); refresh(); if (!birbasa) satisModal(s.id);
     } catch (er) { fail(er); }
   };
   $('#sil', m).onclick = async () => {
@@ -703,12 +703,21 @@ async function pageMusteri(id) {
       <div class="card kpi"><div class="lbl">Vəziyyət</div><div class="val" style="font-size:16px;margin-top:10px">${statusBadge(m) || '—'}</div><div class="cmp">Son ödəniş/alış: ${fd(m.son_tarix) || '—'}</div></div>
     </div>
     <h3 style="margin:22px 0 10px">Satışlar</h3>
-    <div class="tbl-wrap"><table class="t"><thead><tr><th>№</th><th>Tarix</th><th>Mal</th><th class="n">Dəyəri</th><th class="n hide-m">İlkin</th><th class="n hide-m">Ödənilən</th><th class="n">Qalıq</th></tr></thead>
-      <tbody>${sales.map(s => `<tr class="click" data-s="${s.id}"><td class="muted">${esc(s.satis_no)}</td><td>${fd(s.tarix)}</td><td>${esc(s.mal || '')}</td><td class="n">${fmt(s.deyer)}</td><td class="n hide-m">${fmt(s.ilkin)}</td><td class="n hide-m">${fmt(s.odenilen)}</td><td class="n">${num(s.qaliq) > 0 ? `<b>${fmt(s.qaliq)}</b>` : '<span class="badge b-green">Bağlanıb</span>'}</td></tr>`).join('')}</tbody></table></div>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>№</th><th>Tarix</th><th>Mal</th><th class="n">Dəyəri</th><th class="n hide-m">İlkin</th><th class="n hide-m">Ödənilən</th><th class="n">Qalıq</th><th></th></tr></thead>
+      <tbody>${sales.map(s => `<tr class="click" data-s="${s.id}"><td class="muted">${esc(s.satis_no)}</td><td>${fd(s.tarix)}</td><td>${esc(s.mal || '')}</td><td class="n">${fmt(s.deyer)}</td><td class="n hide-m">${fmt(s.ilkin)}</td><td class="n hide-m">${fmt(s.odenilen)}</td><td class="n">${num(s.qaliq) > 0 ? `<b>${fmt(s.qaliq)}</b>` : '<span class="badge b-green">Bağlanıb</span>'}</td>
+        <td class="n no-print" style="white-space:nowrap">${w ? `<button class="btn sm" data-sd="${s.id}" title="Satışı düzəlt">✎ Düzəlt</button> ` : ''}<a class="btn sm" href="#/cek/${s.id}" data-stop="1" title="Çek">${ico('print')}</a></td></tr>`).join('')}</tbody></table></div>
     <h3 style="margin:22px 0 10px">Hesab çıxarışı</h3>
     <div class="tbl-wrap"><table class="t"><thead><tr><th>Tarix</th><th>Əməliyyat</th><th class="n">Borc</th><th class="n">Ödənilib</th><th class="n">Qalıq</th></tr></thead>
       <tbody>${hereket.map(h => { bal += (h.borc || 0) - (h.od || 0); return `<tr><td>${fd(h.t)}</td><td>${esc(h.ad)}</td><td class="n">${h.borc ? fmt(h.borc) : ''}</td><td class="n">${h.od ? fmt(h.od) : ''}</td><td class="n"><b>${fmt(bal)}</b></td></tr>`; }).join('')}</tbody></table></div>`;
-  $$('[data-s]').forEach(tr => tr.onclick = () => satisModal(+tr.dataset.s));
+  $$('[data-s]').forEach(tr => tr.onclick = e => { if (e.target.closest('[data-sd],[data-stop]')) return; satisModal(+tr.dataset.s); });
+  $$('[data-sd]').forEach(b => b.onclick = async e => {
+    e.stopPropagation();
+    try {
+      const s = sales.find(x => x.id === +b.dataset.sd);
+      const qr = await q(sb.from('v_qrafik').select('ayliq,ilk_odenis,maya').eq('id', s.id).maybeSingle());
+      satisDuzelt(Object.assign({}, s, { ayliq: qr && qr.ayliq, ilk_odenis: qr && qr.ilk_odenis, maya: qr && qr.maya }), true);
+    } catch (er) { fail(er); }
+  });
   if ($('#yeni')) $('#yeni').onclick = () => yeniSatis(id);
   if ($('#odal')) $('#odal').onclick = () => odenisAl(m, sales);
   if ($('#ed')) $('#ed').onclick = () => {

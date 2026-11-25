@@ -317,3 +317,4 @@ table.t tfoot td{border-top:2px solid #d6c4ab}
   body.pt table.t tr[style*="none"]{display:none}
 }
 .card[style*="padding:0"] > .flt-bar{padding:0 16px}
+table.t td .btn.sm{vertical-align:middle;padding:4px 9px}table.t td .btn.sm .ico{width:15px;height:15px;margin:0}
