@@ -59,6 +59,8 @@ async function all(make) {
 }
 
 const ICON = {
+  down: '<path d="M5 20h14v-2H5v2zm7-4l5-5h-3V3h-4v8H7l5 5z"/>',
+  up: '<path d="M5 20h14v-2H5v2zM12 2l-5 5h3v8h4V7h3l-5-5z"/>',
   box: '<path d="M20 7l-8-4-8 4v10l8 4 8-4V7zm-8-1.76L16.76 7.5 12 9.88 7.24 7.5 12 5.24zM6 9.12l5 2.5v6.76l-5-2.5V9.12zm7 9.26v-6.76l5-2.5v6.76l-5 2.5z"/>',
   panel: '<path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>',
   sale: '<path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45C4.52 15.37 5.48 17 7 17h12v-2H7l1.1-2h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>',
@@ -378,9 +380,10 @@ async function pageSatislar(params) {
   const sel = `<select class="in" id="ay" style="width:auto">${'<option value="hamisi">Bütün aylar</option>' + aylar.map(a => `<option value="${a.ay}" ${a.ay === ay ? 'selected' : ''}>${ayAdi(a.ay)}</option>`).join('')}</select>`;
   shell('satislar', 'Satışlar', ay === 'hamisi' ? 'Bütün satışlar' : ayAdi(ay),
     `<input class="in search" id="axtar" placeholder="Axtar: müştəri, mal, telefon, №">${sel}
-     ${canWrite() ? `<button class="btn primary" id="yeni">${ico('plus')}Yeni satış</button>` : ''}
+     ${canWrite() ? `<button class="btn" id="idx">${ico('up')}Excel-dən yüklə</button><button class="btn primary" id="yeni">${ico('plus')}Yeni satış</button>` : ''}
      <button class="btn" onclick="window.print()">${ico('print')}Çap</button>`);
   if (ay === 'hamisi') $('#ay').value = 'hamisi';
+  if ($('#idx')) $('#idx').onclick = () => satisIdxal();
   $('#ay').onchange = e => location.hash = '#/satislar?ay=' + e.target.value;
   if ($('#yeni')) $('#yeni').onclick = () => yeniSatis();
 
@@ -611,10 +614,11 @@ async function pageMusteriler(params) {
   const fil = params.get('f') || 'borclu';
   shell('musteriler', 'Müştərilər', '', `<input class="in search" id="axtar" placeholder="Axtar: ad, telefon, ünvan">
     <div class="seg" id="fil">${[['borclu','Borclular'],['gecikenler','Gecikənlər'],['hamisi','Hamısı']].map(([k, t]) => `<button data-f="${k}" class="${fil === k ? 'on' : ''}">${t}</button>`).join('')}</div>
-    ${canWrite() ? `<button class="btn primary" id="yeni">${ico('plus')}Yeni müştəri</button>` : ''}
+    ${canWrite() ? `<button class="btn" id="idx">${ico('up')}Excel-dən yüklə</button><button class="btn primary" id="yeni">${ico('plus')}Yeni müştəri</button>` : ''}
     <button class="btn" onclick="window.print()">${ico('print')}Çap</button>`);
   $$('#fil button').forEach(b => b.onclick = () => location.hash = '#/musteriler?f=' + b.dataset.f);
   if ($('#yeni')) $('#yeni').onclick = () => yeniMusteri();
+  if ($('#idx')) $('#idx').onclick = () => musteriIdxal();
   const rows = S.cache.musAll || (S.cache.musAll = await all(() => sb.from('v_musteriler').select('*').order('id')));
   const draw = () => {
     const s = ($('#axtar').value || '').toLocaleLowerCase('az');
@@ -781,7 +785,7 @@ async function pageMehsullar(params) {
   shell('mehsullar', 'Məhsullar', '', `<input class="in search" id="axtar" placeholder="Axtar: ad, kod, kateqoriya">
     <select class="in" id="kat" style="width:auto"><option value="">Bütün kateqoriyalar</option></select>
     <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;white-space:nowrap"><input type="checkbox" id="passiv"> Passivlər</label>
-    ${w ? `<button class="btn" id="toplu">Excel-dən yapışdır</button><button class="btn primary" id="yeni">${ico('plus')}Yeni məhsul</button>` : ''}`);
+    ${w ? `<button class="btn" id="toplu">${ico('up')}Excel-dən yüklə</button><button class="btn primary" id="yeni">${ico('plus')}Yeni məhsul</button>` : ''}`);
   const rows = await all(() => sb.from('v_mehsullar').select('*').order('ad'));
   const kats = [...new Set(rows.map(r => r.kateqoriya).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'az'));
   $('#kat').innerHTML += kats.map(k => `<option>${esc(k)}</option>`).join('');
@@ -802,7 +806,7 @@ async function pageMehsullar(params) {
   };
   ['axtar', 'kat', 'passiv'].forEach(id => $('#' + id).addEventListener(id === 'axtar' ? 'input' : 'change', draw));
   if ($('#yeni')) $('#yeni').onclick = () => mehsulForm(null, kats);
-  if ($('#toplu')) $('#toplu').onclick = () => mehsulToplu();
+  if ($('#toplu')) $('#toplu').onclick = () => mehsulIdxal();
   draw();
 }
 
@@ -933,11 +937,12 @@ async function pageRasxodlar(params) {
   shell('rasxodlar', 'Rasxodlar', ay === 'hamisi' ? 'Bütün aylar' : ayAdi(ay),
     `<input class="in search" id="axtar" placeholder="Axtar: açıqlama, kim">
      <select class="in" id="ay" style="width:auto"><option value="hamisi">Bütün aylar</option>${aylar.map(a => `<option value="${a.ay}" ${a.ay === ay ? 'selected' : ''}>${ayAdi(a.ay)}</option>`).join('')}</select>
-     ${canWrite() ? `<button class="btn primary" id="yeni">${ico('plus')}Yeni xərc</button>` : ''}
+     ${canWrite() ? `<button class="btn" id="idx">${ico('up')}Excel-dən yüklə</button><button class="btn primary" id="yeni">${ico('plus')}Yeni xərc</button>` : ''}
      <button class="btn" onclick="window.print()">${ico('print')}Çap / PDF</button>`);
   if (ay === 'hamisi') $('#ay').value = 'hamisi';
   $('#ay').onchange = e => location.hash = '#/rasxodlar?ay=' + e.target.value;
   if ($('#yeni')) $('#yeni').onclick = () => rasxodForm(null, ay);
+  if ($('#idx')) $('#idx').onclick = () => rasxodIdxal();
   const rows = await all(() => {
     let b = sb.from('rasxodlar').select('*');
     if (ay !== 'hamisi') b = b.gte('tarix', ay).lte('tarix', aySonu(ay));
@@ -1894,6 +1899,296 @@ function xlsxYarat(sheets) {
 }
 
 /* =====================================================================
+   EXCEL-DƏN YÜKLƏMƏ — .xlsx / .csv oxuyucu (kitabxanasız) və idxal pəncərəsi
+   ===================================================================== */
+async function zipAc(buf) {
+  const u = new Uint8Array(buf), dv = new DataView(buf); const out = {};
+  let e = u.length - 22; while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('Fayl Excel (.xlsx) deyil');
+  let p = dv.getUint32(e + 16, true); const n = dv.getUint16(e + 10, true);
+  for (let k = 0; k < n; k++) {
+    const meth = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lo = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(u.subarray(p + 46, p + 46 + nl));
+    const ds = lo + 30 + dv.getUint16(lo + 26, true) + dv.getUint16(lo + 28, true);
+    out[name] = { meth, data: u.subarray(ds, ds + csize) };
+    p += 46 + nl + xl + cl;
+  }
+  const oxu = async name => {
+    const f = out[name]; if (!f) return null;
+    if (f.meth === 0) return new TextDecoder().decode(f.data);
+    const st = new Blob([f.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return await new Response(st).text();
+  };
+  return { oxu, adlar: Object.keys(out) };
+}
+async function xlsxOxu(buf) {
+  const z = await zipAc(buf), P = t => new DOMParser().parseFromString(t, 'application/xml');
+  const ss = []; const sst = await z.oxu('xl/sharedStrings.xml');
+  if (sst) Array.from(P(sst).getElementsByTagName('si')).forEach(si => ss.push(Array.from(si.getElementsByTagName('t')).map(t => t.textContent).join('')));
+  // tarix formatlı xanaları tanımaq üçün stillər
+  const tarixStil = new Set(); const sty = await z.oxu('xl/styles.xml');
+  if (sty) {
+    const d = P(sty); const ozel = {};
+    Array.from(d.getElementsByTagName('numFmt')).forEach(f => ozel[f.getAttribute('numFmtId')] = f.getAttribute('formatCode'));
+    const xfs = d.getElementsByTagName('cellXfs')[0];
+    if (xfs) Array.from(xfs.getElementsByTagName('xf')).forEach((xf, i) => {
+      const id = +xf.getAttribute('numFmtId');
+      if ((id >= 14 && id <= 22) || (id >= 45 && id <= 47) || (ozel[id] && /[dy]/i.test(ozel[id].replace(/\[[^\]]*\]|"[^"]*"/g, '')))) tarixStil.add(i);
+    });
+  }
+  // birinci vərəq
+  let yol = 'xl/worksheets/sheet1.xml';
+  const wb = await z.oxu('xl/workbook.xml'), rels = await z.oxu('xl/_rels/workbook.xml.rels');
+  if (wb && rels) {
+    const sh = P(wb).getElementsByTagName('sheet')[0];
+    const rid = sh && (sh.getAttribute('r:id') || sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id'));
+    const r = Array.from(P(rels).getElementsByTagName('Relationship')).find(x => x.getAttribute('Id') === rid);
+    if (r) { const t = r.getAttribute('Target'); yol = t.startsWith('/') ? t.slice(1) : 'xl/' + t; }
+  }
+  const xml = await z.oxu(yol); if (!xml) throw new Error('Vərəq tapılmadı');
+  const rows = [];
+  Array.from(P(xml).getElementsByTagName('row')).forEach(r => {
+    const row = []; let auto = 0;
+    Array.from(r.getElementsByTagName('c')).forEach(c => {
+      const ref = c.getAttribute('r'); let ci = auto;
+      if (ref) { const L = ref.replace(/\d+/g, ''); ci = 0; for (const ch of L) ci = ci * 26 + ch.charCodeAt(0) - 64; ci--; }
+      auto = ci + 1;
+      const t = c.getAttribute('t'), v = c.getElementsByTagName('v')[0];
+      let val = '';
+      if (t === 's') val = ss[+(v && v.textContent)] || '';
+      else if (t === 'inlineStr') val = Array.from(c.getElementsByTagName('t')).map(x => x.textContent).join('');
+      else if (t === 'b') val = v && v.textContent === '1' ? 'Bəli' : 'Xeyr';
+      else if (v) {
+        val = v.textContent;
+        if (t !== 'str' && tarixStil.has(+c.getAttribute('s')) && !isNaN(+val)) val = new Date(Math.round((+val - 25569) * 864e5)).toISOString().slice(0, 10);
+      }
+      row[ci] = val;
+    });
+    rows.push(Array.from(row, x => x == null ? '' : String(x)));
+  });
+  return rows;
+}
+function csvOxu(t) {
+  t = t.replace(/^﻿/, '');
+  const ilk = t.split(/\r?\n/)[0] || '';
+  const ay = ilk.includes('\t') ? '\t' : (ilk.split(';').length > ilk.split(',').length ? ';' : ',');
+  const rows = []; let row = [], cur = '', qt = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (qt) { if (ch === '"') { if (t[i + 1] === '"') { cur += '"'; i++; } else qt = false; } else cur += ch; }
+    else if (ch === '"') qt = true;
+    else if (ch === ay) { row.push(cur); cur = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+const normBas = t => azLow(t).replace(/[^a-zəöüğıçş0-9]/g, '');
+function idxalEded(v) {
+  let t = String(v == null ? '' : v).replace(/[\s ₼]|AZN|azn|manat/g, '');
+  if (t === '') return null;
+  if (/,\d{1,2}$/.test(t) && !/\.\d/.test(t)) t = t.replace(/\.(?=\d{3})/g, '').replace(',', '.');   // 1.450,50
+  else t = t.replace(/,/g, '');                                                                    // 1,450.50
+  const n = Number(t); return isNaN(n) ? NaN : n;
+}
+function idxalTarix(v) {
+  v = String(v == null ? '' : v).trim(); if (!v) return null;
+  let m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  m = v.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+  if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; if (+m[2] > 12 || +m[1] > 31) return 'X'; return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; }
+  if (/^\d{5}(\.\d+)?$/.test(v)) return new Date(Math.round((+v - 25569) * 864e5)).toISOString().slice(0, 10);
+  return 'X';
+}
+// sahələr: [{ k, ad, lazim, tip: 'metn'|'eded'|'tarix', ox: ['başlıq adları'] }]
+function idxalPencere({ basliq, izah, saheler, numune, yaz }) {
+  const m = modal(basliq, `<div id="ix1">
+      <p class="muted" style="margin-top:0;font-size:13.5px">${izah}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <label class="btn primary" style="cursor:pointer">${ico('up')}Fayl seç (.xlsx, .csv)<input type="file" id="ixf" accept=".xlsx,.csv,.txt" style="display:none"></label>
+        <button type="button" class="btn" id="ixnum">${ico('down')}Nümunə faylı yüklə</button></div>
+      <div class="muted" style="font-size:13px;margin-bottom:6px">və ya Excel-dən kopyalayıb (başlıqlarla birlikdə) bura yapışdırın:</div>
+      <textarea class="in" id="ixtx" rows="5" placeholder="${saheler.map(x => x.ad).join(' · ')}"></textarea></div>
+    <div id="ix2" style="display:none"></div>`,
+    `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ixok" disabled>Yüklə</button>`, true);
+  let cedvel = [], xer = [];
+  $('#ixnum', m).onclick = () => {
+    const blob = xlsxYarat([{ ad: 'Nümunə', rows: [saheler.map(x => x.ad), ...numune] }]);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = basliq.replace(/[^\wəöüğıçşƏÖÜĞIÇŞ -]/g, '') + ' - numune.xlsx'; document.body.appendChild(a); a.click(); a.remove();
+  };
+  const goster = rows => {
+    rows = rows.filter(r => r.some(x => String(x).trim()));
+    if (rows.length < 2) { toast('Faylda başlıq sətri və ən azı bir məlumat sətri olmalıdır'); return; }
+    const bas = rows[0].map(x => String(x).trim()), data = rows.slice(1);
+    // başlıqları tanı: əvvəl dəqiq, sonra şəkilçisiz (Adı Soyadı → adsoyad), sonra başlanğıca görə; bir sütun bir sahəyə
+    const sait = t => t.replace(/[ıiuü]/g, '');
+    const B = bas.map(normBas), istifade = new Set();
+    const uyg = saheler.map(() => -1);
+    [(b, a) => b === a, (b, a) => sait(b) === sait(a), (b, a) => b.length > 2 && a.length > 2 && (b.startsWith(a) || a.startsWith(b) || sait(b).startsWith(sait(a)))]
+      .forEach(test => saheler.forEach((sh, j) => {
+        if (uyg[j] >= 0) return;
+        const al = [sh.ad, ...(sh.ox || [])].map(normBas);
+        const i = B.findIndex((b, bi) => !istifade.has(bi) && b && al.some(a => test(b, a)));
+        if (i >= 0) { uyg[j] = i; istifade.add(i); }
+      }));
+    $('#ix1', m).style.display = 'none'; const box = $('#ix2', m); box.style.display = '';
+    box.innerHTML = `<div class="muted" style="font-size:13.5px;margin-bottom:10px">Faylda <b>${data.length}</b> sətir tapıldı. Sütunların uyğunluğunu yoxlayın:</div>
+      <div class="grid two" style="gap:8px 16px">${saheler.map((sh, j) => `<div class="field" style="margin:0"><label class="f">${esc(sh.ad)}${sh.lazim ? ' <span class="neg">*</span>' : ''}</label>
+        <select class="in" data-sh="${j}"><option value="-1">— yoxdur —</option>${bas.map((b, i) => `<option value="${i}" ${uyg[j] === i ? 'selected' : ''}>${esc(b || ('Sütun ' + (i + 1)))}</option>`).join('')}</select></div>`).join('')}</div>
+      <div id="ixon" style="margin-top:14px"></div>`;
+    const hesabla = () => {
+      const map = saheler.map((sh, j) => +$(`[data-sh="${j}"]`, box).value);
+      cedvel = []; xer = [];
+      data.forEach((r, ri) => {
+        const o = {}, er = [];
+        saheler.forEach((sh, j) => {
+          const raw = map[j] >= 0 ? String(r[map[j]] == null ? '' : r[map[j]]).trim() : '';
+          let v = raw === '' ? null : raw;
+          if (v != null && sh.tip === 'eded') { v = idxalEded(raw); if (Number.isNaN(v)) { er.push(`${sh.ad}: "${raw}" rəqəm deyil`); v = null; } }
+          if (v != null && sh.tip === 'tarix') { v = idxalTarix(raw); if (v === 'X') { er.push(`${sh.ad}: "${raw}" tarix deyil`); v = null; } }
+          if (sh.lazim && v == null && !er.length) er.push(`${sh.ad} boşdur`);
+          o[sh.k] = v;
+        });
+        if (er.length) xer.push(`Sətir ${ri + 2}: ${er.join('; ')}`); else cedvel.push(o);
+      });
+      const yox = saheler.filter((sh, j) => sh.lazim && map[j] < 0);
+      $('#ixon', box).innerHTML = (yox.length ? `<div class="banner b-red-bg">Bu sütunları seçin: ${yox.map(x => esc(x.ad)).join(', ')}</div>` : '') +
+        `<div style="font-size:13.5px;margin-bottom:6px"><b class="pos">${cedvel.length}</b> sətir yüklənəcək${xer.length ? `, <b class="neg">${xer.length}</b> sətir xətaya görə buraxılacaq` : ''}.</div>
+        ${cedvel.length ? `<div class="tbl-wrap" style="max-height:220px;box-shadow:none"><table class="t"><thead><tr>${saheler.map(sh => `<th>${esc(sh.ad)}</th>`).join('')}</tr></thead>
+          <tbody>${cedvel.slice(0, 8).map(o => `<tr>${saheler.map(sh => `<td class="${sh.tip === 'eded' ? 'n' : ''}">${o[sh.k] == null ? '' : sh.tip === 'tarix' ? fd(o[sh.k]) : sh.tip === 'eded' ? fmt(o[sh.k]) : esc(o[sh.k])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+          ${cedvel.length > 8 ? `<div class="muted" style="font-size:12.5px;margin-top:4px">… və daha ${cedvel.length - 8} sətir</div>` : ''}` : ''}
+        ${xer.length ? `<details style="margin-top:8px;font-size:13px"><summary class="neg" style="cursor:pointer">Xətalı sətirlər</summary><div style="max-height:120px;overflow:auto">${xer.slice(0, 200).map(esc).join('<br>')}</div></details>` : ''}`;
+      $('#ixok', m).disabled = !cedvel.length || yox.length > 0;
+    };
+    $$('[data-sh]', box).forEach(x => x.onchange = hesabla); hesabla();
+  };
+  $('#ixf', m).onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try { goster(/\.xlsx$/i.test(f.name) ? await xlsxOxu(await f.arrayBuffer()) : csvOxu(await f.text())); }
+    catch (er) { toast('Faylı oxumaq olmadı: ' + er.message, 5000); }
+  };
+  $('#ixtx', m).addEventListener('paste', () => setTimeout(() => goster(csvOxu($('#ixtx', m).value)), 30));
+  $('#ixok', m).onclick = async () => {
+    const b = $('#ixok', m); b.disabled = true; b.textContent = 'Yüklənir…';
+    try { const msj = await yaz(cedvel, (i, n) => { b.textContent = `Yüklənir… ${i}/${n}`; }); closeModal(); toast(msj, 5000); refresh(); }
+    catch (er) { fail(er); b.disabled = false; b.textContent = 'Yüklə'; }
+  };
+}
+const hisse = (arr, n) => { const o = []; for (let i = 0; i < arr.length; i += n) o.push(arr.slice(i, i + n)); return o; };
+const telAcar = t => String(t || '').replace(/\D/g, '').slice(-9);
+
+function musteriIdxal() {
+  idxalPencere({
+    basliq: 'Müştəriləri Excel-dən yüklə',
+    izah: 'Faylda hər sətir bir müştəridir. Eyni telefonlu (telefon yoxdursa eyni adlı) müştəri artıq varsa, təkrar yaradılmır.',
+    saheler: [{ k: 'ad', ad: 'Ad Soyad', lazim: true, ox: ['ad', 'müştəri', 'musteri', 'adsoyad', 'name', 'alıcı'] }, { k: 'telefon', ad: 'Telefon', ox: ['tel', 'mobil', 'nömrə', 'phone'] },
+      { k: 'unvan', ad: 'Ünvan', ox: ['ünvan', 'unvan', 'address'] }, { k: 'qeyd', ad: 'Qeyd', ox: ['qeyd', 'açıqlama', 'note'] }],
+    numune: [['Əli Həsənov', '050 123 45 67', 'Şərur, Heydər Əliyev 12', ''], ['Nigar Quliyeva', '055 765 43 21', 'Naxçıvan', 'Zamin: qardaşı']],
+    yaz: async (rows, ir) => {
+      const var_ = await all(() => sb.from('musteriler').select('ad,telefon').order('id'));
+      const tel = new Set(var_.map(x => telAcar(x.telefon)).filter(x => x.length >= 7)), ad = new Set(var_.filter(x => !telAcar(x.telefon)).map(x => azLow(x.ad)));
+      const yeni = []; let tekrar = 0;
+      rows.forEach(r => {
+        const t = telAcar(r.telefon);
+        if ((t.length >= 7 && tel.has(t)) || (!t && ad.has(azLow(r.ad)))) { tekrar++; return; }
+        if (t.length >= 7) tel.add(t); else ad.add(azLow(r.ad));
+        yeni.push({ ad: r.ad, telefon: r.telefon, unvan: r.unvan, qeyd: r.qeyd });
+      });
+      let i = 0; for (const h of hisse(yeni, 500)) { await q(sb.from('musteriler').insert(h)); i += h.length; ir(i, yeni.length); }
+      return `${yeni.length} müştəri əlavə olundu${tekrar ? `, ${tekrar} təkrar buraxıldı` : ''}`;
+    },
+  });
+}
+
+function mehsulIdxal() {
+  idxalPencere({
+    basliq: 'Məhsulları Excel-dən yüklə',
+    izah: 'Eyni adlı məhsul artıq varsa, onun qiyməti, maya dəyəri və kateqoriyası yenilənir; yoxdursa əlavə olunur.',
+    saheler: [{ k: 'ad', ad: 'Məhsulun adı', lazim: true, ox: ['ad', 'məhsul', 'mehsul', 'mal', 'malınadı', 'name'] }, { k: 'qiymet', ad: 'Satış qiyməti', lazim: true, tip: 'eded', ox: ['qiymət', 'qiymet', 'satışqiyməti', 'price'] },
+      { k: 'maya', ad: 'Maya dəyəri', tip: 'eded', ox: ['maya', 'alış', 'alis', 'alışqiyməti', 'cost'] }, { k: 'kateqoriya', ad: 'Kateqoriya', ox: ['kateqoriya', 'qrup', 'növ', 'category'] },
+      { k: 'kod', ad: 'Kod', ox: ['kod', 'artikul', 'barkod', 'code', 'sku'] }],
+    numune: [['Künc divan Milano', 1450, 980, 'Divanlar', 'DV-01'], ['Mətbəx dəsti 2.4 m', 2100, 1500, 'Mətbəx', '']],
+    yaz: async (rows, ir) => {
+      const var_ = await all(() => sb.from('mehsullar').select('id,ad').order('id')); const ix = new Map(var_.map(x => [azLow(x.ad), x.id]));
+      const yeni = [], yen = []; const gor = new Set();
+      rows.forEach(r => {
+        const k = azLow(r.ad); if (gor.has(k)) return; gor.add(k);
+        const v = { ad: r.ad, qiymet: r.qiymet, maya: r.maya, kateqoriya: r.kateqoriya, kod: r.kod };
+        if (ix.has(k)) yen.push([ix.get(k), v]); else yeni.push(v);
+      });
+      let i = 0; const n = yeni.length + yen.length;
+      for (const h of hisse(yeni, 500)) { await q(sb.from('mehsullar').insert(h)); i += h.length; ir(i, n); }
+      for (const [id, v] of yen) { await q(sb.from('mehsullar').update(v).eq('id', id)); i++; if (i % 10 === 0) ir(i, n); }
+      return `${yeni.length} məhsul əlavə olundu${yen.length ? `, ${yen.length} məhsul yeniləndi` : ''}`;
+    },
+  });
+}
+
+function rasxodIdxal() {
+  idxalPencere({
+    basliq: 'Xərcləri Excel-dən yüklə',
+    izah: `Kateqoriya bunlardan biri olmalıdır: ${KATS.join(', ')}. Tanınmayan kateqoriya "Digər" yazılır.`,
+    saheler: [{ k: 'tarix', ad: 'Tarix', lazim: true, tip: 'tarix', ox: ['tarix', 'gün', 'date'] }, { k: 'mebleg', ad: 'Məbləğ', lazim: true, tip: 'eded', ox: ['məbləğ', 'mebleg', 'pul', 'amount', 'summa'] },
+      { k: 'aciqlama', ad: 'Açıqlama', ox: ['açıqlama', 'aciqlama', 'təyinat', 'qeyd'] }, { k: 'kim', ad: 'Kim verib', ox: ['kim', 'verən', 'kimverib'] },
+      { k: 'kateqoriya', ad: 'Kateqoriya', ox: ['kateqoriya', 'növ', 'qrup'] }],
+    numune: [['01.11.2026', 250, 'Dükan kirayəsi', 'Adəm', 'Kirayə'], ['03.11.2026', 40, 'Benzin', 'Bəxtiyar', 'Yanacaq']],
+    yaz: async (rows, ir) => {
+      const kat = k => KATS.find(x => azLow(x) === azLow(k)) || 'Digər';
+      const v = rows.map(r => ({ tarix: r.tarix, mebleg: r.mebleg, aciqlama: r.aciqlama, kim: r.kim, kateqoriya: kat(r.kateqoriya) }));
+      let i = 0; for (const h of hisse(v, 500)) { await q(sb.from('rasxodlar').insert(h)); i += h.length; ir(i, v.length); }
+      return `${v.length} xərc əlavə olundu`;
+    },
+  });
+}
+
+function satisIdxal() {
+  idxalPencere({
+    basliq: 'Satışları Excel-dən yüklə',
+    izah: 'Köhnə satışları köçürmək üçün. Müştəri telefonla (yoxdursa adla) tapılır, tapılmasa yaradılır. "Ödənilib (kredit)" ilkin ödənişdən sonra ödənmiş məbləğdir — bir ödəniş kimi yazılır.',
+    saheler: [{ k: 'ad', ad: 'Müştəri', lazim: true, ox: ['müştəri', 'musteri', 'ad', 'adsoyad', 'alıcı'] }, { k: 'telefon', ad: 'Telefon', ox: ['tel', 'mobil', 'nömrə'] },
+      { k: 'unvan', ad: 'Ünvan', ox: ['ünvan', 'unvan'] }, { k: 'tarix', ad: 'Satış tarixi', lazim: true, tip: 'tarix', ox: ['tarix', 'satıştarixi', 'date'] },
+      { k: 'mal', ad: 'Mal', ox: ['mal', 'məhsul', 'götürdüyümal'] }, { k: 'deyer', ad: 'Dəyəri', lazim: true, tip: 'eded', ox: ['dəyəri', 'dəyər', 'deyer', 'malındəyəri', 'qiymət'] },
+      { k: 'ilkin', ad: 'İlkin ödəniş', tip: 'eded', ox: ['ilkin', 'ilkinödəniş', 'beh', 'avans'] }, { k: 'odenilen', ad: 'Ödənilib (kredit)', tip: 'eded', ox: ['ödənilib', 'odenilen', 'ödənilən', 'kreditödənişləri'] },
+      { k: 'son', ad: 'Son ödəniş tarixi', tip: 'tarix', ox: ['sonödənişt', 'sonödəniş', 'sonodenis'] },
+      { k: 'ayliq', ad: 'Aylıq ödəniş', tip: 'eded', ox: ['aylıq', 'ayliq', 'aylıqödəniş'] }, { k: 'ilk_odenis', ad: 'İlk ödəniş tarixi', tip: 'tarix', ox: ['ilködənişt', 'ilködəniş', 'ilkodenis'] }],
+    numune: [['Əli Həsənov', '050 123 45 67', 'Şərur', '15.03.2026', 'Künc divan', 1800, 300, 600, '15.09.2026', 150, '15.04.2026'],
+             ['Nigar Quliyeva', '055 765 43 21', 'Naxçıvan', '02.06.2026', 'Mətbəx dəsti', 2400, 400, 0, '', 200, '02.07.2026']],
+    yaz: async (rows, ir) => {
+      const mus = await all(() => sb.from('musteriler').select('id,ad,telefon').order('id'));
+      const pT = new Map(), pA = new Map();
+      mus.forEach(x => { const t = telAcar(x.telefon); if (t.length >= 7) pT.set(t, x.id); if (!pA.has(azLow(x.ad))) pA.set(azLow(x.ad), x.id); });
+      const tap = r => { const t = telAcar(r.telefon); return t.length >= 7 ? pT.get(t) : pA.get(azLow(r.ad)); };
+      // 1) çatışmayan müştərilər
+      const yeniM = [], gor = new Set();
+      rows.forEach(r => {
+        if (tap(r)) return;
+        const k = telAcar(r.telefon).length >= 7 ? 't' + telAcar(r.telefon) : 'a' + azLow(r.ad);
+        if (gor.has(k)) return; gor.add(k); yeniM.push({ ad: r.ad, telefon: r.telefon, unvan: r.unvan });
+      });
+      for (const h of hisse(yeniM, 500)) {
+        const ins = await q(sb.from('musteriler').insert(h).select('id,ad,telefon'));
+        ins.forEach(x => { const t = telAcar(x.telefon); if (t.length >= 7) pT.set(t, x.id); else pA.set(azLow(x.ad), x.id); });
+      }
+      // 2) satışlar (köhnədən yeniyə) və ödənişlər
+      const sat = rows.slice().sort((a, b) => a.tarix < b.tarix ? -1 : a.tarix > b.tarix ? 1 : 0);
+      let i = 0;
+      for (const h of hisse(sat, 200)) {
+        const ins = await q(sb.from('satislar').insert(h.map(r => ({
+          musteri_id: tap(r), tarix: r.tarix, mal: r.mal, deyer: r.deyer, ilkin: Math.min(r.ilkin || 0, r.deyer),
+          ayliq: r.ayliq > 0 ? r.ayliq : null, ilk_odenis: r.ayliq > 0 ? (r.ilk_odenis || ayArtir(r.tarix, 1)) : null, qeyd: 'Excel-dən köçürülüb',
+        }))).select('id'));
+        const od = [];
+        ins.forEach((x, j) => { const r = h[j]; if (r.odenilen > 0) od.push({ satis_id: x.id, tarix: r.son || r.tarix, mebleg: r.odenilen, texmini: !r.son, qeyd: 'Köçürülmüş ödənişlər (cəmi)' }); });
+        if (od.length) await q(sb.from('satis_odenisleri').insert(od));
+        i += h.length; ir(i, sat.length);
+      }
+      return `${sat.length} satış yükləndi${yeniM.length ? `, ${yeniM.length} yeni müştəri yaradıldı` : ''}`;
+    },
+  });
+}
+
+/* =====================================================================
    QƏBZ və MÜQAVİLƏ (çap / PDF)
    ===================================================================== */
 const imza = (a, b) => `<div style="display:flex;justify-content:space-between;gap:30px;margin-top:40px">
@@ -1987,6 +2282,39 @@ function uygun(deyer, f) {
   }
   return azLow(deyer).includes(azLow(f));
 }
+// Cədvəli olduğu kimi (filtr və sıralama ilə) Excel-ə
+function sehifeBasligi() { const h = $('.topbar h2'); return h ? h.innerText.trim() : 'Cədvəl'; }
+function cedvelBasligi(tb) {
+  const kart = tb.closest('.card'); const h = kart && $('h3', kart);
+  return (h ? h.innerText.trim() : '') || sehifeBasligi();
+}
+function cedveliExcel(tb) {
+  const ths = Array.from(tb.tHead.rows[0].cells);
+  const cols = ths.map((th, i) => [i, th.innerText.replace(/[▲▼]/g, '').trim()]).filter(([, t]) => t);
+  const deyer = t => { t = (t || '').replace(/\s+/g, ' ').trim(); if (!t) return ''; const n = ededle(t); if (n != null) return n; const d = tarixle(t); return d && t.length <= 16 ? d : t; };
+  const data = Array.from(tb.tBodies[0].rows).filter(r => r.style.display !== 'none' && r.cells.length === ths.length)
+    .map(r => cols.map(([i]) => deyer(r.cells[i].innerText)));
+  const foot = tb.tFoot && tb.tFoot.rows[0];
+  if (foot) { const fr = []; let k = 0; Array.from(foot.cells).forEach(c => { for (let j = 0; j < c.colSpan; j++) fr[k + j] = j ? '' : c.innerText; k += c.colSpan; });
+    data.push(cols.map(([i]) => deyer(fr[i]))); }
+  const ad = `${firmaAdi()} — ${cedvelBasligi(tb)} ${today()}`.replace(/[\\/:*?"<>|]/g, '');
+  const blob = xlsxYarat([{ ad: cedvelBasligi(tb).replace(/[\\/:*?\[\]]/g, '').slice(0, 31) || 'Cədvəl', rows: [cols.map(c => c[1]), ...data] }]);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = ad + '.xlsx';
+  document.body.appendChild(a); a.click(); a.remove(); toast('Excel faylı yükləndi');
+}
+// Yalnız bu cədvəli çap et (brauzerdə "PDF kimi saxla" seçmək olar)
+function cedveliPdf(tb) {
+  const host = tb.closest('.card') || tb.closest('.tbl-wrap') || tb;
+  const basliq = document.createElement('div'); basliq.className = 'pt-basliq';
+  const alt = $('.topbar .sub') && $('.topbar .sub').innerText;
+  basliq.innerHTML = `<b>${esc(firmaAdi())} — ${esc(cedvelBasligi(tb))}</b><span>${fd(today())}${alt ? ' · ' + esc(alt) : ''}</span>`;
+  host.parentElement.insertBefore(basliq, host);
+  host.setAttribute('data-pt', '1'); basliq.setAttribute('data-pt', '1'); document.body.classList.add('pt');
+  const bitir = () => { document.body.classList.remove('pt'); host.removeAttribute('data-pt'); basliq.remove(); window.removeEventListener('afterprint', bitir); };
+  window.addEventListener('afterprint', bitir);
+  setTimeout(() => { window.print(); setTimeout(bitir, 500); }, 50);
+}
+
 const HUNI = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/></svg>';
 function fpBagla() { const x = document.getElementById('fpop'); if (x) x.remove(); document.removeEventListener('mousedown', fpKenar, true); }
 function fpKenar(e) { const x = document.getElementById('fpop'); if (x && !x.contains(e.target) && !e.target.closest('.flt-btn')) fpBagla(); }
@@ -2071,8 +2399,12 @@ function tabloFiltr(tb) {
     && rows().every(r => !xanaMetni(r.cells[i]) || ededle(xanaMetni(r.cells[i])) != null)) : [];
   const ilkFoot = foot ? foot.cells[0].innerHTML : '';
   const host = tb.closest('.tbl-wrap') || tb;
-  let info = host.previousElementSibling && host.previousElementSibling.classList.contains('flt-info') ? host.previousElementSibling : null;
-  if (!info) { info = document.createElement('div'); info.className = 'flt-info no-print'; host.parentElement.insertBefore(info, host); }
+  let bar = host.previousElementSibling && host.previousElementSibling.classList.contains('flt-bar') ? host.previousElementSibling : null;
+  if (!bar) { bar = document.createElement('div'); bar.className = 'flt-bar no-print'; bar.innerHTML = '<div class="flt-info"></div><div class="flt-tools"></div>'; host.parentElement.insertBefore(bar, host); }
+  const info = $('.flt-info', bar);
+  $('.flt-tools', bar).innerHTML = `<button type="button" class="btn sm" data-x="xls" title="Görünən sətirləri Excel faylına yüklə">${ico('down')}Excel</button><button type="button" class="btn sm" data-x="pdf" title="Yalnız bu cədvəli çap et və ya PDF kimi saxla">${ico('print')}PDF</button>`;
+  $('[data-x=xls]', bar).onclick = () => cedveliExcel(tb);
+  $('[data-x=pdf]', bar).onclick = () => cedveliPdf(tb);
   function sirala() {
     $$('th.srt', thead).forEach(th => th.classList.remove('asc', 'desc'));
     const sr = SRT[acar]; if (!sr) return;
