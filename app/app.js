@@ -276,7 +276,7 @@ function abuneBanner() {
 
 /* ---------------- çərçivə ---------------- */
 const NAV = [
-  ['panel', 'Panel', 'panel'], ['satislar', 'Satışlar', 'sale'], ['musteriler', 'Müştərilər', 'users'], ['mehsullar', 'Məhsullar', 'box'],
+  ['panel', 'Panel', 'panel'], ['sat', 'Satış et', 'sale'], ['satislar', 'Satışlar', 'doc'], ['musteriler', 'Müştərilər', 'users'], ['mehsullar', 'Məhsullar', 'box'],
   ['rasxodlar', 'Xərclər', 'exp'], ['isciler', 'İşçilər', 'worker'], ['odenisler', 'Ödənişlər', 'wallet'], ['cixaris', 'Çıxarış', 'doc'],
   ['kassa', 'Kassa', 'kassaI'], ['sifarisler', 'Sifarişlər', 'clip'], ['hesabat', 'Aylıq hesabat', 'chart'],
   ['teqvim', 'Ödəniş təqvimi', 'cal'], ['menfeet', 'Mənfəət', 'trend'], ['yigim', 'Yığım siyahısı', 'wallet'], ['saticilar', 'Satıcılar', 'chart'], ['jurnal', 'Jurnal', 'hist'], ['ayarlar', 'Ayarlar', 'gear'],
@@ -284,7 +284,7 @@ const NAV = [
 const MOBNAV = ['menyu', 'panel', 'satislar', 'musteriler', 'mehsullar'];
 
 const NAVQISA = { menyu: 'Menyu', panel: 'Panel', satislar: 'Satış', musteriler: 'Müştəri', mehsullar: 'Məhsul', rasxodlar: 'Xərc', isciler: 'İşçi' };
-const NAVBOLME = [['Satış', ['panel', 'satislar', 'musteriler', 'mehsullar']], ['Xərclər və işçilər', ['rasxodlar', 'isciler', 'odenisler', 'cixaris']], ['Kassa və hesabatlar', ['kassa', 'yigim', 'sifarisler', 'hesabat', 'teqvim', 'menfeet', 'saticilar']], ['İdarəetmə', ['jurnal', 'ayarlar']]];
+const NAVBOLME = [['Satış', ['panel', 'sat', 'satislar', 'musteriler', 'mehsullar']], ['Xərclər və işçilər', ['rasxodlar', 'isciler', 'odenisler', 'cixaris']], ['Kassa və hesabatlar', ['kassa', 'yigim', 'sifarisler', 'hesabat', 'teqvim', 'menfeet', 'saticilar']], ['İdarəetmə', ['jurnal', 'ayarlar']]];
 
 function shell(active, title, sub, tools, body) {
   const navA = (S.rol === 'kuryer' ? NAV.filter(n => n[0] === 'yigim') : NAV).map(([k, t, i]) => `<a href="#/${k}" class="${active === k ? 'active' : ''}">${ico(i)}${t}</a>`).join('');
@@ -316,7 +316,7 @@ function route() {
   const [path, qs] = h.split('?');
   const params = new URLSearchParams(qs || '');
   const [p, id] = path.split('/');
-  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), firmalar: () => pageFirmalar(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id), etiket: () => pageEtiket(),
+  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), sat: () => pageSat(params), firmalar: () => pageFirmalar(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id), etiket: () => pageEtiket(),
     rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
     kassa: () => pageKassa(), sifarisler: () => pageSifarisler(params), hesabat: () => pageHesabat(params),
     teqvim: () => pageTeqvim(params), menfeet: () => pageMenfeet(), jurnal: () => pageJurnal(params), ayarlar: () => pageAyarlar(),
@@ -473,7 +473,7 @@ function pageMenyu() {
     ${S.coxFirma ? `<div class="kafel-bas">Firmalar</div><div class="kafeller"><a class="kafel" href="#/firmalar">${ico('bina')}<span>${S.muhasibHesab ? 'Firmalarım' : 'Dükanlarım'}</span></a></div>` : ''}
     ${S.admin ? `<div class="kafel-bas">Sistem</div><div class="kafeller"><a class="kafel" href="#/admin">${ico('panel')}<span>Admin panel</span></a></div>` : ''}
     ${NAVBOLME.map(([b, ks]) => `<div class="kafel-bas">${b}</div><div class="kafeller">${ks.map(kafel).join('')}</div>`).join('')}`;
-  if ($('#ts')) $('#ts').onclick = () => yeniSatis();
+  if ($('#ts')) $('#ts').onclick = () => { location.hash = '#/sat'; };
   if ($('#tm')) $('#tm').onclick = () => yeniMusteri();
 }
 
@@ -580,7 +580,7 @@ async function pageSatislar(params) {
   if (ay === 'hamisi') $('#ay').value = 'hamisi';
   if ($('#idx')) $('#idx').onclick = () => satisIdxal();
   $('#ay').onchange = e => location.hash = '#/satislar?ay=' + e.target.value;
-  if ($('#yeni')) $('#yeni').onclick = () => yeniSatis();
+  if ($('#yeni')) $('#yeni').onclick = () => { location.hash = '#/sat'; };
 
   const rows = await all(() => {
     let b = sb.from('v_satislar').select('*');
@@ -781,10 +781,17 @@ async function yeniSatis(musteriId, pref) {
   saticiDoldur(f.sat).catch(() => {});
   // --- məhsul sətirləri ---
   const setirler = [];
-  await setirRedaktor(m, f, setirler, qal);
+  const yenileSetir = await setirRedaktor(m, f, setirler, qal);
   const usulAl = usulIzle(m, f);
   qrafikIzle(f, true);
-  if (pref) {
+  if (pref && pref.setirler) {
+    pref.setirler.forEach(x => setirler.push(x)); yenileSetir();
+    if (pref.deyer != null) { f.d.value = pref.deyer; f.d.dispatchEvent(new Event('input')); }
+    if (pref.qeyd) f.q.value = pref.qeyd; if (pref.tarix) f.t.value = pref.tarix;
+    if (pref.isci) setTimeout(() => { f.sat.value = pref.isci; }, 400);
+    if (pref.usul) { const b = $(`#usul [data-u="${pref.usul}"]`, m); if (b) b.click(); }
+    qal();
+  } else if (pref) {
     $('#mtip button[data-t="yeni"]', m).click();
     f.ad.value = pref.ad || ''; f.un.value = pref.unvan || ''; f.tel.value = pref.tel || '';
     f.mal.value = pref.mal || ''; if (pref.deyer) f.d.value = pref.deyer; qal();
@@ -806,6 +813,7 @@ async function yeniSatis(musteriId, pref) {
       try { localStorage.setItem('son_usul', U.odenis_usulu); } catch (_) {}
       if (setirler.length) await q(sb.from('satis_mallari').insert(setirler.map(x => ({ satis_id: ns.id, mehsul_id: x.mehsul_id, ad: x.ad, miqdar: x.miqdar, qiymet: x.qiymet, maya: x.maya }))));
       if (pref && pref.sifarisId) await q(sb.from('sifarisler').update({ status: 'Təhvil verildi' }).eq('id', pref.sifarisId));
+      if (pref && pref.onSaved) { closeModal(); S.cache = {}; return pref.onSaved(ns); }
       closeModal(); toast(`Satış yazıldı: ${ns.satis_no}`); S.cache = {};
       if (confirm(`Satış yazıldı: ${ns.satis_no}. Müştəri üçün çek çap edilsin?`)) location.hash = '#/cek/' + ns.id; else refresh();
     } catch (er) { fail(er); btn.disabled = false; }
@@ -814,6 +822,274 @@ async function yeniSatis(musteriId, pref) {
 
 function localStorage_usul() { try { const u = localStorage.getItem('son_usul'); return USULLAR.includes(u) ? u : 'Borc'; } catch (_) { return 'Borc'; } }
 function refresh() { S.cache = {}; route(); }
+
+/* =====================================================================
+   SATIŞ EKRANI (POS) — solda səbət, sağda məhsul kafelləri, aşağıda ödəniş
+   ===================================================================== */
+const POS_SEBET_SAY = 8;
+const PERAKENDE = 'Pərakəndə müştəri';
+function posSebetler() {
+  const k = 'sebet_' + (S.magaza && S.magaza.id);
+  if (!S.pos || S.pos.k !== k) {
+    let arr = null; try { arr = JSON.parse(localStorage.getItem(k) || 'null'); } catch (_) {}
+    if (!Array.isArray(arr) || arr.length !== POS_SEBET_SAY) arr = Array.from({ length: POS_SEBET_SAY }, () => ({ s: [], m: null, q: '', qn: 1, e: '', o: '' }));
+    S.pos = { k, arr, i: 0 };
+  }
+  return S.pos;
+}
+function posSaxla() { try { localStorage.setItem(S.pos.k, JSON.stringify(S.pos.arr)); } catch (_) {} }
+async function perakendeMusteri() {
+  const r = await q(sb.from('musteriler').select('id,ad').eq('ad', PERAKENDE).limit(1));
+  if (r.length) return r[0].id;
+  const n = await q(sb.from('musteriler').insert({ ad: PERAKENDE, qeyd: 'Kassadan nağd/POS satışlar üçün' }).select().single());
+  return n.id;
+}
+
+async function pageSat(params) {
+  if (!canWrite()) { shell('sat', 'Satış', '', ''); $('#page').innerHTML = '<div class="card empty">Satış yazmaq üçün mühasib hüququ və aktiv abunə lazımdır.</div>'; return; }
+  shell('sat', 'Satış', '', '');
+  document.querySelector('.main').classList.add('pos-main');
+  const [mehs, mus] = await Promise.all([
+    all(() => sb.from('v_mehsullar').select('id,ad,kod,kateqoriya,qiymet,qiymet2,qiymet3,qiymet4,maya,anbar_izle,anbar').eq('aktiv', true).order('ad')),
+    S.cache.mus || (S.cache.mus = await all(() => sb.from('v_musteriler').select('id,ad,telefon,unvan,qaliq').order('id'))),
+    ayarlar(),
+  ]);
+  const QA = qAdlari();
+  const P = posSebetler();
+  if (params.get('m')) { const mm = mus.find(x => x.id === +params.get('m')); if (mm) { const b = P.arr.findIndex(x => !x.s.length); P.i = b < 0 ? P.i : b; P.arr[P.i].m = { id: mm.id, ad: mm.ad, telefon: mm.telefon }; } }
+  const kats = [...new Set(mehs.map(x => x.kateqoriya).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'az'));
+  let kat = '', axt = '';
+  const C = () => P.arr[P.i];
+  const qy = (x, n) => mQ(x, n) != null ? mQ(x, n) : num(x.qiymet);
+  const cem = () => C().s.reduce((a, x) => a + x.miqdar * x.qiymet, 0);
+  const endirim = () => { const e = String(C().e || '').trim(); if (!e) return 0; const c = cem();
+    const v = e.endsWith('%') ? c * num(e.slice(0, -1)) / 100 : num(e); return Math.min(c, Math.max(0, Math.round(v * 100) / 100)); };
+  const yekun = () => Math.round((cem() - endirim()) * 100) / 100;
+
+  $('#page').innerHTML = `<div class="posek">
+    <section class="pos-sol card">
+      <div class="pos-axtar"><div class="pos-inp">${ico('box')}<input id="sbk" placeholder="Barkod oxudun və ya məhsul adı yazın" autocomplete="off"></div>
+        <button class="btn" id="scam" title="Kamera ilə oxu">📷</button></div>
+      <div class="pos-mus" id="smus"></div>
+      <div class="pos-sahe">
+        <div><label class="f">Qeyd</label><input class="in" id="sqeyd" placeholder="Satışa dair qeyd"></div>
+        <div><label class="f">Qiymət növü (F2)</label><select class="in" id="sqn">${QA.map((a, i) => `<option value="${i + 1}">${esc(a)}</option>`).join('')}</select></div>
+        <div><label class="f">Tarix</label><input class="in" type="date" id="starix" value="${today()}"></div>
+        <div><label class="f">Satıcı</label><select class="in" id="ssat"><option value="">— seçilməyib —</option></select></div>
+      </div>
+      <div class="pos-tabs" id="stabs"></div>
+      <div class="pos-sebet" id="ssebet"></div>
+      <div class="pos-alt">
+        <div class="pos-od">
+          <input class="in" id="send" placeholder="Endirim (₼ və ya %)" title="məs. 50 və ya 10%">
+          <input class="in" id="sode" type="number" min="0" step="0.01" placeholder="Ödənilən">
+          ${[5, 10, 20, 50, 100, 200].map(v => `<button class="btn sm" data-ps="${v}">${v} ₼</button>`).join('')}<button class="btn sm" data-ps="tam">Tam</button></div>
+        <div class="pos-toplam"><div><span>TOPLAM</span><small id="sinfo"></small></div><b id="scem">0,00 ₼</b></div>
+      </div>
+    </section>
+    <section class="pos-sag card">
+      <div class="pos-kat" id="skat"></div>
+      <div class="pos-kafeller" id="skaf"></div>
+    </section>
+    <div class="pos-odenis">
+      <button class="pod nagd" data-od="Nağd">${ico('cash')}<span>Nağd<small>F8</small></span></button>
+      <button class="pod kart" data-od="POS">${ico('exp')}<span>POS<small>F9</small></span></button>
+      <button class="pod borc" data-od="Borc">${ico('doc')}<span>Kredit<small>F10 · borca yaz</small></span></button>
+      <button class="pod parca" data-od="Parçalı">${ico('wallet')}<span>Parçalı<small>F6 · nağd + kart</small></span></button>
+    </div></div>`;
+
+  // --- müştəri
+  const musCiz = () => {
+    const m = C().m;
+    $('#smus').innerHTML = `<div class="pos-mchip">${m ? `<b>${esc(m.ad)}</b><small>${esc(m.telefon || '')}${(() => { const r = mus.find(z => z.id === m.id); return r && num(r.qaliq) > 0 ? ` · borcu ${fmt(r.qaliq)} ₼` : ''; })()}</small>`
+        : `<b class="muted">${PERAKENDE}</b><small>Nağd və POS satışda müştəri seçmək mütləq deyil</small>`}</div>
+      ${m ? '<button class="btn sm" id="smsil" title="Müştərini götür">×</button>' : ''}<button class="btn" id="smsec">${ico('users')}Müştəri seç</button>
+      <div class="suggest" id="smsug" style="display:none"></div>`;
+    $('#smsec').onclick = musSec;
+    if ($('#smsil')) $('#smsil').onclick = () => { C().m = null; posSaxla(); musCiz(); };
+  };
+  const musSec = () => {
+    const mm = modal('Müştəri seç', `<input class="in" id="mx" placeholder="Ad, telefon və ya ünvan…" autocomplete="off"><div id="ml" class="pos-mlist"></div>
+      <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px"><b style="font-size:13.5px">Yeni müştəri</b>
+        <div class="row2" style="margin-top:6px"><input class="in" id="nad" placeholder="Ad Soyad"><input class="in" id="ntel" placeholder="Telefon" inputmode="tel"></div>
+        <button class="btn primary" id="nok" style="margin-top:8px">Əlavə et və seç</button></div>`);
+    const ciz = () => { const t = azLow($('#mx', mm).value);
+      const l = mus.filter(x => x.ad !== PERAKENDE && (!t || azLow([x.ad, x.telefon, x.unvan].join(' ')).includes(t))).slice(0, 40);
+      $('#ml', mm).innerHTML = l.map(x => `<div data-id="${x.id}"><b>${esc(x.ad)}</b> <span class="muted">${esc(x.telefon || '')} ${esc(x.unvan || '')}</span>${num(x.qaliq) > 0 ? ` <span class="badge b-amber">borc ${fmt(x.qaliq)}</span>` : ''}</div>`).join('') || '<div class="muted">Tapılmadı</div>';
+      $$('[data-id]', mm).forEach(d => d.onclick = () => { const x = mus.find(z => z.id === +d.dataset.id); C().m = { id: x.id, ad: x.ad, telefon: x.telefon }; posSaxla(); closeModal(); musCiz(); $('#sbk').focus(); }); };
+    $('#mx', mm).oninput = ciz; ciz(); setTimeout(() => $('#mx', mm).focus(), 50);
+    $('#nok', mm).onclick = async () => {
+      const ad = $('#nad', mm).value.trim(); if (!ad) return toast('Müştərinin adını yazın');
+      try { const n = await q(sb.from('musteriler').insert({ ad, telefon: $('#ntel', mm).value.trim() || null }).select().single());
+        mus.push({ id: n.id, ad: n.ad, telefon: n.telefon, qaliq: 0 }); S.cache.musAll = null;
+        C().m = { id: n.id, ad: n.ad, telefon: n.telefon }; posSaxla(); closeModal(); musCiz(); toast('Müştəri əlavə olundu');
+      } catch (er) { fail(er); }
+    };
+  };
+
+  // --- səbət
+  const tabCiz = () => {
+    $('#stabs').innerHTML = P.arr.map((x, i) => `<button class="${i === P.i ? 'on' : ''}" data-tb="${i}">${i + 1}${x.s.length ? `<i>${x.s.reduce((a, z) => a + z.miqdar, 0)}</i>` : ''}</button>`).join('');
+    $$('[data-tb]').forEach(b => b.onclick = () => { P.i = +b.dataset.tb; hamisi(); });
+  };
+  const sebetCiz = () => {
+    const s = C().s;
+    $('#ssebet').innerHTML = s.length ? `<table class="pos-t"><tbody>${s.map((x, i) => `<tr>
+        <td><div class="cell-main">${esc(x.ad)}</div>${x.uyari ? `<div class="cell-sub neg">${esc(x.uyari)}</div>` : ''}</td>
+        <td class="pos-say"><button data-az="${i}">−</button><input type="number" min="1" step="1" value="${x.miqdar}" data-mq="${i}"><button data-ar="${i}">+</button></td>
+        <td style="width:96px"><input class="in" type="number" min="0" step="0.01" value="${x.qiymet}" data-qy="${i}"></td>
+        <td class="n" style="width:90px"><b>${fmt(x.miqdar * x.qiymet, 2)}</b></td>
+        <td style="width:30px"><button class="btn sm danger" data-sl="${i}">×</button></td></tr>`).join('')}</tbody></table>`
+      : `<div class="pos-bos">🛒<div>Səbət boşdur</div><small>Barkod oxudun və ya sağdan məhsula basın</small></div>`;
+    const dey = (i, f) => { f(s[i]); posSaxla(); setTimeout(hesabla); };
+    $$('[data-az]').forEach(b => b.onclick = () => dey(+b.dataset.az, x => { x.miqdar = Math.max(1, x.miqdar - 1); }));
+    $$('[data-ar]').forEach(b => b.onclick = () => dey(+b.dataset.ar, x => { x.miqdar += 1; }));
+    $$('[data-mq]').forEach(el => el.onchange = () => dey(+el.dataset.mq, x => { x.miqdar = Math.max(1, Math.round(num(el.value))); }));
+    $$('[data-qy]').forEach(el => el.onchange = () => dey(+el.dataset.qy, x => { x.qiymet = Math.max(0, num(el.value)); }));
+    $$('[data-sl]').forEach(b => b.onclick = () => { s.splice(+b.dataset.sl, 1); posSaxla(); hesabla(); });
+  };
+  const hesabla = () => {
+    stokYoxla(); sebetCiz(); tabCiz();
+    const c = cem(), e = endirim(), y = yekun(), od = num($('#sode').value);
+    $('#scem').textContent = fmt(y, 2) + ' ₼';
+    const say = C().s.reduce((a, x) => a + x.miqdar, 0);
+    $('#sinfo').innerHTML = `${C().s.length} məhsul · ${fmt(say)} ədəd${e ? ` · endirim ${fmt(e, 2)} ₼` : ''}${od > y + 0.001 && y > 0 ? ` · <b class="pos">qaytarılacaq: ${fmt(od - y, 2)} ₼</b>` : od > 0 && od < y - 0.001 ? ` · <b class="neg">çatmır: ${fmt(y - od, 2)} ₼</b>` : ''}`;
+  };
+  const stokYoxla = () => C().s.forEach(x => { const p = mehs.find(z => z.id === x.mehsul_id);
+    x.uyari = p && p.anbar_izle && x.miqdar > num(p.anbar) ? `Anbarda ${fmt(p.anbar)} ədəd var` : ''; });
+  const elaveEt = p => {
+    const s = C().s, v = s.find(z => z.mehsul_id === p.id);
+    if (v) v.miqdar += 1; else s.push({ mehsul_id: p.id, ad: p.ad, miqdar: 1, qiymet: qy(p, C().qn || 1), maya: p.maya == null ? null : num(p.maya) });
+    posSaxla(); hesabla();
+    const tr = $$('#ssebet tr')[s.indexOf(v || s[s.length - 1])]; if (tr) { tr.classList.add('yeni'); tr.scrollIntoView({ block: 'nearest' }); }
+  };
+
+  // --- məhsul kafelləri
+  const katCiz = () => {
+    $('#skat').innerHTML = [['', `Hamısı <i>${mehs.length}</i>`], ...kats.map(k => [k, `${esc(k)} <i>${mehs.filter(x => x.kateqoriya === k).length}</i>`])]
+      .map(([k, t]) => `<button class="${k === kat ? 'on' : ''}" data-kt="${esc(k)}">${t}</button>`).join('');
+    $$('[data-kt]').forEach(b => b.onclick = () => { kat = b.dataset.kt; katCiz(); kafCiz(); });
+  };
+  const suzulmus = () => { const t = azLow(axt);
+    return mehs.filter(x => (!kat || x.kateqoriya === kat) && (!t || azLow([x.ad, x.kod, x.kateqoriya].join(' ')).includes(t))); };
+  const kafCiz = () => {
+    const l = suzulmus(), n = C().qn || 1;
+    $('#skaf').innerHTML = l.length ? l.slice(0, 300).map(x => `<button class="pkaf" data-p="${x.id}"><span class="pk-ad">${esc(x.ad)}</span>
+        <span class="pk-alt">${x.anbar_izle ? `<i class="${num(x.anbar) > 0 ? '' : 'yox'}">${fmt(x.anbar)} əd.</i>` : '<i></i>'}<b>${fmt(qy(x, n), 2)}</b></span></button>`).join('')
+      : `<div class="muted" style="padding:20px">${mehs.length ? 'Məhsul tapılmadı' : 'Hələ məhsul yoxdur — "Məhsullar" bölməsindən əlavə edin'}</div>`;
+    $$('[data-p]', $('#skaf')).forEach(b => b.onclick = () => { elaveEt(mehs.find(z => z.id === +b.dataset.p)); $('#sbk').focus(); });
+  };
+
+  // --- sahələr
+  const sahelerCiz = () => { $('#sqeyd').value = C().q || ''; $('#sqn').value = String(C().qn || 1); $('#send').value = C().e || ''; $('#sode').value = C().o || ''; };
+  const hamisi = () => { sahelerCiz(); musCiz(); hesabla(); kafCiz(); };
+  $('#sqeyd').oninput = e => { C().q = e.target.value; posSaxla(); };
+  $('#send').oninput = e => { C().e = e.target.value; posSaxla(); hesabla(); };
+  $('#sode').oninput = e => { C().o = e.target.value; posSaxla(); hesabla(); };
+  const qnDeyis = n => {
+    C().qn = n; $('#sqn').value = String(n);
+    let yox = 0; C().s.forEach(x => { const p = mehs.find(z => z.id === x.mehsul_id); if (!p) return; if (mQ(p, n) == null && n > 1) yox++; x.qiymet = qy(p, n); });
+    if (yox) toast(`${yox} məhsulda "${QA[n - 1]}" yoxdur — əsas qiymət qaldı`, 3000);
+    posSaxla(); hesabla(); kafCiz();
+  };
+  $('#sqn').onchange = e => qnDeyis(+e.target.value);
+  $$('[data-ps]').forEach(b => b.onclick = () => {
+    const v = b.dataset.ps; C().o = v === 'tam' ? String(yekun()) : String(Math.round((num($('#sode').value) + num(v)) * 100) / 100);
+    $('#sode').value = C().o; posSaxla(); hesabla();
+  });
+  saticiDoldur($('#ssat')).catch(() => {});
+
+  // --- barkod / axtarış
+  const bk = $('#sbk');
+  bk.oninput = () => { axt = bk.value; kafCiz(); };
+  const barkodla = t => {
+    t = String(t || '').trim(); if (!t) return;
+    const x = mehs.find(z => barkodBerabar(z, t)) || (() => { const l = suzulmus(); return l.length === 1 ? l[0] : null; })();
+    if (x) { elaveEt(x); bk.value = ''; axt = ''; kafCiz(); return; }
+    toast(`"${t}" tapılmadı`, 2500); bk.select();
+  };
+  bk.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); barkodla(bk.value); } if (e.key === 'Escape') { bk.value = ''; axt = ''; kafCiz(); } };
+  $('#scam').onclick = () => kameraOxu(barkodla);
+
+  // --- ödəniş
+  const yoxla = () => { if (!C().s.length) { toast('Səbət boşdur'); return false; } return true; };
+  const yaz = async (usul, ilkin, ipos) => {
+    const c = C(), y = yekun();
+    const mid = c.m ? c.m.id : await perakendeMusteri();
+    const maya = c.s.every(x => x.maya != null) ? Math.round(c.s.reduce((a, x) => a + x.miqdar * num(x.maya), 0) * 100) / 100 : null;
+    const ns = await q(sb.from('satislar').insert({ musteri_id: mid, tarix: $('#starix').value || today(), mal: c.s.map(x => x.ad + (x.miqdar > 1 ? ' ×' + x.miqdar : '')).join(', ').slice(0, 500),
+      deyer: y, maya, qeyd: c.q.trim() || null, isci_id: $('#ssat').value ? +$('#ssat').value : null, odenis_usulu: usul, ilkin, ilkin_pos: ipos }).select().single());
+    await q(sb.from('satis_mallari').insert(c.s.map(x => ({ satis_id: ns.id, mehsul_id: x.mehsul_id, ad: x.ad, miqdar: x.miqdar, qiymet: x.qiymet, maya: x.maya }))));
+    return ns;
+  };
+  const bitdi = (ns, od) => {
+    const y = yekun(), qay = od > y ? od - y : 0;
+    P.arr[P.i] = { s: [], m: null, q: '', qn: 1, e: '', o: '' }; posSaxla(); S.cache = {};
+    mehs.forEach(p => { const sat = ns._mallar && ns._mallar.find(z => z.mehsul_id === p.id); if (sat && p.anbar_izle) p.anbar = num(p.anbar) - sat.miqdar; });
+    hamisi();
+    const m = modal('Satış yazıldı', `<div class="pos-bitdi"><div class="muted">${esc(ns.satis_no || '')} · ${esc(ns.odenis_usulu)}</div><b>${fmt(y, 2)} ₼</b>
+      ${qay > 0.001 ? `<div class="pos-qay">Qaytarılacaq: <b>${fmt(qay, 2)} ₼</b></div>` : ''}</div>`,
+      `<button class="btn" id="bcek">${ico('print')}Çek çap et</button><button class="btn primary" id="byeni">Yeni satış (Enter)</button>`);
+    $('#bcek', m).onclick = () => { closeModal(); location.hash = '#/cek/' + ns.id; };
+    $('#byeni', m).onclick = () => { closeModal(); bk.focus(); };
+    setTimeout(() => $('#byeni', m).focus(), 50);
+  };
+  let mesgul = false;
+  const ode = async usul => {
+    if (mesgul || !yoxla()) return;
+    const y = yekun(), od = num($('#sode').value);
+    if (usul === 'Borc') {
+      return yeniSatis(C().m ? C().m.id : null, { setirler: C().s.map(x => ({ mehsul_id: x.mehsul_id, ad: x.ad, miqdar: x.miqdar, qiymet: x.qiymet, maya: x.maya })),
+        deyer: y, qeyd: C().q, isci: $('#ssat').value, tarix: $('#starix').value, usul: 'Borc',
+        onSaved: ns => { ns._mallar = C().s.map(x => ({ ...x })); bitdi(ns, 0); } });
+    }
+    if (usul === 'Parçalı') return parcaliModal(y);
+    if (usul === 'Nağd' && od > 0 && od < y - 0.001) { toast(`Ödənilən ${fmt(od, 2)} ₼ azdır. Qalanı borca yazmaq üçün "Kredit / borc" seçin.`, 4500); return; }
+    mesgul = true;
+    try { const mal = C().s.map(x => ({ ...x })); const ns = await yaz(usul, y, usul === 'POS' ? y : 0); ns._mallar = mal; bitdi(ns, usul === 'Nağd' ? od : 0); }
+    catch (er) { fail(er); } finally { mesgul = false; }
+  };
+  const parcaliModal = y => {
+    const m = modal('Parçalı ödəniş', `<div class="pos-bitdi" style="margin-bottom:12px"><span class="muted">Ödəniləcək</span><b>${fmt(y, 2)} ₼</b></div>
+      <div class="row2"><div class="field"><label class="f">Nağd</label><input class="in" type="number" min="0" step="0.01" id="pn"></div>
+      <div class="field"><label class="f">Kartla (POS)</label><input class="in" type="number" min="0" step="0.01" id="pp"></div></div>
+      <div class="muted" id="pinfo" style="font-size:13px"></div>`,
+      `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="pok">Satışı yaz</button>`);
+    const pn = $('#pn', m), pp = $('#pp', m);
+    const info = () => { const qal = Math.round((y - num(pn.value) - num(pp.value)) * 100) / 100;
+      $('#pinfo', m).innerHTML = qal > 0.001 ? (C().m ? `Qalan <b class="neg">${fmt(qal, 2)} ₼</b> müştərinin borcuna yazılacaq` : `Qalan <b class="neg">${fmt(qal, 2)} ₼</b> — borca yazmaq üçün əvvəlcə müştəri seçin`)
+        : qal < -0.001 ? `<b class="neg">${fmt(-qal, 2)} ₼ artıqdır</b>` : '<b class="pos">Tam ödənilir</b>'; };
+    pn.oninput = () => { if (document.activeElement === pn && pp.value === '') {} info(); };
+    pp.oninput = () => { if (pn.value === '') pn.value = Math.max(0, Math.round((y - num(pp.value)) * 100) / 100); info(); };
+    info(); setTimeout(() => pp.focus(), 50);
+    $('#pok', m).onclick = async () => {
+      const n = num(pn.value), k = num(pp.value), cm = Math.round((n + k) * 100) / 100;
+      if (cm > y + 0.001) return toast('Ödənilən məbləğ satışdan çoxdur');
+      if (cm < y - 0.001 && !C().m) return toast('Borc qalırsa müştəri seçilməlidir');
+      $('#pok', m).disabled = true;
+      try { const mal = C().s.map(x => ({ ...x })); const ns = await yaz('Parçalı', cm, k); ns._mallar = mal; closeModal(); bitdi(ns, 0); }
+      catch (er) { fail(er); $('#pok', m).disabled = false; }
+    };
+  };
+  $$('[data-od]').forEach(b => b.onclick = () => ode(b.dataset.od));
+
+  // --- klaviatura
+  if (!S.posKlav) {
+    S.posKlav = true;
+    document.addEventListener('keydown', e => {
+      if (!location.hash.startsWith('#/sat') || !S.posOde) return;
+      if ($('#modal-root').innerHTML && !['Enter'].includes(e.key)) return;
+      if (e.key === 'F8') { e.preventDefault(); S.posOde('Nağd'); }
+      else if (e.key === 'F9') { e.preventDefault(); S.posOde('POS'); }
+      else if (e.key === 'F10') { e.preventDefault(); S.posOde('Borc'); }
+      else if (e.key === 'F6') { e.preventDefault(); S.posOde('Parçalı'); }
+      else if (e.key === 'F2') { e.preventDefault(); S.posQn(); }
+    });
+  }
+  S.posOde = ode; S.posQn = () => qnDeyis((C().qn || 1) % 4 + 1);
+
+  katCiz(); hamisi(); bk.focus();
+}
 
 /* =====================================================================
    MÜŞTƏRİLƏR
@@ -928,7 +1204,7 @@ async function pageMusteri(id) {
       satisDuzelt(Object.assign({}, s, { ayliq: qr && qr.ayliq, ilk_odenis: qr && qr.ilk_odenis, maya: qr && qr.maya }), true);
     } catch (er) { fail(er); }
   });
-  if ($('#yeni')) $('#yeni').onclick = () => yeniSatis(id);
+  if ($('#yeni')) $('#yeni').onclick = () => { location.hash = '#/sat?m=' + id; };
   if ($('#odal')) $('#odal').onclick = () => odenisAl(m, sales);
   if ($('#ed')) $('#ed').onclick = () => {
     const md = modal('Müştəri məlumatı', `<form id="mf"><div class="field"><label class="f">Ad Soyad</label><input class="in" name="ad" value="${esc(m.ad)}" required></div>

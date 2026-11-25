@@ -397,3 +397,80 @@ select.qsel{display:block;margin-top:4px;padding:3px 6px;font-size:12px;height:a
 .fk-say b{font-size:14.5px}
 .fk-alt{display:flex;justify-content:space-between;align-items:center;gap:8px}
 @media (max-width:760px){.firma-grid{grid-template-columns:1fr}}
+
+/* ---------- Satış ekranı (POS) ---------- */
+.main.pos-main{padding-top:14px}
+.main.pos-main .topbar{display:none}
+.posek{display:grid;grid-template-columns:minmax(420px,46fr) minmax(0,54fr);grid-template-rows:minmax(0,1fr) 74px;grid-template-areas:"sol sag" "sol od";gap:14px;height:calc(100vh - 28px);min-height:600px}
+.posek .card{padding:14px;margin:0}
+.pos-sol{grid-area:sol;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
+.pos-sag{grid-area:sag;display:flex;flex-direction:column;gap:10px;min-height:0}
+.pos-odenis{grid-area:od;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.pos-axtar{display:flex;gap:8px}
+.pos-inp{flex:1;display:flex;align-items:center;gap:10px;border:2px solid var(--oak);border-radius:12px;padding:0 14px;background:#fff}
+.pos-inp .ico{width:22px;height:22px;color:var(--oak)}
+.pos-inp input{flex:1;border:0;outline:0;font:inherit;font-size:17px;padding:12px 0;background:transparent}
+.pos-mus{display:flex;align-items:center;gap:8px;background:#faf4ea;border-radius:12px;padding:8px 10px;position:relative}
+.pos-mchip{flex:1;min-width:0;display:flex;flex-direction:column}
+.pos-mchip b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pos-mchip small{font-size:12px;color:var(--muted)}
+.pos-sahe{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:8px}
+.pos-sahe label.f{font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.pos-sahe .in{padding:7px 9px;font-size:13.5px}
+.pos-tabs{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.pos-tabs button{position:relative;border:1px solid var(--line);background:#f6efe4;border-radius:10px;padding:9px 0;font:inherit;font-weight:600;cursor:pointer;color:var(--ink2)}
+.pos-tabs button.on{background:var(--oak);border-color:var(--oak);color:#fff}
+.pos-tabs button i{position:absolute;top:-6px;right:-4px;background:#c0392b;color:#fff;font-style:normal;font-size:10.5px;border-radius:9px;padding:1px 5px}
+.pos-sebet{flex:1 1 0;min-height:120px;overflow:auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.pos-bos{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:34px;gap:4px;padding:20px}
+.pos-bos div{font-size:15px;font-weight:600}.pos-bos small{font-size:12.5px}
+.pos-t{width:100%;border-collapse:collapse;font-size:14px}
+.pos-t td{padding:7px 4px;border-bottom:1px solid #f1e8db;vertical-align:middle}
+.pos-t tr.yeni{animation:posYeni 1s}
+@keyframes posYeni{from{background:#f6e2c4}to{background:transparent}}
+.pos-t .in{padding:5px 6px;font-size:13.5px}
+.pos-say{white-space:nowrap;width:112px}
+.pos-say button{width:28px;height:30px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;font-size:16px;line-height:1}
+.pos-say input{width:44px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:5px 2px;font:inherit;margin:0 3px}
+.pos-alt{display:flex;flex-direction:column;gap:8px}
+.pos-od{display:flex;flex-wrap:wrap;gap:6px}
+.pos-od .in{width:150px;padding:7px 9px}
+.pos-toplam{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#3d2c20,#2f2219);color:#f6e9d6;border-radius:14px;padding:12px 18px}
+.pos-toplam span{font-size:12px;letter-spacing:1px;font-weight:600;opacity:.8;display:block}
+.pos-toplam small{font-size:12.5px;opacity:.9}
+.pos-toplam small .pos{color:#9fe0a0}.pos-toplam small .neg{color:#ffb4a8}
+.pos-toplam b{font-family:var(--serif);font-size:34px;white-space:nowrap}
+.pos-kat{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;flex-shrink:0}
+.pos-kat button{white-space:nowrap;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;font:inherit;font-size:13.5px;cursor:pointer}
+.pos-kat button.on{background:#f6e2c4;border-color:var(--oak);font-weight:600}
+.pos-kat i{font-style:normal;color:var(--muted);font-size:12px;margin-left:3px}
+.pos-kafeller{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));grid-auto-rows:108px;gap:10px;align-content:start;padding:2px}
+.pkaf{display:flex;flex-direction:column;justify-content:space-between;text-align:left;border:1px solid var(--line);background:#fffdf9;border-radius:12px;padding:10px;cursor:pointer;font:inherit;box-shadow:0 1px 2px rgba(60,35,15,.06)}
+.pkaf:hover{border-color:var(--oak);background:#fff}
+.pkaf:active{transform:scale(.97)}
+.pk-ad{font-weight:600;font-size:13.5px;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.pk-alt{display:flex;justify-content:space-between;align-items:baseline;gap:4px}
+.pk-alt b{font-size:15px}
+.pk-alt i{font-style:normal;font-size:11.5px;color:var(--green)}.pk-alt i.yox{color:var(--red)}
+.pod{display:flex;align-items:center;gap:12px;border:0;border-radius:14px;padding:14px 16px;font:inherit;cursor:pointer;color:#fff;text-align:left;box-shadow:0 4px 12px rgba(60,35,15,.15)}
+.pod .ico{width:26px;height:26px;flex-shrink:0;background:rgba(255,255,255,.18);border-radius:8px;padding:5px}
+.pod span{font-size:17px;font-weight:700;display:flex;flex-direction:column;line-height:1.2}
+.pod small{font-size:11.5px;font-weight:500;opacity:.85}
+.pod.nagd{background:#2f7d5b}.pod.kart{background:#2f62b8}.pod.borc{background:#b36a2c}.pod.parca{background:#6b4fa3}
+.pod:active{transform:scale(.98)}
+.pos-mlist{max-height:320px;overflow:auto;margin-top:8px}
+.pos-mlist div{padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer}
+.pos-mlist div:hover{background:#faf4ea}
+.pos-bitdi{text-align:center}.pos-bitdi b{display:block;font-family:var(--serif);font-size:34px;margin:6px 0}
+.pos-qay{background:#e8f3ea;color:#24613f;border-radius:10px;padding:10px;font-size:16px}.pos-qay b{display:inline;font-size:22px}
+@media (max-width:1100px){.pos-sahe{grid-template-columns:1fr 1fr}}
+@media (max-width:760px){
+  .posek{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;grid-template-areas:"sol" "od" "sag";height:auto}
+  .pos-sol{overflow:visible}
+  .pos-sebet{max-height:none}
+  .pos-odenis{grid-template-columns:1fr 1fr}
+  .pos-kafeller{grid-template-columns:repeat(2,1fr);max-height:none;overflow:visible}
+  .pos-tabs{grid-template-columns:repeat(8,1fr);gap:4px}
+  .pos-toplam b{font-size:28px}
+  .pos-od .in{width:calc(50% - 3px)}
+}
