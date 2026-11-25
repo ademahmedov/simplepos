@@ -318,3 +318,18 @@ table.t tfoot td{border-top:2px solid #d6c4ab}
 }
 .card[style*="padding:0"] > .flt-bar{padding:0 16px}
 table.t td .btn.sm{vertical-align:middle;padding:4px 9px}table.t td .btn.sm .ico{width:15px;height:15px;margin:0}
+/* cədvəl axtarışı, say seçimi, səhifələmə */
+.tools .search{display:none}
+.flt-sol{display:flex;align-items:center}
+.flt-axtar{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e0d3c0;border-radius:9px;padding:0 10px;color:var(--muted);min-width:240px}
+.flt-axtar:focus-within{border-color:var(--oak);box-shadow:0 0 0 3px rgba(168,105,58,.15)}
+.flt-axtar input{border:0;outline:0;background:transparent;font:inherit;font-size:13.5px;padding:7px 0;width:100%;color:var(--ink)}
+.flt-say{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.flt-say select{font:inherit;font-size:13px;padding:5px 6px;border:1px solid #e0d3c0;border-radius:8px;background:#fff;color:var(--ink)}
+.flt-pager{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:10px 0 0;font-size:13px;flex-wrap:wrap}
+.flt-pager:empty{display:none}
+.flt-pager > div{display:flex;gap:4px;flex-wrap:wrap}
+.flt-pager .btn{min-width:32px;justify-content:center}
+.card[style*="padding:0"] > .flt-pager{padding:0 16px 12px}
+@media screen{ table.t tr.pg-gizli{display:none} }
+@media (max-width:760px){ .flt-axtar{min-width:0;flex:1} .flt-sol{flex:1 1 100%} }

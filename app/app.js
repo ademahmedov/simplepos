@@ -2268,7 +2268,11 @@ async function pageMuqavile(id) {
    SÜTUN FİLTRLƏRİ — bütün cədvəllərdə (ERP kimi): başlıq altında axtarış,
    az dəyərli sütunlarda siyahı, başlığa basanda sıralama, cəmlər yenilənir
    ===================================================================== */
-const FLT = {};   // səhifə + sütun → dəyər (cədvəl yenidən çəkiləndə qorunur)
+const FLT = {};
+const AXT = {};   // cədvəl axtarışı
+const PG = {};    // cari səhifə
+const SAY = () => { if (SAY._v == null) { let v = 20; try { const x = localStorage.getItem('cedvel_say'); if (x != null) v = +x; } catch (_) {} SAY._v = v; } return SAY._v; };
+const AXT_IKON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>';   // səhifə + sütun → dəyər (cədvəl yenidən çəkiləndə qorunur)
 const SRT = {};
 const azLow = t => String(t || '').toLocaleLowerCase('az').trim();
 function xanaMetni(td) { return (td ? td.innerText : '').replace(/\s+/g, ' ').trim(); }
@@ -2351,7 +2355,7 @@ function tabloFiltr(tb) {
     th.addEventListener('click', e => {
       if (e.target.closest('.flt-btn')) return;
       const cur = SRT[acar]; SRT[acar] = cur && cur.i === i ? (cur.d === 1 ? { i, d: -1 } : null) : { i, d: 1 };
-      sirala(); tetbiq();
+      PG[acar] = 0; sirala(); tetbiq();
     });
     btn.addEventListener('click', e => { e.stopPropagation(); const acik = document.getElementById('fpop'); const eyni = acik && acik.dataset.col === acar + i; fpBagla(); if (!eyni) popAc(i, btn); });
   });
@@ -2385,7 +2389,7 @@ function tabloFiltr(tb) {
     $('.fp-list', pop).addEventListener('change', hamisiYoxla);
     hamisiYoxla();
     $$('.fp-srt button', pop).forEach(b => b.onclick = () => { SRT[acar] = { i, d: +b.dataset.s }; sirala(); tetbiq(); fpBagla(); });
-    $('[data-t=sil]', pop).onclick = () => { delete st[i]; tetbiq(); fpBagla(); };
+    $('[data-t=sil]', pop).onclick = () => { delete st[i]; PG[acar] = 0; tetbiq(); fpBagla(); };
     $('[data-t=ok]', pop).onclick = () => {
       const t = q_.value.trim();
       if (t && ifade(t)) st[i] = { q: t };
@@ -2395,7 +2399,7 @@ function tabloFiltr(tb) {
         const hamisi = !t && sec.length === $$('.fp-list label', pop).length;
         if (hamisi) delete st[i]; else st[i] = { sec, q: '' };
       }
-      tetbiq(); fpBagla();
+      PG[acar] = 0; tetbiq(); fpBagla();
     };
     q_.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('[data-t=ok]', pop).click(); } };
     setTimeout(() => { document.addEventListener('mousedown', fpKenar, true); q_.focus(); }, 0);
@@ -2410,15 +2414,25 @@ function tabloFiltr(tb) {
   let host = tb.closest('.tbl-wrap') || tb;
   let bar = host.previousElementSibling && host.previousElementSibling.classList.contains('flt-bar') ? host.previousElementSibling : null;
   if (!bar) {
-    bar = document.createElement('div'); bar.className = 'flt-bar no-print'; bar.innerHTML = '<div class="flt-info"></div><div class="flt-tools"></div>';
+    bar = document.createElement('div'); bar.className = 'flt-bar no-print'; bar.innerHTML = '<div class="flt-sol"></div><div class="flt-info"></div><div class="flt-tools"></div>';
     // cədvəl grid/flex içindədirsə, alət sətri ayrıca sütun olmasın: ikisini bir qutuya yığ
     const d = getComputedStyle(host.parentElement).display;
     if (/grid|flex/.test(d)) { const w = document.createElement('div'); w.className = 'flt-qutu'; w.style.minWidth = '0'; host.parentElement.insertBefore(w, host); w.appendChild(host); }
     host.parentElement.insertBefore(bar, host);
   }
   const info = $('.flt-info', bar);
-  $('.flt-tools', bar).innerHTML = `<button type="button" class="btn sm" data-x="xls" title="Görünən sətirləri Excel faylına yüklə">${ico('down')}Excel</button><button type="button" class="btn sm" data-x="pdf" title="Yalnız bu cədvəli çap et və ya PDF kimi saxla">${ico('print')}PDF</button>`;
+  const coxSetir = rows().length > 10;
+  $('.flt-sol', bar).innerHTML = rows().length > 5 ? `<label class="flt-axtar">${AXT_IKON}<input type="search" placeholder="Cədvəldə axtar…" value="${esc(AXT[acar] || '')}"></label>` : '';
+  const ax = $('.flt-axtar input', bar);
+  if (ax) { let t0; ax.oninput = () => { clearTimeout(t0); t0 = setTimeout(() => { AXT[acar] = ax.value; PG[acar] = 0; tetbiq(); }, 150); }; }
+  $('.flt-tools', bar).innerHTML = (coxSetir ? `<label class="flt-say" title="Bir səhifədə neçə sətir göstərilsin">Göstər <select>${[10, 20, 50, 100, 200, 0].map(n => `<option value="${n}" ${n === SAY() ? 'selected' : ''}>${n || 'Hamısı'}</option>`).join('')}</select></label>` : '') + `<button type="button" class="btn sm" data-x="xls" title="Görünən sətirləri Excel faylına yüklə">${ico('down')}Excel</button><button type="button" class="btn sm" data-x="pdf" title="Yalnız bu cədvəli çap et və ya PDF kimi saxla">${ico('print')}PDF</button>`;
   $('[data-x=xls]', bar).onclick = () => cedveliExcel(tb);
+  const saySel = $('.flt-say select', bar);
+  if (saySel) saySel.onchange = () => { try { localStorage.setItem('cedvel_say', saySel.value); } catch (_) {} SAY._v = +saySel.value; PG[acar] = 0; tetbiq(); };
+  // səhifə keçidləri cədvəlin altında
+  let pager = host.nextElementSibling && host.nextElementSibling.classList.contains('flt-pager') ? host.nextElementSibling : null;
+  if (!pager) { pager = document.createElement('div'); pager.className = 'flt-pager no-print'; host.parentElement.insertBefore(pager, host.nextSibling); }
+  const metnler = new Map(rows().map(r => [r, azLow(r.innerText)]));
   $('[data-x=pdf]', bar).onclick = () => cedveliPdf(tb);
   function sirala() {
     $$('th.srt', thead).forEach(th => th.classList.remove('asc', 'desc'));
@@ -2430,16 +2444,32 @@ function tabloFiltr(tb) {
     const aktiv = Object.entries(st).filter(([, v]) => v && (v.q || v.sec));
     ths.forEach((th, i) => { const b = $('.flt-btn', th); if (b) b.classList.toggle('on', !!(st[i] && (st[i].q || st[i].sec))); });
     let gor = 0; const hamisi = rows();
-    hamisi.forEach(r => { const ok = aktiv.every(([i, v]) => kecir(r, +i, v)); r.style.display = ok ? '' : 'none'; if (ok) gor++; });
+    const axt = azLow(AXT[acar] || '').split(/\s+/).filter(Boolean);
+    const uygunlar = [];
+    hamisi.forEach(r => {
+      const ok = aktiv.every(([i, v]) => kecir(r, +i, v)) && axt.every(w => (metnler.get(r) || azLow(r.innerText)).includes(w));
+      r.style.display = ok ? '' : 'none'; r.classList.remove('pg-gizli'); if (ok) { gor++; uygunlar.push(r); }
+    });
+    // səhifələmə (filtrdən sonra, cari sıralama ilə)
+    const n = SAY(), sehSay = n ? Math.max(1, Math.ceil(gor / n)) : 1;
+    let pgi = Math.min(PG[acar] || 0, sehSay - 1); PG[acar] = pgi;
+    if (n) uygunlar.forEach((r, k) => { if (k < pgi * n || k >= (pgi + 1) * n) r.classList.add('pg-gizli'); });
+    if (n && gor > n) {
+      const dug = (i, t, on, dis) => `<button type="button" class="btn sm ${on ? 'primary' : ''}" data-pg="${i}" ${dis ? 'disabled' : ''}>${t}</button>`;
+      const nomreler = []; for (let i = 0; i < sehSay; i++) if (i === 0 || i === sehSay - 1 || Math.abs(i - pgi) <= 2) nomreler.push(i); else if (nomreler[nomreler.length - 1] !== '…') nomreler.push('…');
+      pager.innerHTML = `<span class="muted">${fmt(pgi * n + 1)}–${fmt(Math.min(gor, (pgi + 1) * n))} / ${fmt(gor)}</span>
+        <div>${dug(pgi - 1, '‹', false, pgi === 0)}${nomreler.map(i => i === '…' ? '<span class="muted" style="padding:0 4px">…</span>' : dug(i, i + 1, i === pgi)).join('')}${dug(pgi + 1, '›', false, pgi >= sehSay - 1)}</div>`;
+      $$('[data-pg]', pager).forEach(b => b.onclick = () => { PG[acar] = +b.dataset.pg; tetbiq(); host.scrollIntoView({ block: 'nearest' }); });
+    } else pager.innerHTML = '';
     if (foot) {
       cemSut.forEach((ok, i) => { if (!ok) return;
         const c = hamisi.filter(r => r.style.display !== 'none').reduce((a, r) => a + (ededle(xanaMetni(r.cells[i])) || 0), 0);
         const t = fCell[i]; const b = t.querySelector('b') || t; b.textContent = fmt(Math.round(c * 100) / 100) + (/₼/.test(t.innerText) ? ' ₼' : ''); });
-      foot.cells[0].innerHTML = aktiv.length ? `${gor} sətir (süzülüb)` : ilkFoot;
+      foot.cells[0].innerHTML = aktiv.length || axt.length ? `${gor} sətir (süzülüb)` : ilkFoot;
     }
-    info.innerHTML = aktiv.length ? `<span>${HUNI} ${gor} / ${hamisi.length} sətir göstərilir · ${aktiv.map(([i]) => esc(ths[+i].innerText.trim())).join(', ')}</span> <a href="#" class="flt-sil">Filtrləri təmizlə ✕</a>` : '';
+    info.innerHTML = aktiv.length || axt.length ? `<span>${HUNI} ${gor} / ${hamisi.length} sətir${aktiv.length ? ' · ' + aktiv.map(([i]) => esc(ths[+i].innerText.trim())).join(', ') : ''}</span> <a href="#" class="flt-sil">Təmizlə ✕</a>` : '';
     const sil = info.querySelector('.flt-sil');
-    if (sil) sil.onclick = e => { e.preventDefault(); Object.keys(st).forEach(k => delete st[k]); tetbiq(); };
+    if (sil) sil.onclick = e => { e.preventDefault(); Object.keys(st).forEach(k => delete st[k]); AXT[acar] = ''; if (ax) ax.value = ''; PG[acar] = 0; tetbiq(); };
   }
   sirala(); tetbiq();
 }
