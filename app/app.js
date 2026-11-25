@@ -2421,8 +2421,8 @@ function tabloFiltr(tb) {
     host.parentElement.insertBefore(bar, host);
   }
   const info = $('.flt-info', bar);
-  const coxSetir = rows().length > 10;
-  $('.flt-sol', bar).innerHTML = rows().length > 5 ? `<label class="flt-axtar">${AXT_IKON}<input type="search" placeholder="Cədvəldə axtar…" value="${esc(AXT[acar] || '')}"></label>` : '';
+  const coxSetir = true;
+  $('.flt-sol', bar).innerHTML = true ? `<label class="flt-axtar">${AXT_IKON}<input type="search" placeholder="Cədvəldə axtar…" value="${esc(AXT[acar] || '')}"></label>` : '';
   const ax = $('.flt-axtar input', bar);
   if (ax) { let t0; ax.oninput = () => { clearTimeout(t0); t0 = setTimeout(() => { AXT[acar] = ax.value; PG[acar] = 0; tetbiq(); }, 150); }; }
   $('.flt-tools', bar).innerHTML = (coxSetir ? `<label class="flt-say" title="Bir səhifədə neçə sətir göstərilsin">Göstər <select>${[10, 20, 50, 100, 200, 0].map(n => `<option value="${n}" ${n === SAY() ? 'selected' : ''}>${n || 'Hamısı'}</option>`).join('')}</select></label>` : '') + `<button type="button" class="btn sm" data-x="xls" title="Görünən sətirləri Excel faylına yüklə">${ico('down')}Excel</button><button type="button" class="btn sm" data-x="pdf" title="Yalnız bu cədvəli çap et və ya PDF kimi saxla">${ico('print')}PDF</button>`;
