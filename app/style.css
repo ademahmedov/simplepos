@@ -262,19 +262,31 @@ table.t tfoot td{background:#f8f1e6;border-top-color:var(--line)}
 .b-amber-bg{background:#f7ecd6;color:#6e4b12;border:1px solid #ead7ad}
 .login-card .seg button{padding:8px 10px}
 .side nav{overflow-y:auto;min-height:0;flex:1}
-/* sütun filtrləri */
-table.t thead tr.flt-row th{background:#fbf6ee;padding:5px 6px;position:static;border-bottom:1px solid var(--line)}
-table.t thead tr.flt-row input,table.t thead tr.flt-row select{width:100%;min-width:60px;box-sizing:border-box;font:inherit;font-size:12.5px;font-weight:400;padding:5px 7px;border:1px solid #e3d6c3;border-radius:7px;background:#fff;color:var(--ink)}
-table.t thead tr.flt-row input:focus,table.t thead tr.flt-row select:focus{outline:none;border-color:var(--oak);box-shadow:0 0 0 2px rgba(168,105,58,.15)}
+/* sütun filtrləri — Excel kimi başlıq düyməsi */
 table.t th.srt{cursor:pointer;user-select:none}
 table.t th.srt:hover{color:var(--oak2)}
 table.t th.srt.asc::after{content:" ▲";font-size:10px;color:var(--oak)}
 table.t th.srt.desc::after{content:" ▼";font-size:10px;color:var(--oak)}
-.flt-info{font-size:13px;color:var(--muted);padding:0 0 8px;display:flex;gap:12px;align-items:center}
+.flt-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:6px;vertical-align:middle;border:1px solid #dccbb2;border-radius:5px;background:#fff;color:#a8957f;cursor:pointer;padding:0}
+.flt-btn:hover{color:var(--oak2);border-color:var(--oak)}
+.flt-btn.on{background:var(--oak);border-color:var(--oak2);color:#fff}
+.flt-info{font-size:13px;color:var(--muted);padding:0 0 8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .flt-info:empty{display:none}
+.flt-info svg{vertical-align:-2px;color:var(--oak)}
 .flt-info .flt-sil{color:var(--red)}
-@media (max-width:760px){ table.t thead tr.flt-row th.hide-m{display:none} }
-table.t thead tr.flt-row th{position:sticky;top:39px;z-index:1}
+.fpop{position:absolute;z-index:200;background:#fffdf9;border:1px solid #dccbb2;border-radius:12px;box-shadow:0 10px 30px rgba(43,33,24,.22);padding:10px;font-size:13.5px}
+.fpop .fp-h{font-weight:700;color:var(--brand);margin:0 2px 8px}
+.fpop .fp-srt{display:flex;flex-direction:column;gap:2px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:8px}
+.fpop .fp-srt button{text-align:left;background:none;border:0;padding:6px 8px;border-radius:7px;cursor:pointer;font:inherit;color:var(--ink)}
+.fpop .fp-srt button:hover{background:#f6ead9}
+.fpop .fp-q{width:100%;box-sizing:border-box;font:inherit;padding:7px 9px;border:1px solid #e0d3c0;border-radius:8px;margin-bottom:6px}
+.fpop .fp-q:focus{outline:none;border-color:var(--oak);box-shadow:0 0 0 2px rgba(168,105,58,.15)}
+.fpop label{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px;cursor:pointer}
+.fpop label:hover{background:#f8f1e6}
+.fpop .fp-list{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin:4px 0 10px;padding:2px}
+.fpop .fp-list span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fpop .fp-list i{font-style:normal;color:var(--muted);font-size:12px}
+.fpop .fp-foot{display:flex;justify-content:flex-end;gap:8px}
 /* Excel kimi xətlər: bütün cədvəllərdə şaquli və üfüqi ayırıcılar */
 table.t{border-collapse:collapse}
 table.t th,table.t td{border:1px solid #e2d5c2}

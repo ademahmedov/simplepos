@@ -611,10 +611,10 @@ async function pageMusteriler(params) {
   const fil = params.get('f') || 'borclu';
   shell('musteriler', 'Müştərilər', '', `<input class="in search" id="axtar" placeholder="Axtar: ad, telefon, ünvan">
     <div class="seg" id="fil">${[['borclu','Borclular'],['gecikenler','Gecikənlər'],['hamisi','Hamısı']].map(([k, t]) => `<button data-f="${k}" class="${fil === k ? 'on' : ''}">${t}</button>`).join('')}</div>
-    ${canWrite() ? `<button class="btn primary" id="yeni">${ico('plus')}Yeni satış</button>` : ''}
+    ${canWrite() ? `<button class="btn primary" id="yeni">${ico('plus')}Yeni müştəri</button>` : ''}
     <button class="btn" onclick="window.print()">${ico('print')}Çap</button>`);
   $$('#fil button').forEach(b => b.onclick = () => location.hash = '#/musteriler?f=' + b.dataset.f);
-  if ($('#yeni')) $('#yeni').onclick = () => yeniSatis();
+  if ($('#yeni')) $('#yeni').onclick = () => yeniMusteri();
   const rows = S.cache.musAll || (S.cache.musAll = await all(() => sb.from('v_musteriler').select('*').order('id')));
   const draw = () => {
     const s = ($('#axtar').value || '').toLocaleLowerCase('az');
@@ -636,6 +636,39 @@ async function pageMusteriler(params) {
   };
   $('#axtar').oninput = draw;
   draw();
+}
+
+async function yeniMusteri() {
+  const mus = S.cache.musAll || await all(() => sb.from('v_musteriler').select('id,ad,telefon,unvan').order('id'));
+  const m = modal('Yeni müştəri', `<form id="nm">
+    <div class="field"><label class="f">Ad Soyad</label><input class="in" name="ad" required autocomplete="off"></div>
+    <div class="row2"><div class="field"><label class="f">Telefon</label><input class="in" name="tel" inputmode="tel" placeholder="050 000 00 00"></div>
+    <div class="field"><label class="f">Ünvan</label><input class="in" name="un"></div></div>
+    <div class="field"><label class="f">Qeyd (istəyə bağlı)</label><input class="in" name="q" placeholder="məs. iş yeri, zamin, şəxsiyyət vəsiqəsi"></div>
+    <div id="eyni" class="muted" style="font-size:13px"></div></form>`,
+    `<button class="btn" data-close>Ləğv et</button><button class="btn" id="oksatis">Yadda saxla və satış et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
+  const f = $('#nm', m);
+  const reqemler = t => String(t || '').replace(/\D/g, '').slice(-9);
+  const yoxla = () => {
+    const ad = azLow(f.ad.value), tel = reqemler(f.tel.value);
+    const ox = mus.filter(x => (ad.length > 3 && azLow(x.ad) === ad) || (tel.length >= 7 && reqemler(x.telefon) === tel)).slice(0, 3);
+    $('#eyni', m).innerHTML = ox.length ? `<span class="neg">Diqqət: oxşar müştəri artıq var —</span> ${ox.map(x => `<a href="#/musteri/${x.id}">${esc(x.ad)}${x.telefon ? ' (' + esc(x.telefon) + ')' : ''}</a>`).join(', ')}` : '';
+  };
+  f.ad.oninput = yoxla; f.tel.oninput = yoxla;
+  setTimeout(() => f.ad.focus(), 50);
+  const yaz = async sonra => {
+    if (!f.reportValidity()) return;
+    $$('.mf .btn', m).forEach(b => b.disabled = true);
+    try {
+      const nm = await q(sb.from('musteriler').insert({ ad: f.ad.value.trim(), telefon: f.tel.value.trim() || null, unvan: f.un.value.trim() || null, qeyd: f.q.value.trim() || null }).select().single());
+      S.cache = {}; closeModal(); toast('Müştəri əlavə olundu: ' + nm.ad);
+      location.hash = '#/musteri/' + nm.id;
+      if (sonra) setTimeout(() => yeniSatis(nm.id), 400);
+    } catch (er) { fail(er); $$('.mf .btn', m).forEach(b => b.disabled = false); }
+  };
+  $('#ok', m).onclick = () => yaz(false);
+  $('#oksatis', m).onclick = () => yaz(true);
+  f.onsubmit = e => { e.preventDefault(); yaz(false); };
 }
 
 async function pageMusteri(id) {
@@ -1954,6 +1987,11 @@ function uygun(deyer, f) {
   }
   return azLow(deyer).includes(azLow(f));
 }
+const HUNI = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/></svg>';
+function fpBagla() { const x = document.getElementById('fpop'); if (x) x.remove(); document.removeEventListener('mousedown', fpKenar, true); }
+function fpKenar(e) { const x = document.getElementById('fpop'); if (x && !x.contains(e.target) && !e.target.closest('.flt-btn')) fpBagla(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fpBagla(); });
+window.addEventListener('hashchange', fpBagla);
 function tabloFiltr(tb) {
   tb.dataset.flt = '1';
   const thead = tb.tHead, body = tb.tBodies[0];
@@ -1963,29 +2001,71 @@ function tabloFiltr(tb) {
   if (!rows().length || tb.closest('.cek,.modal')) return;
   const acar = location.hash.split('?')[0] + '|' + ths.map(th => th.innerText.trim()).join('/');
   const st = FLT[acar] || (FLT[acar] = {});
-  const fr = thead.insertRow(-1); fr.className = 'flt-row no-print';
+  const BOS = '(Boş)';
+  const deyerAl = (r, i) => xanaMetni(r.cells[i]) || BOS;
+  const kecir = (r, i, f) => (!f.q || uygun(xanaMetni(r.cells[i]), f.q)) && (!f.sec || f.sec.includes(deyerAl(r, i)));
+  const sirKey = t => { const n = ededle(t); if (n != null) return [0, n]; const d = tarixle(t); return d ? [1, d] : [2, azLow(t)]; };
+  const muqayise = (x, y) => x[0] !== y[0] ? x[0] - y[0] : (x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0);
   ths.forEach((th, i) => {
-    const c = document.createElement('th'); c.className = th.className.replace(/\bn\b/, '') ; fr.appendChild(c);
     if (!th.innerText.trim()) return;
-    const vals = [...new Set(rows().map(r => xanaMetni(r.cells[i])).filter(Boolean))];
-    const reqem = vals.length && vals.every(v => ededle(v) != null);
-    if (!reqem && vals.length > 1 && vals.length <= 12 && rows().length > vals.length) {
-      c.innerHTML = `<select data-fi="${i}"><option value="">Hamısı</option>${vals.sort((a, b) => a.localeCompare(b, 'az')).map(v => `<option value="=${esc(v)}">${esc(v.length > 28 ? v.slice(0, 26) + '…' : v)}</option>`).join('')}</select>`;
-    } else {
-      c.innerHTML = `<input data-fi="${i}" placeholder="${reqem ? '>100, 50-200' : 'süz…'}" title="${reqem ? 'Rəqəm: >1000, <500, 100-500 və ya sadəcə yazın' : 'Mətnin bir hissəsini yazın'}">`;
-    }
-    const el = c.firstChild; if (st[i]) el.value = st[i];
-    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { st[i] = el.value; tetbiq(); });
-    el.addEventListener('click', e => e.stopPropagation());
     th.classList.add('srt'); th.title = 'Sıralamaq üçün basın';
-    th.addEventListener('click', () => {
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'flt-btn no-print'; btn.title = 'Filtr'; btn.innerHTML = HUNI;
+    th.appendChild(btn);
+    th.addEventListener('click', e => {
+      if (e.target.closest('.flt-btn')) return;
       const cur = SRT[acar]; SRT[acar] = cur && cur.i === i ? (cur.d === 1 ? { i, d: -1 } : null) : { i, d: 1 };
       sirala(); tetbiq();
     });
+    btn.addEventListener('click', e => { e.stopPropagation(); const acik = document.getElementById('fpop'); const eyni = acik && acik.dataset.col === acar + i; fpBagla(); if (!eyni) popAc(i, btn); });
   });
+  function popAc(i, btn) {
+    const f = st[i] || {};
+    // Excel kimi: siyahıda digər sütunların filtrindən keçən sətirlərin dəyərləri
+    const diger = rows().filter(r => Object.entries(st).every(([k, v]) => +k === i || !v || kecir(r, +k, v)));
+    const say = new Map(); diger.forEach(r => { const v = deyerAl(r, i); say.set(v, (say.get(v) || 0) + 1); });
+    const vals = [...say.keys()].sort((x, y) => x === BOS ? 1 : y === BOS ? -1 : muqayise(sirKey(x), sirKey(y)));
+    const reqem = vals.some(v => v !== BOS) && vals.every(v => v === BOS || ededle(v) != null);
+    const pop = document.createElement('div'); pop.id = 'fpop'; pop.className = 'fpop'; pop.dataset.col = acar + i;
+    pop.innerHTML = `<div class="fp-h">${esc(ths[i].innerText.trim())}</div>
+      <div class="fp-srt"><button type="button" data-s="1">${reqem ? 'Kiçikdən böyüyə' : 'A → Z'} ▲</button><button type="button" data-s="-1">${reqem ? 'Böyükdən kiçiyə' : 'Z → A'} ▼</button></div>
+      <input class="fp-q" placeholder="${reqem ? 'Axtar və ya >100, <50, 100-500' : 'Axtar…'}" value="${esc(f.q || '')}">
+      <label class="fp-all"><input type="checkbox"> <b>(Hamısını seç)</b></label>
+      <div class="fp-list">${vals.slice(0, 1000).map(v => `<label><input type="checkbox" value="${esc(v)}" ${!f.sec || f.sec.includes(v) ? 'checked' : ''}> <span>${esc(v)}</span><i>${say.get(v)}</i></label>`).join('')}
+        ${vals.length > 1000 ? `<div class="muted" style="padding:6px">… ${vals.length - 1000} dəyər daha — axtarışla daraldın</div>` : ''}</div>
+      <div class="fp-foot"><button type="button" class="btn sm" data-t="sil">Təmizlə</button><button type="button" class="btn sm primary" data-t="ok">Tətbiq et</button></div>`;
+    document.body.appendChild(pop);
+    const r = btn.getBoundingClientRect(), w = Math.min(290, window.innerWidth - 16);
+    pop.style.width = w + 'px';
+    pop.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)) + window.scrollX + 'px';
+    pop.style.top = r.bottom + 6 + window.scrollY + 'px';
+    const q_ = $('.fp-q', pop), all_ = $('.fp-all input', pop), cbs = () => $$('.fp-list label', pop).filter(l => l.style.display !== 'none').map(l => $('input', l));
+    const hamisiYoxla = () => { const c = cbs(); all_.checked = c.length && c.every(x => x.checked); all_.indeterminate = !all_.checked && c.some(x => x.checked); };
+    const ifade = t => /^\s*(>=|<=|>|<)\s*-?[\d.,]+\s*$|^\s*-?[\d.,]+\s*-\s*-?[\d.,]+\s*$/.test(t);
+    q_.oninput = () => { const t = q_.value; const ex = ifade(t);
+      $$('.fp-list label', pop).forEach(l => { const v = $('input', l).value; const ok = !t || (ex ? uygun(v === BOS ? '' : v, t) : azLow(v).includes(azLow(t))); l.style.display = ok ? '' : 'none'; if (t) $('input', l).checked = ok; });
+      hamisiYoxla(); };
+    all_.onchange = () => { cbs().forEach(x => x.checked = all_.checked); hamisiYoxla(); };
+    $('.fp-list', pop).addEventListener('change', hamisiYoxla);
+    hamisiYoxla();
+    $$('.fp-srt button', pop).forEach(b => b.onclick = () => { SRT[acar] = { i, d: +b.dataset.s }; sirala(); tetbiq(); fpBagla(); });
+    $('[data-t=sil]', pop).onclick = () => { delete st[i]; tetbiq(); fpBagla(); };
+    $('[data-t=ok]', pop).onclick = () => {
+      const t = q_.value.trim();
+      if (t && ifade(t)) st[i] = { q: t };
+      else {
+        const gorunen = $$('.fp-list label', pop).filter(l => l.style.display !== 'none').map(l => $('input', l));
+        const sec = gorunen.filter(x => x.checked).map(x => x.value);
+        const hamisi = !t && sec.length === $$('.fp-list label', pop).length;
+        if (hamisi) delete st[i]; else st[i] = { sec, q: '' };
+      }
+      tetbiq(); fpBagla();
+    };
+    q_.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('[data-t=ok]', pop).click(); } };
+    setTimeout(() => { document.addEventListener('mousedown', fpKenar, true); q_.focus(); }, 0);
+  }
   // cəm sətri: hansı sütunlar yenilənə bilər
   const foot = tb.tFoot && tb.tFoot.rows[0] ? tb.tFoot.rows[0] : null;
-  const fCell = [];   // sütun nömrəsi → cəm xanası (colspan nəzərə alınır)
+  const fCell = [];
   if (foot) { let k = 0; Array.from(foot.cells).forEach(c => { if (c.colSpan === 1) fCell[k] = c; k += c.colSpan; }); }
   const cemSut = foot ? ths.map((th, i) => !!fCell[i] && i > 0 && fCell[i].classList.contains('n') && ededle(xanaMetni(fCell[i])) != null
     && rows().every(r => !xanaMetni(r.cells[i]) || ededle(xanaMetni(r.cells[i])) != null)) : [];
@@ -1997,25 +2077,22 @@ function tabloFiltr(tb) {
     $$('th.srt', thead).forEach(th => th.classList.remove('asc', 'desc'));
     const sr = SRT[acar]; if (!sr) return;
     ths[sr.i].classList.add(sr.d === 1 ? 'asc' : 'desc');
-    const key = r => { const t = xanaMetni(r.cells[sr.i]); const n = ededle(t); if (n != null) return [0, n]; const d = tarixle(t); return d ? [1, d] : [2, azLow(t)]; };
-    const arr = rows().map(r => [key(r), r]);
-    arr.sort((a, b) => { const x = a[0], y = b[0]; if (x[0] !== y[0]) return (x[0] - y[0]) * sr.d;
-      return (x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0) * sr.d; });
-    arr.forEach(([, r]) => body.appendChild(r));
+    rows().map(r => [sirKey(xanaMetni(r.cells[sr.i])), r]).sort((a, b) => muqayise(a[0], b[0]) * sr.d).forEach(([, r]) => body.appendChild(r));
   }
   function tetbiq() {
-    const aktiv = Object.entries(st).filter(([, v]) => v);
+    const aktiv = Object.entries(st).filter(([, v]) => v && (v.q || v.sec));
+    ths.forEach((th, i) => { const b = $('.flt-btn', th); if (b) b.classList.toggle('on', !!(st[i] && (st[i].q || st[i].sec))); });
     let gor = 0; const hamisi = rows();
-    hamisi.forEach(r => { const ok = aktiv.every(([i, v]) => uygun(xanaMetni(r.cells[+i]), v)); r.style.display = ok ? '' : 'none'; if (ok) gor++; });
+    hamisi.forEach(r => { const ok = aktiv.every(([i, v]) => kecir(r, +i, v)); r.style.display = ok ? '' : 'none'; if (ok) gor++; });
     if (foot) {
       cemSut.forEach((ok, i) => { if (!ok) return;
         const c = hamisi.filter(r => r.style.display !== 'none').reduce((a, r) => a + (ededle(xanaMetni(r.cells[i])) || 0), 0);
         const t = fCell[i]; const b = t.querySelector('b') || t; b.textContent = fmt(Math.round(c * 100) / 100) + (/₼/.test(t.innerText) ? ' ₼' : ''); });
       foot.cells[0].innerHTML = aktiv.length ? `${gor} sətir (süzülüb)` : ilkFoot;
     }
-    info.innerHTML = aktiv.length ? `<span>${gor} / ${hamisi.length} sətir göstərilir</span> <a href="#" class="flt-sil">Filtrləri təmizlə ✕</a>` : '';
+    info.innerHTML = aktiv.length ? `<span>${HUNI} ${gor} / ${hamisi.length} sətir göstərilir · ${aktiv.map(([i]) => esc(ths[+i].innerText.trim())).join(', ')}</span> <a href="#" class="flt-sil">Filtrləri təmizlə ✕</a>` : '';
     const sil = info.querySelector('.flt-sil');
-    if (sil) sil.onclick = e => { e.preventDefault(); Object.keys(st).forEach(k => delete st[k]); $$('[data-fi]', fr).forEach(x => x.value = ''); tetbiq(); };
+    if (sil) sil.onclick = e => { e.preventDefault(); Object.keys(st).forEach(k => delete st[k]); tetbiq(); };
   }
   sirala(); tetbiq();
 }
