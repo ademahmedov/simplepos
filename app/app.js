@@ -74,6 +74,7 @@ const ICON = {
   box: '<path d="M20 7l-8-4-8 4v10l8 4 8-4V7zm-8-1.76L16.76 7.5 12 9.88 7.24 7.5 12 5.24zM6 9.12l5 2.5v6.76l-5-2.5V9.12zm7 9.26v-6.76l5-2.5v6.76l-5 2.5z"/>',
   panel: '<path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>',
   sale: '<path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45C4.52 15.37 5.48 17 7 17h12v-2H7l1.1-2h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>',
+  bina: '<path d="M3 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5h5a1 1 0 0 1 1 1v11h-7v-4h-4v4H3zm3-15v2h2V6H6zm4 0v2h2V6h-2zm-4 4v2h2v-2H6zm4 0v2h2v-2h-2zm-4 4v2h2v-2H6zm11-2v2h2v-2h-2zm0 4v2h2v-2h-2z"/>',
   users: '<path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',
   exp: '<path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>',
   worker: '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
@@ -81,7 +82,18 @@ const ICON = {
   plus: '<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>',
   print: '<path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>'
 };
-const LOGO = `<svg class="logo-ico" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 22v-5a5 5 0 0 1 5-5h18a5 5 0 0 1 5 5v5"/><path d="M6 24a4 4 0 0 1 8 0v4h20v-4a4 4 0 0 1 8 0v10H6z"/><path d="M10 34v4M38 34v4"/></svg>`;
+const LOGO = `<svg class="logo-ico" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21v17h30V21"/><path d="M6 13l4-7h28l4 7v2a5 5 0 0 1-9 3 5 5 0 0 1-9 0 5 5 0 0 1-9 0 5 5 0 0 1-9-3z"/><path d="M20 38v-9h8v9"/></svg>`;
+// Dükanın sahəsi: nümunə yazılar ona uyğun dəyişir
+const SAHELER = [['mebel', 'Mebel'], ['elektronika', 'Elektronika və məişət texnikası'], ['telefon', 'Telefon və aksesuar'], ['geyim', 'Geyim və ayaqqabı'],
+  ['tikinti', 'Tikinti materialları'], ['xalca', 'Xalça və ev tekstili'], ['zinet', 'Zərgərlik'], ['market', 'Market və ərzaq'], ['diger', 'Digər']];
+const saheAd = k => (SAHELER.find(x => x[0] === k) || SAHELER[SAHELER.length - 1])[1];
+const saheOpt = sec => SAHELER.map(([k, t]) => `<option value="${k}" ${k === sec ? 'selected' : ''}>${t}</option>`).join('');
+const NUMUNE = {
+  mebel: ['Künc divan Milano', 'Divanlar', 'Mətbəx mebeli', 'Mətbəx dəsti 2.4 m'], elektronika: ['Soyuducu Samsung RB34', 'Soyuducular', 'Paltaryuyan maşın', 'Televizor LG 55"'],
+  telefon: ['iPhone 15 128 GB', 'Smartfonlar', 'Telefon', 'Samsung Galaxy A55'], geyim: ['Kişi kostyumu', 'Kostyumlar', 'Paltar', 'Qadın paltosu'],
+  tikinti: ['Sement M400 (50 kq)', 'Sement', 'Tikinti materialı', 'Laminat 8 mm (m²)'], xalca: ['Xalça 2×3 m', 'Xalçalar', 'Xalça', 'Yorğan-döşək dəsti'],
+  zinet: ['Qızıl üzük 585', 'Üzüklər', 'Qızıl əşya', 'Qızıl sırğa'], market: ['Un 25 kq', 'Ərzaq', 'Ərzaq', 'Şəkər 10 kq'], diger: ['Məhsulun adı', 'Kateqoriya', 'Mal', 'Başqa məhsul'] };
+const numune = () => NUMUNE[S.magaza && S.magaza.sahe] || NUMUNE.diger;
 const ico = k => `<svg class="ico" viewBox="0 0 24 24" fill="currentColor">${ICON[k]}</svg>`;
 
 /* ---------------- modal ---------------- */
@@ -138,10 +150,12 @@ function loginView(msg, rejim) {
     <button class="btn primary" style="width:100%;justify-content:center;padding:11px">Şifrəni yadda saxla</button>`;
   else form = `
     <div class="seg" style="display:flex;margin-bottom:12px" id="nv">
-      <button type="button" data-nv="yeni" class="on" style="flex:1">Yeni dükan açıram</button><button type="button" data-nv="kod" style="flex:1">Dəvət kodum var</button></div>
+      <button type="button" data-nv="yeni" class="on" style="flex:1">Dükanım var</button><button type="button" data-nv="muh" style="flex:1">Mühasibəm</button><button type="button" data-nv="kod" style="flex:1">Dəvət kodu</button></div>
     <div id="yenidukan">
       <div class="field"><label class="f">Dükanın adı</label><input class="in" name="mg" placeholder="məs. Ulduz Mebel"></div>
-      <div class="field"><label class="f">Telefon</label><input class="in" name="tel" type="tel" placeholder="050 000 00 00"></div></div>
+      <div class="field"><label class="f">Sahə</label><select class="in" name="sahe">${saheOpt('mebel')}</select></div></div>
+    <div id="muhinfo" class="muted" style="display:none;font-size:13px;background:#faf4ea;border-radius:10px;padding:10px 12px;margin-bottom:12px">Bir hesabla bir neçə firmanın uçotunu aparacaqsınız. Qeydiyyatdan sonra firmalarınızı əlavə edin — hər yeni firma ${esc(sinaq)} gün pulsuz işləyir.</div>
+    <div class="field" id="telsah"><label class="f">Telefon</label><input class="in" name="tel" type="tel" placeholder="050 000 00 00"></div>
     <div id="kodlu" style="display:none">
       <div class="field"><label class="f">Dəvət kodu</label><input class="in" name="kod" maxlength="6" style="text-transform:uppercase;letter-spacing:3px;font-weight:600" placeholder="ABC123">
         <div class="cell-sub" id="kodinfo" style="margin-top:4px">Kodu dükanın mühasibindən alın.</div></div></div>
@@ -151,7 +165,7 @@ function loginView(msg, rejim) {
     <button class="btn primary" style="width:100%;justify-content:center;padding:11px">Qeydiyyatdan keç</button>
     <p class="muted" style="font-size:12.5px;text-align:center;margin:10px 0 0" id="sinaqinfo">Yeni dükan ${esc(sinaq)} gün pulsuz işləyir.${S.sistem.qiymet ? ' Sonra: ' + esc(S.sistem.qiymet) + '.' : ''}</p>`;
   app.innerHTML = `<div class="login-wrap"><form class="login-card" id="lf">
-    <div class="login-logo">${LOGO}</div><h1>${esc(CFG.FIRMA_ADI)}</h1><p>Mebel satışı və kredit uçotu</p>
+    <div class="login-logo">${LOGO}</div><h1>${esc(CFG.FIRMA_ADI)}</h1><p>Nisyə və kredit satışının uçotu</p>
     ${rejim === 'yeni' ? '' : tabs}${form}
     <div class="err">${esc(msg || '')}</div></form></div>`;
   const f = $('#lf');
@@ -164,8 +178,10 @@ function loginView(msg, rejim) {
     $$('[data-nv]', f).forEach(b => b.onclick = () => {
       nv = b.dataset.nv; $$('[data-nv]', f).forEach(x => x.classList.toggle('on', x === b));
       $('#yenidukan').style.display = nv === 'yeni' ? '' : 'none'; $('#kodlu').style.display = nv === 'kod' ? '' : 'none';
+      $('#muhinfo').style.display = nv === 'muh' ? '' : 'none'; $('#telsah').style.display = nv === 'kod' ? 'none' : '';
       $('#sinaqinfo').style.display = nv === 'yeni' ? '' : 'none';
     });
+    if (location.hash === '#muhasib') $('[data-nv="muh"]', f).click();
     let kodAd = null;
     f.kod.oninput = async () => {
       const k = f.kod.value.trim().toUpperCase(); kodAd = null;
@@ -176,7 +192,8 @@ function loginView(msg, rejim) {
     f.onsubmit = async e => {
       e.preventDefault();
       const data = { ad: f.ad.value.trim() };
-      if (nv === 'yeni') { if (!f.mg.value.trim()) return err('Dükanın adını yazın.'); data.magaza_adi = f.mg.value.trim(); data.telefon = f.tel.value.trim(); }
+      if (nv === 'yeni') { if (!f.mg.value.trim()) return err('Dükanın adını yazın.'); data.magaza_adi = f.mg.value.trim(); data.telefon = f.tel.value.trim(); data.sahe = f.sahe.value; }
+      else if (nv === 'muh') { data.hesab = 'muhasib'; data.telefon = f.tel.value.trim(); }
       else { if (!kodAd) return err('Düzgün dəvət kodu yazın.'); data.devet_kodu = f.kod.value.trim().toUpperCase(); }
       btn().disabled = true;
       const { data: r, error } = await sb.auth.signUp({ email: f.e.value.trim(), password: f.p.value, options: { data, emailRedirectTo: SAYT() } });
@@ -219,26 +236,30 @@ async function start() {
   await sistemOxu();
   const { data } = await sb.auth.getSession();
   const ses = data && data.session;
-  if (!ses) return loginView('', location.hash === '#qeyd' ? 'qeyd' : 'giris');
+  if (!ses) return loginView('', /^#(qeyd|muhasib)$/.test(location.hash) ? 'qeyd' : 'giris');
   S.user = ses.user; S.cache = {};
-  if (location.hash === '#qeyd') location.hash = '';
+  if (/^#(qeyd|muhasib)$/.test(location.hash)) location.hash = '';
   try {
-    const [me, adm] = await Promise.all([
-      q(sb.from('uzvler').select('rol,ad,magaza_id').eq('user_id', S.user.id).maybeSingle()),
+    const [uz, adm, pr] = await Promise.all([
+      q(sb.from('uzvler').select('rol,ad,magaza_id,secili,yaradildi').eq('user_id', S.user.id)),
       q(sb.from('adminler').select('user_id').eq('user_id', S.user.id).maybeSingle()),
+      q(sb.from('profiller').select('*').eq('user_id', S.user.id).maybeSingle()).catch(() => null),
     ]);
-    S.admin = !!adm;
-    if (!me && !S.admin) { await sb.auth.signOut(); return loginView('Bu hesab heç bir dükana bağlı deyil. Qeydiyyatdan yenidən keçin və ya dükanınızın mühasibinə müraciət edin.'); }
-    if (me && me.rol === 'bloklu' && !S.admin) { await sb.auth.signOut(); return loginView('Bu hesab bloklanıb. Dükanınızın mühasibinə müraciət edin.'); }
-    if (me && me.rol !== 'bloklu') {
+    S.admin = !!adm; S.profil = pr; S.muhasibHesab = !!(pr && pr.nov === 'muhasib');
+    const aktivUz = uz.filter(x => x.rol !== 'bloklu').sort((a, b) => (b.secili - a.secili) || String(a.yaradildi).localeCompare(String(b.yaradildi)) || a.magaza_id - b.magaza_id);
+    if (!aktivUz.length && uz.length && !S.admin && !S.muhasibHesab) { await sb.auth.signOut(); return loginView('Bu hesab bloklanıb. Dükanınızın mühasibinə müraciət edin.'); }
+    S.coxFirma = S.muhasibHesab || aktivUz.length > 1;
+    S.firmalar = S.coxFirma ? await q(sb.rpc('uzvluklerim')).catch(() => []) : [];
+    const me = aktivUz[0];
+    if (me) {
       S.rol = me.rol; S.ad = me.ad || S.user.email;
       S.magaza = await q(sb.from('magazalar').select('*').eq('id', me.magaza_id).single());
       S.qalan = gunFerqi(S.magaza.abune_bitir);
       S.aktiv = !S.magaza.dayandirilib && S.qalan >= 0;
-    } else { S.rol = null; S.magaza = null; S.aktiv = false; S.ad = S.user.email; }
+    } else { S.rol = null; S.magaza = null; S.aktiv = false; S.ad = (pr && pr.ad) || S.user.email; }
   } catch (e) { return loginView('Baza ilə əlaqə alınmadı: ' + e.message); }
   document.title = firmaAdi() + ' · ' + CFG.FIRMA_ADI;
-  if (!S.magaza) location.hash = '#/admin';
+  if (!S.magaza) location.hash = S.admin && !S.muhasibHesab ? '#/admin' : '#/firmalar';
   else if (S.rol === 'kuryer') location.hash = '#/yigim';
   else if (!location.hash || /access_token|type=/.test(location.hash)) location.hash = window.innerWidth <= 760 ? '#/menyu' : '#/panel';
   route();
@@ -268,17 +289,20 @@ const NAVBOLME = [['Satış', ['panel', 'satislar', 'musteriler', 'mehsullar']],
 function shell(active, title, sub, tools, body) {
   const navA = (S.rol === 'kuryer' ? NAV.filter(n => n[0] === 'yigim') : NAV).map(([k, t, i]) => `<a href="#/${k}" class="${active === k ? 'active' : ''}">${ico(i)}${t}</a>`).join('');
   app.innerHTML = `<div class="shell">
-   <aside class="side"><div class="logo">${LOGO}<div><span>${esc(CFG.FIRMA_ADI)}</span><small>${S.magaza ? esc(S.magaza.ad) : 'Admin'}</small></div></div>
-    <nav>${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? '<div class="sec">Dükan</div>' : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? `${navA.split('<a href="#/rasxodlar"')[0]}<div class="sec">Xərclər və işçilər</div><a href="#/rasxodlar"${navA.split('<a href="#/rasxodlar"')[1].split('<a href="#/kassa"')[0]}<div class="sec">Kassa və hesabatlar</div><a href="#/kassa"${navA.split('<a href="#/kassa"')[1].split('<a href="#/jurnal"')[0]}<div class="sec">İdarəetmə</div><a href="#/jurnal"${navA.split('<a href="#/jurnal"')[1]}` : ''}</nav>
+   <aside class="side"><div class="logo">${LOGO}<div><span>${esc(CFG.FIRMA_ADI)}</span><small>${S.magaza ? esc(S.magaza.ad) : S.admin ? 'Admin' : ''}</small></div></div>
+    ${S.coxFirma && S.firmalar.length > 1 ? `<div class="firma-sec"><select id="fsec" title="Firmanı dəyiş">${S.firmalar.map(x => `<option value="${x.id}" ${S.magaza && x.id === S.magaza.id ? 'selected' : ''}>${esc(x.ad)}</option>`).join('')}</select></div>` : ''}
+    <nav>${S.coxFirma || (!S.magaza && !S.admin) ? `<a href="#/firmalar" class="${active === 'firmalar' ? 'active' : ''}">${ico('bina')}${S.muhasibHesab ? 'Firmalarım' : 'Dükanlarım'}</a>` : ''}${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? '<div class="sec">Dükan</div>' : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? `${navA.split('<a href="#/rasxodlar"')[0]}<div class="sec">Xərclər və işçilər</div><a href="#/rasxodlar"${navA.split('<a href="#/rasxodlar"')[1].split('<a href="#/kassa"')[0]}<div class="sec">Kassa və hesabatlar</div><a href="#/kassa"${navA.split('<a href="#/kassa"')[1].split('<a href="#/jurnal"')[0]}<div class="sec">İdarəetmə</div><a href="#/jurnal"${navA.split('<a href="#/jurnal"')[1]}` : ''}</nav>
     <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'sahibkar' ? 'Yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
-   <div class="mobile-bar"><button id="geri" class="mb-geri" ${active === 'menyu' || (S.rol === 'kuryer' && active === 'yigim') ? 'style="visibility:hidden"' : ''}>‹ Geri</button><b>${LOGO}${esc(firmaAdi())}</b><button id="out2">Çıxış</button></div>
+   <div class="mobile-bar"><button id="geri" class="mb-geri" ${active === 'menyu' || (S.rol === 'kuryer' && active === 'yigim') ? 'style="visibility:hidden"' : ''}>‹ Geri</button><b ${S.coxFirma ? 'id="mbfirma" style="cursor:pointer"' : ''}>${LOGO}${esc(firmaAdi())}${S.coxFirma ? ' ▾' : ''}</b><button id="out2">Çıxış</button></div>
    <main class="main">${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
    <div id="page">${body || '<div class="empty"><div class="spinner" style="margin:auto"></div></div>'}</div></main>
    <nav class="bottom-nav" ${S.magaza && S.rol !== 'kuryer' ? '' : 'style="display:none"'}><a href="#/menyu" class="${active === 'menyu' ? 'active' : ''}">${ico('grid')}Menyu</a></nav>
   </div>`;
-  const out = async () => { await sb.auth.signOut(); S.cache = {}; location.hash = ''; loginView(); };
+  const out = async () => { await sb.auth.signOut(); S.user = null; S.magaza = null; S.cache = {}; YOL.length = 0; history.replaceState(null, '', SAYT()); loginView(); };
   $('#out').onclick = out; $('#out2').onclick = out;
   $('#geri').onclick = geri;
+  if ($('#fsec')) $('#fsec').onchange = e => firmaSec(+e.target.value);
+  if ($('#mbfirma')) $('#mbfirma').onclick = () => { location.hash = '#/firmalar'; };
 }
 // Telefon "Geri" düyməsi: proqram daxilində gəzilən səhifələrin siyahısı
 const YOL = [];
@@ -292,17 +316,88 @@ function route() {
   const [path, qs] = h.split('?');
   const params = new URLSearchParams(qs || '');
   const [p, id] = path.split('/');
-  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id), etiket: () => pageEtiket(),
+  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), firmalar: () => pageFirmalar(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id), etiket: () => pageEtiket(),
     rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
     kassa: () => pageKassa(), sifarisler: () => pageSifarisler(params), hesabat: () => pageHesabat(params),
     teqvim: () => pageTeqvim(params), menfeet: () => pageMenfeet(), jurnal: () => pageJurnal(params), ayarlar: () => pageAyarlar(),
     qebz: () => pageQebz(id), muqavile: () => pageMuqavile(id), admin: () => pageAdmin() }[p] || pagePanel;
-  if (!S.magaza && p !== 'admin') { location.hash = '#/admin'; return; }
-  if (S.rol === 'kuryer' && !['yigim', 'qebz', 'menyu'].includes(p)) { location.hash = '#/yigim'; return; }
+  if (!S.magaza && !['admin', 'firmalar'].includes(p)) { location.hash = S.admin && !S.muhasibHesab ? '#/admin' : '#/firmalar'; return; }
+  if (S.rol === 'kuryer' && !['yigim', 'qebz', 'menyu', 'firmalar'].includes(p)) { location.hash = '#/yigim'; return; }
   if (p === 'admin' && !S.admin) { location.hash = '#/panel'; return; }
   Promise.resolve(run()).catch(fail);
 }
 window.addEventListener('hashchange', route);
+
+/* =====================================================================
+   FİRMALARIM — bir hesabda bir neçə dükan (mühasib rejimi)
+   ===================================================================== */
+async function firmaSec(id) {
+  if (S.magaza && S.magaza.id === id) { location.hash = window.innerWidth <= 760 ? '#/menyu' : '#/panel'; return; }
+  try { await q(sb.rpc('magaza_sec', { m: id })); } catch (er) { return fail(er); }
+  S.cache = {}; YOL.length = 0; history.replaceState(null, '', SAYT()); await start();
+}
+async function pageFirmalar() {
+  const bas = S.muhasibHesab ? 'Firmalarım' : 'Dükanlarım';
+  shell('firmalar', bas, '', `<input class="in" id="fax" placeholder="Axtar: firma adı" style="width:200px">
+    <button class="btn" id="fqos">${ico('users')}Kodla qoşul</button><button class="btn primary" id="fyeni">${ico('plus')}Yeni firma</button>`);
+  $('#fyeni').onclick = firmaYeniModal; $('#fqos').onclick = firmaQosulModal;
+  const list = await q(sb.rpc('firmalarim'));
+  S.firmalar = list.map(x => ({ id: x.id, ad: x.ad, rol: x.rol })).sort((a, b) => a.ad.localeCompare(b.ad, 'az'));
+  if (list.length > 1 || S.muhasibHesab) S.coxFirma = true;
+  const rolAd = { muhasib: 'Mühasib', sahibkar: 'Yalnız baxış', kuryer: 'Kuryer' };
+  const abune = x => { const g = gunFerqi(x.abune_bitir);
+    return x.dayandirilib ? '<span class="badge b-red">Dayandırılıb</span>' : g < 0 ? '<span class="badge b-red">Abunə bitib</span>'
+      : g <= 7 ? `<span class="badge b-amber">Abunə: ${g} gün qalıb</span>` : `<span class="badge b-gray">Abunə: ${fd(x.abune_bitir)}</span>`; };
+  const kart = x => `<div class="firma-kart ${x.secili ? 'cari' : ''}" data-f="${x.id}" data-ad="${esc(azLow(x.ad))}">
+    <div class="fk-bas"><div><b>${esc(x.ad)}</b><div class="cell-sub">${esc(saheAd(x.sahe))} · ${rolAd[x.rol] || esc(x.rol)}</div></div>${x.secili ? '<span class="badge b-green">Açıqdır</span>' : ''}</div>
+    <div class="fk-say"><div><span>Müştəri</span><b>${fmt(x.musteri)}</b></div><div><span>Qalıq borc</span><b>${man(x.borc)}</b></div>
+      <div><span>Gecikən</span><b class="${num(x.gecikan) ? 'neg' : ''}">${fmt(x.gecikan)} nəfər · ${man(x.gecikmis_borc)}</b></div><div><span>Bu ay yığılıb</span><b>${man(x.bu_ay)}</b></div></div>
+    <div class="fk-alt">${abune(x)}<span class="btn sm ${x.secili ? '' : 'primary'}">${x.secili ? 'Davam et' : 'Aç'} →</span></div></div>`;
+  const cem = k => list.reduce((a, x) => a + num(x[k]), 0);
+  $('.topbar .sub').textContent = list.length ? `${list.length} firma` : '';
+  $('#page').innerHTML = list.length ? `${list.length > 1 ? `<div class="grid kpis" style="margin-bottom:16px">
+      <div class="card kpi"><div class="lbl">Ümumi qalıq borc</div><div class="val">${man(cem('borc'))}</div><div class="cmp">${fmt(cem('musteri'))} müştəri</div></div>
+      <div class="card kpi"><div class="lbl">Gecikən borc</div><div class="val neg">${man(cem('gecikmis_borc'))}</div><div class="cmp">${fmt(cem('gecikan'))} müştəri</div></div>
+      <div class="card kpi"><div class="lbl">Bu ay yığılıb</div><div class="val">${man(cem('bu_ay'))}</div><div class="cmp">bütün firmalar</div></div>
+      <div class="card kpi"><div class="lbl">Bu gün yığılıb</div><div class="val">${man(cem('bu_gun'))}</div><div class="cmp">${fd(today())}</div></div></div>` : ''}
+    <div class="firma-grid">${list.map(kart).join('')}</div>`
+    : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Hələ firma yoxdur</div>
+       <div class="muted" style="margin-bottom:14px">Uçotunu apardığınız ilk firmanı əlavə edin və ya dükanın verdiyi dəvət kodu ilə qoşulun.</div>
+       <button class="btn primary" id="fyeni2">${ico('plus')}Yeni firma</button> <button class="btn" id="fqos2">Kodla qoşul</button></div>`;
+  if ($('#fyeni2')) { $('#fyeni2').onclick = firmaYeniModal; $('#fqos2').onclick = firmaQosulModal; }
+  $$('[data-f]').forEach(d => d.onclick = () => firmaSec(+d.dataset.f));
+  $('#fax').oninput = e => { const t = azLow(e.target.value); $$('[data-f]').forEach(d => d.style.display = !t || d.dataset.ad.includes(t) ? '' : 'none'); };
+}
+function firmaYeniModal() {
+  const sinaq = S.sistem.sinaq_gun || '14';
+  const m = modal('Yeni firma', `<form id="nf">
+    <div class="field"><label class="f">Firmanın (dükanın) adı</label><input class="in" name="ad" required placeholder="məs. Kamran Elektronika"></div>
+    <div class="row2"><div class="field"><label class="f">Sahə</label><select class="in" name="sahe">${saheOpt((S.magaza && S.magaza.sahe) || 'mebel')}</select></div>
+      <div class="field"><label class="f">Telefon</label><input class="in" name="tel" type="tel" placeholder="050 000 00 00"></div></div>
+    <p class="muted" style="font-size:13px;margin:0">Yeni firma ${esc(sinaq)} gün pulsuz işləyir, abunəsi ayrıca hesablanır. Siz onun mühasibi olacaqsınız; dükan sahibini sonra Ayarlardakı dəvət kodu ilə əlavə edə bilərsiniz.</p></form>`,
+    `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yarat</button>`);
+  const f = $('#nf', m); setTimeout(() => f.ad.focus(), 50);
+  $('#ok', m).onclick = async () => {
+    if (!f.reportValidity()) return;
+    $('#ok', m).disabled = true;
+    try { const id = await q(sb.rpc('firma_yarat', { ad: f.ad.value.trim(), telefon: f.tel.value.trim() || null, sahe: f.sahe.value }));
+      closeModal(); toast('Firma yaradıldı'); S.magaza = null; await firmaSec(id);
+    } catch (er) { fail(er); $('#ok', m).disabled = false; }
+  };
+}
+function firmaQosulModal() {
+  const m = modal('Dəvət kodu ilə qoşul', `<form id="qf">
+    <p class="muted" style="font-size:13px;margin-top:0">Kodu dükanın mühasibi Ayarlar → İstifadəçilər bölməsindən verir. Qoşulandan sonra əvvəlcə yalnız baxa bilərsiniz; yazmaq üçün dükanın mühasibi sizə "Mühasib" hüququ verməlidir.</p>
+    <div class="field"><label class="f">Dəvət kodu</label><input class="in" name="kod" maxlength="6" required style="text-transform:uppercase;letter-spacing:3px;font-weight:600" placeholder="ABC123"></div></form>`,
+    `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Qoşul</button>`);
+  const f = $('#qf', m); setTimeout(() => f.kod.focus(), 50);
+  $('#ok', m).onclick = async () => {
+    if (!f.reportValidity()) return;
+    try { const ad = await q(sb.rpc('firma_qosul', { kod: f.kod.value.trim().toUpperCase() }));
+      closeModal(); toast(`"${ad}" əlavə olundu`, 3500); pageFirmalar().catch(fail);
+    } catch (er) { fail(er); }
+  };
+}
 
 /* =====================================================================
    YIĞIM SİYAHISI — kuryer / pul yığan üçün: kimdən, nə qədər, hansı ünvanda
@@ -375,6 +470,7 @@ function pageMenyu() {
   const kafel = k => { const n = ad[k]; return n ? `<a class="kafel" href="#/${k}">${ico(n[2])}<span>${n[1]}</span></a>` : ''; };
   $('#page').innerHTML = `
     ${canWrite() ? `<div class="kafel-tez"><button class="btn primary" id="ts">${ico('plus')}Yeni satış</button><button class="btn" id="tm">${ico('plus')}Yeni müştəri</button></div>` : ''}
+    ${S.coxFirma ? `<div class="kafel-bas">Firmalar</div><div class="kafeller"><a class="kafel" href="#/firmalar">${ico('bina')}<span>${S.muhasibHesab ? 'Firmalarım' : 'Dükanlarım'}</span></a></div>` : ''}
     ${S.admin ? `<div class="kafel-bas">Sistem</div><div class="kafeller"><a class="kafel" href="#/admin">${ico('panel')}<span>Admin panel</span></a></div>` : ''}
     ${NAVBOLME.map(([b, ks]) => `<div class="kafel-bas">${b}</div><div class="kafeller">${ks.map(kafel).join('')}</div>`).join('')}`;
   if ($('#ts')) $('#ts').onclick = () => yeniSatis();
@@ -647,7 +743,7 @@ async function yeniSatis(musteriId, pref) {
       <div class="field"><label class="f">Telefon</label><input class="in" name="tel" inputmode="tel"></div></div></div>
     ${MEHSUL_SAHESI}
     <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${today()}" required></div>
-    <div class="field"><label class="f">Götürdüyü mal</label><input class="in" name="mal" placeholder="məs. Mətbəx mebeli"></div></div>
+    <div class="field"><label class="f">Götürdüyü mal</label><input class="in" name="mal" placeholder="məs. ${esc(numune()[2])}"></div></div>
     <div class="field"><label class="f">Malın dəyəri <span class="muted" style="font-weight:400" id="endinfo"></span></label><input class="in" type="number" step="0.01" min="0" name="d" required></div>
     ${USUL_SAHESI(localStorage_usul(), 0, 0)}
     ${SATICI_SAHESI}
@@ -932,7 +1028,7 @@ async function pageMehsullar(params) {
         <td class="n">${r.anbar_izle ? `<span class="badge ${azdir(r) ? 'b-red' : 'b-green'}">${fmt(r.anbar)} ədəd</span>` : '<span class="muted">—</span>'}</td></tr>`; }).join('')}</tbody></table></div>`
       : '<div class="card empty">Məhsul tapılmadı</div>')
       : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Hələ məhsul yoxdur</div>
-         <div class="muted">Satdığınız malları (məs. "Künc divan Milano", "Mətbəx dəsti 2.4 m") bir dəfə qiyməti ilə yazın — satış zamanı siyahıdan seçəcəksiniz.</div></div>`;
+         <div class="muted">Satdığınız malları (məs. "${esc(numune()[0])}", "${esc(numune()[3])}") bir dəfə qiyməti ilə yazın — satış zamanı siyahıdan seçəcəksiniz.</div></div>`;
     if (w) $$('[data-p]').forEach(tr => tr.onclick = () => mehsulForm(rows.find(r => r.id === +tr.dataset.p), kats));
   };
   ['axtar', 'kat', 'passiv', 'azal'].forEach(id => $('#' + id).addEventListener(id === 'axtar' ? 'input' : 'change', draw));
@@ -946,8 +1042,8 @@ async function pageMehsullar(params) {
 function mehsulForm(r, kats) {
   const QA = qAdlari();
   const m = modal(r ? 'Məhsulu düzəlt' : 'Yeni məhsul', `<form id="pf">
-    <div class="field"><label class="f">Məhsulun adı</label><input class="in" name="ad" value="${esc(r ? r.ad : '')}" required placeholder="məs. Künc divan Milano"></div>
-    <div class="row2"><div class="field"><label class="f">Kateqoriya</label><input class="in" name="kat" list="katlist" value="${esc(r && r.kateqoriya || '')}" placeholder="məs. Divanlar">
+    <div class="field"><label class="f">Məhsulun adı</label><input class="in" name="ad" value="${esc(r ? r.ad : '')}" required placeholder="məs. ${esc(numune()[0])}"></div>
+    <div class="row2"><div class="field"><label class="f">Kateqoriya</label><input class="in" name="kat" list="katlist" value="${esc(r && r.kateqoriya || '')}" placeholder="məs. ${esc(numune()[1])}">
       <datalist id="katlist">${kats.map(k => `<option value="${esc(k)}">`).join('')}</datalist></div>
     <div class="field"><label class="f">Barkod / kod <span class="muted" style="font-weight:400">(oxuyucu ilə oxudun)</span></label><div style="display:flex;gap:6px"><input class="in" name="kod" value="${esc(r && r.kod || '')}" placeholder="məs. 4760001234567"><button type="button" class="btn" id="kcam" title="Kamera ilə oxu">📷</button>${r ? `<button type="button" class="btn" id="kyar" title="Barkodu yoxdursa proqram yaratsın">Yarat</button>` : ''}</div></div></div>
     <div class="row2"><div class="field"><label class="f">${esc(QA[0])} <span class="muted" style="font-weight:400">(əsas satış qiyməti)</span></label><input class="in" type="number" step="0.01" min="0" name="qy" value="${r ? r.qiymet : ''}" required></div>
@@ -2258,13 +2354,14 @@ async function pageJurnal(params) {
 async function pageAyarlar() {
   const w = canWrite();
   shell('ayarlar', 'Ayarlar', '', '');
-  const [A, ist] = await Promise.all([ayarlar(), q(sb.from('uzvler').select('*').order('yaradildi'))]);
+  const [A, ist] = await Promise.all([ayarlar(), q(sb.from('uzvler').select('*').eq('magaza_id', S.magaza.id).order('yaradildi'))]);
   const yaz = S.rol === 'muhasib';
   const rolAd = { muhasib: 'Mühasib (yazır)', sahibkar: 'Sahibkar (yalnız baxır)', kuryer: 'Kuryer (yalnız pul yığır)', bloklu: 'Bloklanıb' };
   $('#page').innerHTML = `
     <div class="card" style="margin-bottom:16px"><h3>Dükan və abunə</h3>
       <div class="grid two" style="gap:16px;align-items:end">
-        <form id="mgf" class="row2" style="margin:0"><div class="field" style="margin:0"><label class="f">Dükanın adı</label><input class="in" name="ad" value="${esc(S.magaza.ad)}" ${yaz ? '' : 'disabled'} required></div>
+        <form id="mgf" class="row3" style="margin:0"><div class="field" style="margin:0"><label class="f">Dükanın adı</label><input class="in" name="ad" value="${esc(S.magaza.ad)}" ${yaz ? '' : 'disabled'} required></div>
+          <div class="field" style="margin:0"><label class="f">Sahə</label><select class="in" name="sahe" ${yaz ? '' : 'disabled'}>${saheOpt(S.magaza.sahe || 'mebel')}</select></div>
           <div class="field" style="margin:0"><label class="f">Telefon</label><div style="display:flex;gap:8px"><input class="in" name="tel" value="${esc(S.magaza.telefon || '')}" ${yaz ? '' : 'disabled'}>${yaz ? '<button class="btn">Saxla</button>' : ''}</div></div></form>
         <div class="info" style="margin:0"><div><span>Abunə bitir</span><b class="${S.aktiv ? '' : 'neg'}">${fd(S.magaza.abune_bitir)}</b></div>
           <div><span>Vəziyyət</span><b>${S.magaza.dayandirilib ? '<span class="neg">Dayandırılıb</span>' : S.aktiv ? `<span class="pos">Aktiv</span> · ${S.qalan} gün` : '<span class="neg">Bitib</span>'}</b></div></div></div>
@@ -2311,7 +2408,7 @@ async function pageAyarlar() {
     } catch (er) { fail(er); }
   };
   $$('[data-u]').forEach(sel => sel.onchange = async () => {
-    try { await q(sb.from('uzvler').update({ rol: sel.value }).eq('user_id', sel.dataset.u)); toast('Hüquq dəyişdirildi'); } catch (er) { fail(er); }
+    try { await q(sb.from('uzvler').update({ rol: sel.value }).eq('user_id', sel.dataset.u).eq('magaza_id', S.magaza.id)); toast('Hüquq dəyişdirildi'); } catch (er) { fail(er); }
   });
   $('#xls').onclick = () => excelIxrac().catch(fail);
   if ($('#kodkop')) $('#kodkop').onclick = () => { navigator.clipboard && navigator.clipboard.writeText($('#kod').textContent); toast('Kod kopyalandı'); };
@@ -2321,8 +2418,8 @@ async function pageAyarlar() {
   };
   if ($('#mgf')) $('#mgf').onsubmit = async e => {
     e.preventDefault(); const f = e.target;
-    try { await q(sb.from('magazalar').update({ ad: f.ad.value.trim(), telefon: f.tel.value.trim() || null }).eq('id', S.magaza.id));
-      S.magaza.ad = f.ad.value.trim(); S.magaza.telefon = f.tel.value.trim(); toast('Yadda saxlanıldı'); route(); } catch (er) { fail(er); }
+    try { await q(sb.from('magazalar').update({ ad: f.ad.value.trim(), telefon: f.tel.value.trim() || null, sahe: f.sahe.value }).eq('id', S.magaza.id));
+      S.magaza.ad = f.ad.value.trim(); S.magaza.sahe = f.sahe.value; S.firmalar.forEach(x => { if (x.id === S.magaza.id) x.ad = S.magaza.ad; }); S.magaza.telefon = f.tel.value.trim(); toast('Yadda saxlanıldı'); route(); } catch (er) { fail(er); }
   };
   if (yaz) telegramKart().catch(er => { $('#tg').innerHTML = '<h3>Telegram xülasəsi</h3><div class="muted">Hələ qurulmayıb (bazada 6_telegram.sql işlədilməlidir).</div>'; console.warn(er); });
 }

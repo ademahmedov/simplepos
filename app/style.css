@@ -381,3 +381,19 @@ select.qsel{display:block;margin-top:4px;padding:3px 6px;font-size:12px;height:a
   .bottom-nav a .ico{width:20px;height:20px}
   .bottom-nav a.active{display:none!important}
 }
+
+/* Firmalarım */
+.firma-sec{padding:0 16px 10px}
+.firma-sec select{width:100%;background:rgba(255,255,255,.08);color:#f6e9d6;border:1px solid rgba(255,255,255,.18);border-radius:9px;padding:8px 10px;font:inherit;font-size:13.5px}
+.firma-sec select option{color:#222}
+.firma-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.firma-kart{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px;cursor:pointer;display:flex;flex-direction:column;gap:12px;transition:.15s}
+.firma-kart:hover{border-color:#d6c4ab;transform:translateY(-1px)}
+.firma-kart.cari{border-color:var(--oak);box-shadow:0 0 0 2px rgba(160,105,60,.18),var(--shadow)}
+.fk-bas{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.fk-bas b{font-size:16px}
+.fk-say{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;font-size:13px}
+.fk-say span{display:block;color:var(--muted);font-size:12px}
+.fk-say b{font-size:14.5px}
+.fk-alt{display:flex;justify-content:space-between;align-items:center;gap:8px}
+@media (max-width:760px){.firma-grid{grid-template-columns:1fr}}
