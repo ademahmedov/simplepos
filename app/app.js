@@ -491,14 +491,14 @@ async function pageSatislar(params) {
     const list = s ? rows.filter(r => [r.satis_no, r.musteri, r.mal, r.telefon, r.unvan].join(' ').toLocaleLowerCase('az').includes(s)) : rows;
     const sum = k => list.reduce((a, r) => a + num(r[k]), 0);
     $('#page').innerHTML = list.length ? `<div class="tbl-wrap"><table class="t">
-      <thead><tr><th>№</th><th>Tarix</th><th>Müştəri</th><th class="hide-m">Mal</th><th class="n">Dəyəri</th><th class="n hide-m">İlkin</th><th class="n hide-m">Ödənilən</th><th class="n">Qalıq</th><th class="hide-m">Son ödəniş</th></tr></thead>
+      <thead><tr><th>№</th><th>Tarix</th><th>Müştəri</th><th class="hide-m">Mal</th><th>Üsul</th><th class="n">Dəyəri</th><th class="n hide-m">İlkin</th><th class="n hide-m">Ödənilən</th><th class="n">Qalıq</th><th class="hide-m">Son ödəniş</th></tr></thead>
       <tbody>${list.map(r => `<tr class="click" data-s="${r.id}">
         <td class="muted">${esc(r.satis_no)}</td><td>${fd(r.tarix)}</td>
         <td><div class="cell-main">${esc(r.musteri)}</div><div class="cell-sub">${esc(r.unvan || '')}${r.telefon ? ' · ' + esc(r.telefon) : ''}</div></td>
-        <td class="hide-m">${esc(r.mal || '')}</td><td class="n">${fmt(r.deyer)}</td><td class="n hide-m">${fmt(r.ilkin)}</td>
+        <td class="hide-m">${esc(r.mal || '')}</td><td>${usulBadge(r.odenis_usulu)}</td><td class="n">${fmt(r.deyer)}</td><td class="n hide-m">${fmt(r.ilkin)}</td>
         <td class="n hide-m">${fmt(r.odenilen)}</td><td class="n">${num(r.qaliq) > 0 ? `<b>${fmt(r.qaliq)}</b>` : '<span class="badge b-green">Bağlanıb</span>'}</td>
         <td class="hide-m">${fd(r.son_odenis)}</td></tr>`).join('')}</tbody>
-      <tfoot><tr><td colspan="2">${list.length} satış</td><td></td><td class="hide-m"></td><td class="n">${fmt(sum('deyer'))}</td><td class="n hide-m">${fmt(sum('ilkin'))}</td><td class="n hide-m">${fmt(sum('odenilen'))}</td><td class="n">${fmt(sum('qaliq'))}</td><td class="hide-m"></td></tr></tfoot>
+      <tfoot><tr><td colspan="2">${list.length} satış</td><td></td><td class="hide-m"></td><td></td><td class="n">${fmt(sum('deyer'))}</td><td class="n hide-m">${fmt(sum('ilkin'))}</td><td class="n hide-m">${fmt(sum('odenilen'))}</td><td class="n">${fmt(sum('qaliq'))}</td><td class="hide-m"></td></tr></tfoot>
       </table></div>` : '<div class="card empty">Bu dövrdə satış yoxdur</div>';
     $$('[data-s]').forEach(tr => tr.onclick = () => satisModal(+tr.dataset.s));
   };
@@ -523,7 +523,7 @@ async function satisModal(id) {
   const m = modal(`Satış ${esc(s.satis_no)}`, `
     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
       <div><div class="cell-main" style="font-size:16px">${esc(s.musteri)}</div><div class="cell-sub">${esc(s.unvan || '')}${s.telefon ? ' · ' + esc(s.telefon) : ''}</div></div>
-      <div style="text-align:right"><div>${fd(s.tarix)}</div><div class="cell-sub">${esc(s.mal || '')}</div></div></div>
+      <div style="text-align:right"><div>${fd(s.tarix)} ${usulBadge(s.odenis_usulu)}</div><div class="cell-sub">${esc(s.mal || '')}</div></div></div>
     <div class="info"><div><span>Dəyəri</span><b>${man(s.deyer)}</b></div><div><span>İlkin ödəniş</span><b>${man(s.ilkin)}</b></div>
       <div><span>Kredit ödənişləri</span><b>${man(s.odenilen)}</b></div><div><span>Qalıq borc</span><b class="${num(s.qaliq) > 0 ? 'neg' : 'pos'}">${man(s.qaliq)}</b></div>
       <div><span>Ödəniş sayı</span><b>${s.odenis_sayi}</b></div><div><span>Son ödəniş</span><b>${fd(s.son_odenis) || '—'}</b></div></div>
@@ -541,13 +541,14 @@ async function satisModal(id) {
       : (num(s.qaliq) > 0 && w ? '<p class="muted">Ödəniş qrafiki yoxdur — "Satışı düzəlt" ilə aylıq məbləği və ilk ödəniş tarixini yazın.</p>' : '')}
     <h4 style="margin:6px 0 8px">Ödənişlər</h4>
     ${pays.length ? `<div class="tbl-wrap" style="box-shadow:none;border:1px solid var(--line)"><table class="t"><thead><tr><th>#</th><th>Tarix</th><th class="n">Məbləğ</th><th>Qeyd</th><th></th></tr></thead><tbody>
-      ${pays.map((p, i) => `<tr><td class="muted">${i + 1}</td><td>${fd(p.tarix)} ${p.texmini ? '<span class="badge b-gray" title="Excel-də tarixi yazılmamışdı, təxmini qoyulub">təxmini</span>' : ''}</td><td class="n">${fmt(p.mebleg)}</td><td>${esc(p.qeyd || '')}</td>
+      ${pays.map((p, i) => `<tr><td class="muted">${i + 1}</td><td>${fd(p.tarix)} ${p.texmini ? '<span class="badge b-gray" title="Excel-də tarixi yazılmamışdı, təxmini qoyulub">təxmini</span>' : ''}${p.usul === 'POS' ? ' <span class="badge b-blue">POS</span>' : ''}</td><td class="n">${fmt(p.mebleg)}</td><td>${esc(p.qeyd || '')}</td>
       <td class="n" style="white-space:nowrap"><a class="btn sm" href="#/qebz/${p.id}">Qəbz</a> ${w ? `<button class="btn sm danger" data-del="${p.id}">Sil</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : '<div class="muted">Hələ ödəniş yoxdur.</div>'}
     ${w && num(s.qaliq) > 0 ? `<form id="pf" style="margin-top:16px;background:#faf4ea;border-radius:10px;padding:14px">
       <b style="display:block;margin-bottom:10px">Yeni ödəniş</b>
       <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${today()}" required></div>
       <div class="field"><label class="f">Məbləğ (qalıq ${fmt(s.qaliq)})</label><input class="in" type="number" step="0.01" min="0.01" name="m" required></div></div>
-      <div class="field"><label class="f">Qeyd (istəyə bağlı)</label><input class="in" name="q"></div>
+      <div class="row2"><div class="field"><label class="f">Üsul</label><select class="in" name="u"><option>Nağd</option><option>POS</option></select></div>
+      <div class="field"><label class="f">Qeyd (istəyə bağlı)</label><input class="in" name="q"></div></div>
       <button class="btn green">Ödənişi yaz</button></form>` : ''}`,
     `${w ? '<button class="btn" id="qyt">Qaytarma</button>' : ''}<a class="btn" href="#/cek/${s.id}">${ico('print')}Çek</a><a class="btn" href="#/muqavile/${s.id}">Müqavilə (PDF)</a><a class="btn" href="#/musteri/${s.musteri_id}">Müştəriyə bax</a>${w ? '<button class="btn" id="ed">Satışı düzəlt</button>' : ''}<button class="btn" data-close>Bağla</button>`, true);
   $$('[data-close]', m).forEach(b => b.onclick = closeModal);
@@ -558,7 +559,7 @@ async function satisModal(id) {
     if (mb > num(s.qaliq) + 0.001 && !confirm(`Məbləğ qalıq borcdan (${fmt(s.qaliq)}) çoxdur. Yenə də yazılsın?`)) return;
     $('button', pf).disabled = true;
     try {
-      const np = await q(sb.from('satis_odenisleri').insert({ satis_id: id, tarix: pf.t.value, mebleg: mb, qeyd: pf.q.value.trim() || null }).select().single());
+      const np = await q(sb.from('satis_odenisleri').insert({ satis_id: id, tarix: pf.t.value, mebleg: mb, usul: pf.u.value, qeyd: pf.q.value.trim() || null }).select().single());
       toast('Ödəniş yazıldı'); S.cache = {};
       if (confirm('Ödəniş yazıldı. Müştəri üçün qəbz çap edilsin?')) location.hash = '#/qebz/' + np.id; else { refresh(); satisModal(id); }
     } catch (er) { fail(er); $('button', pf).disabled = false; }
@@ -585,15 +586,15 @@ async function satisModal(id) {
 
 async function satisDuzelt(s, birbasa) {
   const [z, kohne] = await Promise.all([
-    q(sb.from('satislar').select('zamin_ad,zamin_tel,zamin_qeyd,isci_id').eq('id', s.id).single()),
+    q(sb.from('satislar').select('zamin_ad,zamin_tel,zamin_qeyd,isci_id,odenis_usulu,ilkin_pos').eq('id', s.id).single()),
     q(sb.from('satis_mallari').select('*').eq('satis_id', s.id).order('id')),
   ]);
   const m = modal(`Satışı düzəlt — ${esc(s.satis_no)}`, `<form id="ef">
     ${MEHSUL_SAHESI}
     <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${s.tarix}" required></div>
     <div class="field"><label class="f">Götürdüyü mal</label><input class="in" name="mal" value="${esc(s.mal || '')}"></div></div>
-    <div class="row2"><div class="field"><label class="f">Malın dəyəri</label><input class="in" type="number" step="0.01" min="0" name="d" value="${s.deyer}" required></div>
-    <div class="field"><label class="f">İlkin ödəniş</label><input class="in" type="number" step="0.01" min="0" name="i" value="${s.ilkin}"></div></div>
+    <div class="field"><label class="f">Malın dəyəri</label><input class="in" type="number" step="0.01" min="0" name="d" value="${s.deyer}" required></div>
+    ${USUL_SAHESI(z.odenis_usulu || 'Borc', s.ilkin, z.ilkin_pos)}
     ${SATICI_SAHESI}
     ${qrafikSaheleri(s.ayliq, s.ilk_odenis, s.maya)}
     ${zaminSaheleri(z)}
@@ -604,12 +605,14 @@ async function satisDuzelt(s, birbasa) {
   const setirler = kohne.map(x => ({ mehsul_id: x.mehsul_id, ad: x.ad, miqdar: num(x.miqdar), qiymet: num(x.qiymet), maya: x.maya == null ? null : num(x.maya) }));
   const ilkVeziyyet = JSON.stringify(setirler);
   saticiDoldur(f.sat, z.isci_id || null).catch(() => {});
+  const usulAl = usulIzle(m, f);
   await setirRedaktor(m, f, setirler, null);
   qrafikIzle(f);
   $('#ok', m).onclick = async () => {
     if (!f.reportValidity()) return;
     try {
-      await q(sb.from('satislar').update(Object.assign({ tarix: f.t.value, mal: f.mal.value.trim() || null, deyer: num(f.d.value), ilkin: num(f.i.value), qeyd: f.q.value.trim() || null }, qrafikDeyerleri(f), zaminDeyerleri(f), { isci_id: f.sat.value ? +f.sat.value : null })).eq('id', s.id));
+      const U = usulAl(); if (U.xeta) return toast(U.xeta);
+      await q(sb.from('satislar').update(Object.assign({ tarix: f.t.value, mal: f.mal.value.trim() || null, deyer: num(f.d.value), qeyd: f.q.value.trim() || null }, qrafikDeyerleri(f), zaminDeyerleri(f), { isci_id: f.sat.value ? +f.sat.value : null }, { odenis_usulu: U.odenis_usulu, ilkin: U.ilkin, ilkin_pos: U.ilkin_pos })).eq('id', s.id));
       if (JSON.stringify(setirler) !== ilkVeziyyet) {
         await q(sb.from('satis_mallari').delete().eq('satis_id', s.id));
         if (setirler.length) await q(sb.from('satis_mallari').insert(setirler.map(x => ({ satis_id: s.id, mehsul_id: x.mehsul_id, ad: x.ad, miqdar: x.miqdar, qiymet: x.qiymet, maya: x.maya }))));
@@ -640,8 +643,8 @@ async function yeniSatis(musteriId, pref) {
     ${MEHSUL_SAHESI}
     <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${today()}" required></div>
     <div class="field"><label class="f">Götürdüyü mal</label><input class="in" name="mal" placeholder="məs. Mətbəx mebeli"></div></div>
-    <div class="row2"><div class="field"><label class="f">Malın dəyəri <span class="muted" style="font-weight:400" id="endinfo"></span></label><input class="in" type="number" step="0.01" min="0" name="d" required></div>
-    <div class="field"><label class="f">İlkin ödəniş</label><input class="in" type="number" step="0.01" min="0" name="i" value="0"></div></div>
+    <div class="field"><label class="f">Malın dəyəri <span class="muted" style="font-weight:400" id="endinfo"></span></label><input class="in" type="number" step="0.01" min="0" name="d" required></div>
+    ${USUL_SAHESI(localStorage_usul(), 0, 0)}
     ${SATICI_SAHESI}
     ${qrafikSaheleri(null, null, null)}
     ${zaminSaheleri(null)}
@@ -678,6 +681,7 @@ async function yeniSatis(musteriId, pref) {
   // --- məhsul sətirləri ---
   const setirler = [];
   await setirRedaktor(m, f, setirler, qal);
+  const usulAl = usulIzle(m, f);
   qrafikIzle(f, true);
   if (pref) {
     $('#mtip button[data-t="yeni"]', m).click();
@@ -689,7 +693,7 @@ async function yeniSatis(musteriId, pref) {
     if (!f.reportValidity()) return;
     if (tip === 'kohne' && !secilen) { toast('Müştərini seçin və ya "Yeni müştəri" yazın'); return; }
     if (tip === 'yeni' && !f.ad.value.trim()) { toast('Müştərinin adını yazın'); return; }
-    if (num(f.i.value) > num(f.d.value)) { toast('İlkin ödəniş dəyərdən çox ola bilməz'); return; }
+    const U = usulAl(); if (U.xeta) { toast(U.xeta); return; }
     const btn = $('#ok', m); btn.disabled = true;
     try {
       let mid = secilen && secilen.id;
@@ -697,7 +701,8 @@ async function yeniSatis(musteriId, pref) {
         const nm = await q(sb.from('musteriler').insert({ ad: f.ad.value.trim(), unvan: f.un.value.trim() || null, telefon: f.tel.value.trim() || null }).select().single());
         mid = nm.id;
       }
-      const ns = await q(sb.from('satislar').insert(Object.assign({ musteri_id: mid, tarix: f.t.value, mal: f.mal.value.trim() || null, deyer: num(f.d.value), ilkin: num(f.i.value), qeyd: f.q.value.trim() || null }, qrafikDeyerleri(f), zaminDeyerleri(f), { isci_id: f.sat.value ? +f.sat.value : null })).select().single());
+      const ns = await q(sb.from('satislar').insert(Object.assign({ musteri_id: mid, tarix: f.t.value, mal: f.mal.value.trim() || null, deyer: num(f.d.value), qeyd: f.q.value.trim() || null }, qrafikDeyerleri(f), zaminDeyerleri(f), { isci_id: f.sat.value ? +f.sat.value : null }, { odenis_usulu: U.odenis_usulu, ilkin: U.ilkin, ilkin_pos: U.ilkin_pos })).select().single());
+      try { localStorage.setItem('son_usul', U.odenis_usulu); } catch (_) {}
       if (setirler.length) await q(sb.from('satis_mallari').insert(setirler.map(x => ({ satis_id: ns.id, mehsul_id: x.mehsul_id, ad: x.ad, miqdar: x.miqdar, qiymet: x.qiymet, maya: x.maya }))));
       if (pref && pref.sifarisId) await q(sb.from('sifarisler').update({ status: 'Təhvil verildi' }).eq('id', pref.sifarisId));
       closeModal(); toast(`Satış yazıldı: ${ns.satis_no}`); S.cache = {};
@@ -706,6 +711,7 @@ async function yeniSatis(musteriId, pref) {
   };
 }
 
+function localStorage_usul() { try { const u = localStorage.getItem('son_usul'); return USULLAR.includes(u) ? u : 'Borc'; } catch (_) { return 'Borc'; } }
 function refresh() { S.cache = {}; route(); }
 
 /* =====================================================================
@@ -851,10 +857,13 @@ function odenisAl(m, sales) {
     <div class="row2"><div class="field"><label class="f">Məbləğ</label><input class="in" type="number" step="0.01" min="0.01" name="mb" required autofocus>
       <div style="margin-top:6px"><button type="button" class="btn sm" id="tam">Hamısı: ${fmt(cem)}</button></div></div>
     <div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${today()}" required></div></div>
+    <div class="field"><label class="f">Ödəniş üsulu</label><div class="seg" id="ou"><button type="button" data-u="Nağd" class="on">Nağd</button><button type="button" data-u="POS">POS (kart)</button></div></div>
     <div class="field"><label class="f">Qeyd (istəyə bağlı)</label><input class="in" name="q"></div>
     <div class="muted" id="bolgu" style="font-size:13px"></div></form>`,
     `<button class="btn" data-close>Ləğv et</button><button class="btn green" id="ok">Ödənişi yaz</button>`);
   const f = $('#oa', md);
+  let usul = 'Nağd';
+  $$('#ou button', md).forEach(b => b.onclick = () => { usul = b.dataset.u; $$('#ou button', md).forEach(x => x.classList.toggle('on', x === b)); });
   const plan = () => {
     const mb = Math.round(num(f.mb.value) * 100) / 100;
     if (!(mb > 0)) return [];
@@ -880,7 +889,7 @@ function odenisAl(m, sales) {
     try {
       const ids = [];
       for (const x of pl) {
-        const np = await q(sb.from('satis_odenisleri').insert({ satis_id: x.s.id, tarix: f.t.value, mebleg: x.m, qeyd: f.q.value.trim() || null }).select().single());
+        const np = await q(sb.from('satis_odenisleri').insert({ satis_id: x.s.id, tarix: f.t.value, mebleg: x.m, usul, qeyd: f.q.value.trim() || null }).select().single());
         ids.push(np.id);
       }
       closeModal(); S.cache = {}; toast(`${fmt(mb)} ₼ ödəniş yazıldı`);
@@ -1145,6 +1154,8 @@ async function pageCek(id) {
     const sira = (a, b, guc) => `<div style="display:flex;justify-content:space-between;gap:10px;${guc ? 'font-weight:700;font-size:' + (k ? '15px' : '17px') : ''}"><span>${a}</span><span style="white-space:nowrap">${b}</span></div>`;
     const yekun = `${endirim > 0.001 ? sira('Cəm', man(cem)) + sira('Endirim', '−' + man(endirim)) : ''}
       ${sira('YEKUN', man(s.deyer), true)}
+      ${s.odenis_usulu ? sira('Ödəniş üsulu', esc(s.odenis_usulu === 'Borc' ? 'Hissə-hissə' : s.odenis_usulu)) : ''}
+      ${num(s.ilkin_pos) > 0 && num(s.ilkin_pos) < num(s.ilkin) ? sira('&nbsp;&nbsp;nağd', man(num(s.ilkin) - num(s.ilkin_pos))) + sira('&nbsp;&nbsp;kartla (POS)', man(s.ilkin_pos)) : ''}
       ${kredit > 0.001 ? sira('İlkin ödəniş (ödənildi)', man(s.ilkin)) + sira('<b>Kreditə qalan</b>', '<b>' + man(kredit) + '</b>') : sira('Ödənildi', man(s.deyer))}
       ${ay ? sira('Aylıq ödəniş', man(ay)) + sira('Müddət', ayS + ' ay') + (qr.ilk_odenis ? sira('Ödəniş tarixləri', `${fd(qr.ilk_odenis)} – ${fd(ayArtir(qr.ilk_odenis, ayS - 1))}`) : '') : ''}`;
     const vaxt = s.tarix === today() ? new Date().toTimeString().slice(0, 5) : '';
@@ -1580,12 +1591,13 @@ async function pageKassa0() {
       <div class="card kpi"><div class="lbl">Hazırda kassada</div><div class="val ${num(son.ay_sonu_kassa) < 0 ? 'neg' : ''}">${man(son.ay_sonu_kassa)}</div><div class="cmp">Başlanğıc: ${fd(A.kassa_baslangic)} · ${man(A.kassa_ilkin)}</div></div>
       <div class="card kpi"><div class="lbl">Bu ay daxil olan</div><div class="val">${man(son.medaxil)}</div></div>
       <div class="card kpi"><div class="lbl">Bu ay çıxan</div><div class="val">${man(son.mexaric)}</div></div>
+      <div class="card kpi"><div class="lbl">Bu ay POS / kartla</div><div class="val">${man(son.pos)}</div><div class="cmp">Banka daxil olur, kassaya düşmür</div></div>
       <div class="card kpi"><div class="lbl">Bu ay fərq</div><div class="val ${num(son.medaxil) - num(son.mexaric) < 0 ? 'neg' : 'pos'}">${man(num(son.medaxil) - num(son.mexaric))}</div></div>
     </div>
     <div class="tbl-wrap" style="margin-top:16px"><table class="t">
-      <thead><tr><th>Ay</th><th class="n hide-m">Ayın əvvəli</th><th class="n hide-m">İlkin ödənişlər</th><th class="n hide-m">Müştəri ödənişləri</th><th class="n hide-m">Digər mədaxil</th><th class="n">Daxil olan</th>
+      <thead><tr><th>Ay</th><th class="n hide-m">Ayın əvvəli</th><th class="n hide-m">İlkin ödənişlər</th><th class="n hide-m">Müştəri ödənişləri</th><th class="n hide-m">Digər mədaxil</th><th class="n">Daxil olan (nağd)</th><th class="n hide-m">POS</th>
         <th class="n hide-m">Rasxod</th><th class="n hide-m">Maaş</th><th class="n hide-m">Sahib</th><th class="n hide-m">Digər məxaric</th><th class="n">Çıxan</th><th class="n">Ayın sonu</th></tr></thead>
-      <tbody>${aylar.slice().reverse().map(r => `<tr><td style="white-space:nowrap">${ayAdi(r.ay)}</td><td class="n hide-m">${fmt(bas(r))}</td><td class="n hide-m">${fmt(r.ilkin)}</td><td class="n hide-m">${fmt(r.musteri_odenisi)}</td><td class="n hide-m">${fmt(r.diger_medaxil)}</td><td class="n"><b>${fmt(r.medaxil)}</b></td>
+      <tbody>${aylar.slice().reverse().map(r => `<tr><td style="white-space:nowrap">${ayAdi(r.ay)}</td><td class="n hide-m">${fmt(bas(r))}</td><td class="n hide-m">${fmt(r.ilkin)}</td><td class="n hide-m">${fmt(r.musteri_odenisi)}</td><td class="n hide-m">${fmt(r.diger_medaxil)}</td><td class="n"><b>${fmt(r.medaxil)}</b></td><td class="n hide-m">${fmt(r.pos)}</td>
         <td class="n hide-m">${fmt(r.rasxod)}</td><td class="n hide-m">${fmt(r.maas)}</td><td class="n hide-m">${fmt(r.sahib)}</td><td class="n hide-m">${fmt(r.diger_mexaric)}</td><td class="n"><b>${fmt(r.mexaric)}</b></td>
         <td class="n ${num(r.ay_sonu_kassa) < 0 ? 'neg' : ''}"><b>${fmt(r.ay_sonu_kassa)}</b></td></tr>`).join('')}</tbody></table></div>
     <h3 style="margin:22px 0 10px">Digər kassa əməliyyatları <span class="muted" style="font-weight:400;font-size:13px">(kredit, bank, sahibin qoyduğu pul və s.)</span></h3>
@@ -1825,6 +1837,48 @@ async function setirRedaktor(m, f, setirler, qal) {
   $('#pax', m).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const d = $('[data-pid]', psug); if (d) d.click(); } };
   yenile(false);
   return yenile;
+}
+const USULLAR = ['Nağd', 'POS', 'Parçalı', 'Borc'];
+const USUL_IZAH = { 'Nağd': 'Tam məbləğ nağd ödənilir', 'POS': 'Tam məbləğ kartla (POS terminal) ödənilir', 'Parçalı': 'Bir hissə nağd, bir hissə kartla; qalan olarsa borc kimi yazılır', 'Borc': 'Hissə-hissə ödəniş (kredit): ilkin ödəniş + aylıq qrafik' };
+const usulBadge = u => u ? `<span class="badge ${u === 'Borc' ? 'b-amber' : u === 'POS' ? 'b-blue' : u === 'Parçalı' ? 'b-gray' : 'b-green'}">${esc(u)}</span>` : '';
+// Satış formasında "Ödəniş üsulu": f.i (ilkin) və f.ip (ilkinin POS hissəsi) buradan idarə olunur
+const USUL_SAHESI = (u, ilkin, ipos) => `<div class="field"><label class="f">Ödəniş üsulu</label>
+    <div class="seg usul" id="usul">${USULLAR.map(x => `<button type="button" data-u="${x}" class="${x === u ? 'on' : ''}">${x}</button>`).join('')}</div>
+    <div class="muted" id="usulizah" style="font-size:12.5px;margin-top:4px"></div></div>
+  <input type="hidden" name="usul" value="${u}"><input type="hidden" name="ip" value="${ipos || 0}">
+  <div class="row2" id="u-parca" style="display:none"><div class="field"><label class="f">Nağd</label><input class="in" type="number" step="0.01" min="0" name="pn" value="${u === 'Parçalı' ? Math.max(0, num(ilkin) - num(ipos)) : ''}"></div>
+    <div class="field"><label class="f">Kartla (POS)</label><input class="in" type="number" step="0.01" min="0" name="pp" value="${u === 'Parçalı' ? num(ipos) : ''}"></div></div>
+  <div class="row2" id="u-borc"><div class="field"><label class="f">İlkin ödəniş</label><input class="in" type="number" step="0.01" min="0" name="i" value="${ilkin != null ? ilkin : 0}"></div>
+    <div class="field"><label class="f">İlkin ödənişin üsulu</label><select class="in" name="iu"><option>Nağd</option><option ${u === 'Borc' && num(ipos) > 0 ? 'selected' : ''}>POS</option></select></div></div>`;
+function usulIzle(m, f) {
+  const qr = f.ay ? f.ay.closest('div[style*="background"]') : null;
+  const tetbiq = () => {
+    const u = f.usul.value, d = num(f.d.value);
+    $$('#usul button', m).forEach(b => b.classList.toggle('on', b.dataset.u === u));
+    $('#u-parca', m).style.display = u === 'Parçalı' ? '' : 'none';
+    $('#u-borc', m).style.display = u === 'Borc' ? '' : 'none';
+    let izah = USUL_IZAH[u];
+    if (u === 'Nağd') { f.i.value = d; f.ip.value = 0; }
+    else if (u === 'POS') { f.i.value = d; f.ip.value = d; }
+    else if (u === 'Parçalı') { const n = num(f.pn.value), pp = num(f.pp.value); f.i.value = Math.round((n + pp) * 100) / 100; f.ip.value = pp;
+      const q_ = Math.round((d - n - pp) * 100) / 100; izah += q_ > 0.001 ? ` · <b class="neg">borc qalır: ${man(q_)}</b>` : q_ < -0.001 ? ` · <b class="neg">${man(-q_)} artıqdır</b>` : ' · <b class="pos">tam ödənilir</b>'; }
+    else { f.ip.value = f.iu.value === 'POS' ? num(f.i.value) : 0; }
+    $('#usulizah', m).innerHTML = izah;
+    const borcVar = u === 'Borc' || (u === 'Parçalı' && num(f.i.value) < d - 0.001);
+    if (qr) qr.style.display = borcVar ? '' : 'none';
+    if (!borcVar && f.ay) { f.ay.value = ''; f.ilk.value = ''; }
+    f.i.dispatchEvent(new Event('input'));
+  };
+  $$('#usul button', m).forEach(b => b.onclick = () => { f.usul.value = b.dataset.u; tetbiq(); });
+  ['pn', 'pp', 'iu'].forEach(k => f[k].addEventListener(k === 'iu' ? 'change' : 'input', tetbiq));
+  f.i.addEventListener('change', () => { if (f.usul.value === 'Borc') f.ip.value = f.iu.value === 'POS' ? num(f.i.value) : 0; });
+  f.d.addEventListener('input', () => { if (f.usul.value !== 'Borc') tetbiq(); });
+  tetbiq();
+  return () => {
+    const u = f.usul.value, d = num(f.d.value), ilkin = num(f.i.value), ip = u === 'Borc' ? (f.iu.value === 'POS' ? ilkin : 0) : num(f.ip.value);
+    if (ilkin > d + 0.001) return { xeta: 'Ödənilən məbləğ satışın dəyərindən çox ola bilməz' };
+    return { odenis_usulu: u, ilkin, ilkin_pos: Math.min(ip, ilkin) };
+  };
 }
 const SATICI_SAHESI = `<div class="field"><label class="f">Satıcı</label><select class="in" name="sat"><option value="">— seçilməyib —</option></select></div>`;
 async function saticiDoldur(sel, cari) {
