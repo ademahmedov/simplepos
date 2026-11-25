@@ -869,7 +869,7 @@ async function pageSat(params) {
   $('#page').innerHTML = `<div class="posek">
     <section class="pos-sol card">
       <div class="pos-axtar"><div class="pos-inp">${ico('box')}<input id="sbk" placeholder="Barkod oxudun və ya məhsul adı yazın" autocomplete="off"></div>
-        <button class="btn" id="scam" title="Kamera ilə oxu">📷</button></div>
+        <button class="btn" id="scam" title="Kamera ilə oxu">📷</button><div class="pos-sug" id="ssug" style="display:none"></div></div>
       <div class="pos-mus" id="smus"></div>
       <div class="pos-sahe">
         <div><label class="f">Qeyd</label><input class="in" id="sqeyd" placeholder="Satışa dair qeyd"></div>
@@ -881,9 +881,9 @@ async function pageSat(params) {
       <div class="pos-sebet" id="ssebet"></div>
       <div class="pos-alt">
         <div class="pos-od">
-          <input class="in" id="send" placeholder="Endirim (₼ və ya %)" title="məs. 50 və ya 10%">
-          <input class="in" id="sode" type="number" min="0" step="0.01" placeholder="Ödənilən">
-          ${[5, 10, 20, 50, 100, 200].map(v => `<button class="btn sm" data-ps="${v}">${v} ₼</button>`).join('')}<button class="btn sm" data-ps="tam">Tam</button></div>
+          <div><label class="f">Endirim (₼ və ya %)</label><input class="in" id="send" placeholder="məs. 50 və ya 10%"></div>
+          <div><label class="f">Ödənilən</label><input class="in" id="sode" type="number" min="0" step="0.01" placeholder="0,00"></div></div>
+        <div class="pos-tez">${[5, 10, 20, 50, 100, 200].map(v => `<button class="btn sm" data-ps="${v}">${v} ₼</button>`).join('')}<button class="btn sm" data-ps="tam">Tam</button></div>
         <div class="pos-toplam"><div><span>TOPLAM</span><small id="sinfo"></small></div><b id="scem">0,00 ₼</b></div>
       </div>
     </section>
@@ -1000,15 +1000,38 @@ async function pageSat(params) {
   saticiDoldur($('#ssat')).catch(() => {});
 
   // --- barkod / axtarış
-  const bk = $('#sbk');
-  bk.oninput = () => { axt = bk.value; kafCiz(); };
+  const bk = $('#sbk'), sug = $('#ssug');
+  let sugL = [], sugI = 0;
+  const sugGizle = () => { sug.style.display = 'none'; sugL = []; };
+  const sugCiz = () => {
+    const t = azLow(bk.value);
+    if (!t) return sugGizle();
+    sugL = mehs.filter(x => azLow([x.ad, x.kod, x.kateqoriya].join(' ')).includes(t))
+      .sort((a, b) => (azLow(b.ad).startsWith(t) - azLow(a.ad).startsWith(t)) || a.ad.localeCompare(b.ad, 'az')).slice(0, 12);
+    if (sugI >= sugL.length) sugI = 0;
+    const n = C().qn || 1;
+    sug.innerHTML = sugL.length ? sugL.map((x, i) => `<div class="${i === sugI ? 'on' : ''}" data-si="${i}"><span><b>${esc(x.ad)}</b><small>${esc([x.kateqoriya, x.kod].filter(Boolean).join(' · '))}</small></span>
+        ${x.anbar_izle ? `<i class="${num(x.anbar) > 0 ? '' : 'yox'}">${fmt(x.anbar)} əd.</i>` : ''}<em>${fmt(qy(x, n), 2)} ₼</em></div>`).join('')
+      : '<div class="bos">Məhsul tapılmadı</div>';
+    sug.style.display = '';
+    $$('[data-si]', sug).forEach(d => d.onmousedown = e => { e.preventDefault(); sec(sugL[+d.dataset.si]); });
+  };
+  const sec = x => { elaveEt(x); bk.value = ''; axt = ''; sugGizle(); kafCiz(); bk.focus(); };
+  bk.oninput = () => { axt = bk.value; sugI = 0; sugCiz(); kafCiz(); };
+  bk.onblur = () => setTimeout(() => { if (document.activeElement !== bk) sugGizle(); }, 150);
+  bk.onfocus = () => { if (bk.value.trim()) sugCiz(); };
   const barkodla = t => {
     t = String(t || '').trim(); if (!t) return;
-    const x = mehs.find(z => barkodBerabar(z, t)) || (() => { const l = suzulmus(); return l.length === 1 ? l[0] : null; })();
-    if (x) { elaveEt(x); bk.value = ''; axt = ''; kafCiz(); return; }
+    const x = mehs.find(z => barkodBerabar(z, t)) || (sugL.length ? sugL[sugI] : null);
+    if (x) return sec(x);
     toast(`"${t}" tapılmadı`, 2500); bk.select();
   };
-  bk.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); barkodla(bk.value); } if (e.key === 'Escape') { bk.value = ''; axt = ''; kafCiz(); } };
+  bk.onkeydown = e => {
+    if (e.key === 'Enter') { e.preventDefault(); barkodla(bk.value); }
+    else if (e.key === 'ArrowDown' && sugL.length) { e.preventDefault(); sugI = (sugI + 1) % sugL.length; sugCiz(); }
+    else if (e.key === 'ArrowUp' && sugL.length) { e.preventDefault(); sugI = (sugI - 1 + sugL.length) % sugL.length; sugCiz(); }
+    else if (e.key === 'Escape') { bk.value = ''; axt = ''; sugGizle(); kafCiz(); }
+  };
   $('#scam').onclick = () => kameraOxu(barkodla);
 
   // --- ödəniş
