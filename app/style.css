@@ -346,3 +346,6 @@ table.t td .btn.sm{vertical-align:middle;padding:4px 9px}table.t td .btn.sm .ico
 @media (max-width:360px){ .kafeller{grid-template-columns:repeat(2,1fr)} }
 details.zamin{background:#faf4ea;border-radius:10px;padding:10px 12px;margin-bottom:14px}
 details.zamin summary{cursor:pointer;font-weight:600}
+.yigim{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.yigim .yg{padding:14px 16px}
+@media (max-width:760px){ .yigim{grid-template-columns:1fr} }

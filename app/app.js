@@ -219,8 +219,9 @@ async function start() {
   await sistemOxu();
   const { data } = await sb.auth.getSession();
   const ses = data && data.session;
-  if (!ses) return loginView();
+  if (!ses) return loginView('', location.hash === '#qeyd' ? 'qeyd' : 'giris');
   S.user = ses.user; S.cache = {};
+  if (location.hash === '#qeyd') location.hash = '';
   try {
     const [me, adm] = await Promise.all([
       q(sb.from('uzvler').select('rol,ad,magaza_id').eq('user_id', S.user.id).maybeSingle()),
@@ -238,6 +239,7 @@ async function start() {
   } catch (e) { return loginView('Baza ilə əlaqə alınmadı: ' + e.message); }
   document.title = firmaAdi() + ' · ' + CFG.FIRMA_ADI;
   if (!S.magaza) location.hash = '#/admin';
+  else if (S.rol === 'kuryer') location.hash = '#/yigim';
   else if (!location.hash || /access_token|type=/.test(location.hash)) location.hash = window.innerWidth <= 760 ? '#/menyu' : '#/panel';
   route();
 }
@@ -256,23 +258,23 @@ const NAV = [
   ['panel', 'Panel', 'panel'], ['satislar', 'Satışlar', 'sale'], ['musteriler', 'Müştərilər', 'users'], ['mehsullar', 'Məhsullar', 'box'],
   ['rasxodlar', 'Rasxodlar', 'exp'], ['isciler', 'İşçilər', 'worker'], ['odenisler', 'Ödənişlər', 'wallet'], ['cixaris', 'Çıxarış', 'doc'],
   ['kassa', 'Kassa', 'kassaI'], ['sifarisler', 'Sifarişlər', 'clip'], ['hesabat', 'Aylıq hesabat', 'chart'],
-  ['teqvim', 'Ödəniş təqvimi', 'cal'], ['menfeet', 'Mənfəət', 'trend'], ['jurnal', 'Jurnal', 'hist'], ['ayarlar', 'Ayarlar', 'gear'],
+  ['teqvim', 'Ödəniş təqvimi', 'cal'], ['menfeet', 'Mənfəət', 'trend'], ['yigim', 'Yığım siyahısı', 'wallet'], ['saticilar', 'Satıcılar', 'chart'], ['jurnal', 'Jurnal', 'hist'], ['ayarlar', 'Ayarlar', 'gear'],
 ];
 const MOBNAV = ['menyu', 'panel', 'satislar', 'musteriler', 'mehsullar'];
 
 const NAVQISA = { menyu: 'Menyu', panel: 'Panel', satislar: 'Satış', musteriler: 'Müştəri', mehsullar: 'Məhsul', rasxodlar: 'Rasxod', isciler: 'İşçi' };
-const NAVBOLME = [['Satış', ['panel', 'satislar', 'musteriler', 'mehsullar']], ['Xərclər və işçilər', ['rasxodlar', 'isciler', 'odenisler', 'cixaris']], ['Kassa və hesabatlar', ['kassa', 'sifarisler', 'hesabat', 'teqvim', 'menfeet']], ['İdarəetmə', ['jurnal', 'ayarlar']]];
+const NAVBOLME = [['Satış', ['panel', 'satislar', 'musteriler', 'mehsullar']], ['Xərclər və işçilər', ['rasxodlar', 'isciler', 'odenisler', 'cixaris']], ['Kassa və hesabatlar', ['kassa', 'yigim', 'sifarisler', 'hesabat', 'teqvim', 'menfeet', 'saticilar']], ['İdarəetmə', ['jurnal', 'ayarlar']]];
 
 function shell(active, title, sub, tools, body) {
-  const navA = NAV.map(([k, t, i]) => `<a href="#/${k}" class="${active === k ? 'active' : ''}">${ico(i)}${t}</a>`).join('');
+  const navA = (S.rol === 'kuryer' ? NAV.filter(n => n[0] === 'yigim') : NAV).map(([k, t, i]) => `<a href="#/${k}" class="${active === k ? 'active' : ''}">${ico(i)}${t}</a>`).join('');
   app.innerHTML = `<div class="shell">
    <aside class="side"><div class="logo">${LOGO}<div><span>${esc(CFG.FIRMA_ADI)}</span><small>${S.magaza ? esc(S.magaza.ad) : 'Admin'}</small></div></div>
-    <nav>${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? '<div class="sec">Dükan</div>' : ''}` : ''}${S.magaza ? `${navA.split('<a href="#/rasxodlar"')[0]}<div class="sec">Xərclər və işçilər</div><a href="#/rasxodlar"${navA.split('<a href="#/rasxodlar"')[1].split('<a href="#/kassa"')[0]}<div class="sec">Kassa və hesabatlar</div><a href="#/kassa"${navA.split('<a href="#/kassa"')[1].split('<a href="#/jurnal"')[0]}<div class="sec">İdarəetmə</div><a href="#/jurnal"${navA.split('<a href="#/jurnal"')[1]}` : ''}</nav>
-    <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'muhasib' ? 'Mühasib' : S.rol === 'sahibkar' ? 'Yalnız baxış' : ''}</span><br><button id="out">Çıxış</button></div></aside>
+    <nav>${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? '<div class="sec">Dükan</div>' : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? `${navA.split('<a href="#/rasxodlar"')[0]}<div class="sec">Xərclər və işçilər</div><a href="#/rasxodlar"${navA.split('<a href="#/rasxodlar"')[1].split('<a href="#/kassa"')[0]}<div class="sec">Kassa və hesabatlar</div><a href="#/kassa"${navA.split('<a href="#/kassa"')[1].split('<a href="#/jurnal"')[0]}<div class="sec">İdarəetmə</div><a href="#/jurnal"${navA.split('<a href="#/jurnal"')[1]}` : ''}</nav>
+    <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'muhasib' ? 'Mühasib' : S.rol === 'sahibkar' ? 'Yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
    <div class="mobile-bar"><b>${LOGO}${esc(firmaAdi())}</b><button id="out2">Çıxış</button></div>
    <main class="main">${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
    <div id="page">${body || '<div class="empty"><div class="spinner" style="margin:auto"></div></div>'}</div></main>
-   <nav class="bottom-nav" ${S.magaza ? '' : 'style="display:none"'}>${[['menyu', 'Menyu', 'grid'], ...NAV].filter(n => MOBNAV.includes(n[0])).sort((a, b) => MOBNAV.indexOf(a[0]) - MOBNAV.indexOf(b[0])).map(([k, t, i]) => `<a href="#/${k}" class="${active === k || (k === 'isciler' && ['odenisler','cixaris'].includes(active)) ? 'active' : ''}">${ico(i)}${NAVQISA[k]}</a>`).join('')}</nav>
+   <nav class="bottom-nav" ${S.magaza && S.rol !== 'kuryer' ? '' : 'style="display:none"'}>${[['menyu', 'Menyu', 'grid'], ...NAV].filter(n => MOBNAV.includes(n[0])).sort((a, b) => MOBNAV.indexOf(a[0]) - MOBNAV.indexOf(b[0])).map(([k, t, i]) => `<a href="#/${k}" class="${active === k || (k === 'isciler' && ['odenisler','cixaris'].includes(active)) ? 'active' : ''}">${ico(i)}${NAVQISA[k]}</a>`).join('')}</nav>
   </div>`;
   const out = async () => { await sb.auth.signOut(); S.cache = {}; location.hash = ''; loginView(); };
   $('#out').onclick = out; $('#out2').onclick = out;
@@ -285,19 +287,84 @@ function route() {
   const [path, qs] = h.split('?');
   const params = new URLSearchParams(qs || '');
   const [p, id] = path.split('/');
-  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id),
+  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id),
     rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
     kassa: () => pageKassa(), sifarisler: () => pageSifarisler(params), hesabat: () => pageHesabat(params),
     teqvim: () => pageTeqvim(params), menfeet: () => pageMenfeet(), jurnal: () => pageJurnal(params), ayarlar: () => pageAyarlar(),
     qebz: () => pageQebz(id), muqavile: () => pageMuqavile(id), admin: () => pageAdmin() }[p] || pagePanel;
   if (!S.magaza && p !== 'admin') { location.hash = '#/admin'; return; }
+  if (S.rol === 'kuryer' && !['yigim', 'qebz', 'menyu'].includes(p)) { location.hash = '#/yigim'; return; }
   if (p === 'admin' && !S.admin) { location.hash = '#/panel'; return; }
   Promise.resolve(run()).catch(fail);
 }
 window.addEventListener('hashchange', route);
 
+/* =====================================================================
+   YIĞIM SİYAHISI — kuryer / pul yığan üçün: kimdən, nə qədər, hansı ünvanda
+   ===================================================================== */
+async function pageYigim(params) {
+  const nov = params.get('n') || 'bugun';
+  const odeyer = S.rol === 'muhasib' || S.rol === 'kuryer';
+  shell('yigim', 'Yığım siyahısı', fd(today()), `<div class="seg" id="yn">${[['bugun', 'Bu günə qədər'], ['hefte', 'Bu həftə'], ['hamisi', 'Bütün borclular']].map(([k, t]) => `<button data-n="${k}" class="${nov === k ? 'on' : ''}">${t}</button>`).join('')}</div>`);
+  $$('#yn button').forEach(b => b.onclick = () => location.hash = '#/yigim?n=' + b.dataset.n);
+  const [qr, mus] = await Promise.all([
+    all(() => sb.from('v_qrafik').select('id,musteri_id,novbeti_tarix,novbeti_mebleg,gecikmis,qaliq').gt('qaliq', 0).order('id')),
+    all(() => sb.from('v_musteriler').select('id,ad,unvan,telefon,qaliq,gecikme_gun').gt('qaliq', 0).order('id')),
+  ]);
+  const sat = await all(() => sb.from('v_satislar').select('id,satis_no,musteri_id,mal,qaliq,tarix').gt('qaliq', 0).order('id'));
+  const hed = nov === 'hefte' ? iso(new Date(Date.now() + 7 * 864e5)) : today();
+  const M = new Map(mus.map(x => [x.id, Object.assign({}, x, { gozlenen: 0, satislar: [] })]));
+  qr.forEach(r => { if (!r.novbeti_tarix) return; const m = M.get(r.musteri_id); if (!m) return;
+    if (nov === 'hamisi' || r.novbeti_tarix <= hed) { m.gozlenen += Math.max(num(r.gecikmis), num(r.novbeti_mebleg)); m.tarix = !m.tarix || r.novbeti_tarix < m.tarix ? r.novbeti_tarix : m.tarix; } });
+  sat.forEach(x => { const m = M.get(x.musteri_id); if (m) m.satislar.push(x); });
+  let list = [...M.values()].filter(m => nov === 'hamisi' || m.gozlenen > 0 || (m.gecikme_gun > 0 && !qr.some(r => r.musteri_id === m.id && r.novbeti_tarix)));
+  list.sort((a, b) => azLow(a.unvan || 'zzz').localeCompare(azLow(b.unvan || 'zzz'), 'az') || (b.gozlenen - a.gozlenen));
+  const cem = list.reduce((a, m) => a + (m.gozlenen || 0), 0);
+  $('.topbar .sub').textContent = `${fd(today())} · ${list.length} müştəri · gözlənilən ${man(cem)}`;
+  $('#page').innerHTML = list.length ? `<div class="yigim">${list.map(m => `<div class="card yg" data-m="${m.id}">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+        <div><div class="cell-main" style="font-size:15.5px">${esc(m.ad)}</div><div class="muted" style="font-size:13px">${esc(m.unvan || 'ünvan yoxdur')}</div></div>
+        <div style="text-align:right"><div style="font-size:18px;font-weight:700">${man(m.gozlenen || m.qaliq)}</div><div class="muted" style="font-size:12px">${m.gozlenen ? 'qalıq ' + man(m.qaliq) : 'ümumi borc'}</div></div></div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        ${m.telefon ? `<a class="btn sm" href="tel:${esc(m.telefon.replace(/\s/g, ''))}">📞 ${esc(m.telefon)}</a>` : ''}
+        ${m.unvan ? `<a class="btn sm" target="_blank" href="https://www.google.com/maps/search/${encodeURIComponent(m.unvan)}">Xəritə</a>` : ''}
+        ${m.tarix ? `<span class="badge ${m.tarix < today() ? 'b-red' : 'b-amber'}" style="align-self:center">${m.tarix < today() ? 'gecikib · ' : ''}${fd(m.tarix)}</span>` : (m.gecikme_gun > 0 ? `<span class="badge b-red" style="align-self:center">${m.gecikme_gun} gün</span>` : '')}
+        ${odeyer && m.satislar.length ? `<button class="btn sm green" data-al="${m.id}" style="margin-left:auto">${ico('cash')}Ödəniş al</button>` : ''}</div></div>`).join('')}</div>`
+    : '<div class="card empty">Bu dövr üçün yığılacaq ödəniş yoxdur</div>';
+  $$('[data-al]').forEach(b => b.onclick = () => { const m = M.get(+b.dataset.al); odenisAl({ ad: m.ad, qaliq: m.qaliq }, m.satislar); });
+}
+
+/* =====================================================================
+   SATICILAR — kim nə qədər satıb və bonusu
+   ===================================================================== */
+async function pageSaticilar(params) {
+  const ay = params.get('ay') || ayBasi(today());
+  const aylar = await q(sb.from('v_aylar').select('ay').order('ay', { ascending: false }));
+  shell('saticilar', 'Satıcılar', ay === 'hamisi' ? 'Bütün dövr' : ayAdi(ay),
+    `<select class="in" id="ay" style="width:auto"><option value="hamisi">Bütün dövr</option>${aylar.map(a => `<option value="${a.ay}" ${a.ay === ay ? 'selected' : ''}>${ayAdi(a.ay)}</option>`).join('')}</select>
+     <button class="btn" onclick="window.print()">${ico('print')}Çap / PDF</button>`);
+  if (ay === 'hamisi') $('#ay').value = 'hamisi';
+  $('#ay').onchange = e => location.hash = '#/saticilar?ay=' + e.target.value;
+  const [isc, sat] = await Promise.all([
+    q(sb.from('isciler').select('id,ad,vezife,satis_faizi').order('ad')),
+    all(() => { let b = sb.from('satislar').select('id,isci_id,deyer,ilkin,tarix'); if (ay !== 'hamisi') b = b.gte('tarix', ay).lte('tarix', aySonu(ay)); return b.order('id'); }),
+  ]);
+  const G = new Map();
+  sat.forEach(x => { const k = x.isci_id || 0; const g = G.get(k) || { say: 0, cem: 0, ilkin: 0 }; g.say++; g.cem += num(x.deyer); g.ilkin += num(x.ilkin); G.set(k, g); });
+  const rows = [...G.entries()].map(([k, g]) => { const i = isc.find(x => x.id === k); return { ad: i ? i.ad : 'Satıcı göstərilməyib', vez: i ? i.vezife : '', faiz: i ? num(i.satis_faizi) : 0, ...g }; })
+    .sort((a, b) => b.cem - a.cem);
+  const T = rows.reduce((a, r) => ({ say: a.say + r.say, cem: a.cem + r.cem, bonus: a.bonus + r.cem * r.faiz / 100 }), { say: 0, cem: 0, bonus: 0 });
+  $('#page').innerHTML = rows.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Satıcı</th><th class="n">Satış sayı</th><th class="n">Satış cəmi</th><th class="n">Pay %</th><th class="n hide-m">İlkin ödənişlər</th><th class="n">Bonus %</th><th class="n">Bonus</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td><div class="cell-main">${esc(r.ad)}</div><div class="cell-sub">${esc(r.vez || '')}</div></td><td class="n">${r.say}</td><td class="n"><b>${fmt(r.cem)}</b></td>
+        <td class="n">${T.cem ? Math.round(r.cem / T.cem * 100) : 0}%</td><td class="n hide-m">${fmt(r.ilkin)}</td><td class="n">${r.faiz ? fmt(r.faiz) : '—'}</td><td class="n">${r.faiz ? `<b>${fmt(Math.round(r.cem * r.faiz) / 100)}</b>` : '—'}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>Cəmi</td><td class="n">${T.say}</td><td class="n">${fmt(T.cem)}</td><td></td><td class="n hide-m"></td><td></td><td class="n">${fmt(Math.round(T.bonus * 100) / 100)}</td></tr></tfoot></table></div>
+      <p class="muted" style="font-size:13px">Satıcını satış formasında seçirsiniz. Bonus faizi "İşçilər" bölməsində işçinin kartında yazılır; bonusu "Ödənişlər" bölməsindən "Bonus" kimi yaza bilərsiniz.</p>`
+    : '<div class="card empty">Bu dövrdə satış yoxdur</div>';
+}
+
 /* ---------------- telefon üçün kafel menyu ---------------- */
 function pageMenyu() {
+  if (S.rol === 'kuryer') { location.hash = '#/yigim'; return; }
   shell('menyu', firmaAdi(), S.rol === 'muhasib' ? 'Mühasib' : 'Yalnız baxış', '');
   const ad = Object.fromEntries(NAV.map(n => [n[0], n]));
   const kafel = k => { const n = ad[k]; return n ? `<a class="kafel" href="#/${k}">${ico(n[2])}<span>${n[1]}</span></a>` : ''; };
@@ -341,6 +408,8 @@ async function pagePanel() {
   const isciVer = isc.filter(i => i.nov === 'İşçi' && i.status === 'İşləyir').reduce((s, i) => s + num(i.verilecek), 0);
   const kassa = aylar.length ? aylar[aylar.length - 1].ay_sonu_kassa : 0;
   const qrf = await all(() => sb.from('v_qrafik').select('id,novbeti_tarix,novbeti_mebleg,gecikmis').gt('qaliq', 0).order('id'));
+  let azMeh = [];
+  try { azMeh = (await q(sb.from('v_mehsullar').select('ad,anbar,min_qaliq').eq('anbar_izle', true).eq('aktiv', true))).filter(x => num(x.anbar) <= num(x.min_qaliq)); } catch (_) {}
   const hf = iso(new Date(Date.now() + 7 * 864e5));
   const hl = qrf.filter(r => r.novbeti_tarix && r.novbeti_tarix <= hf);
   const hefte = { say: hl.length, cem: hl.reduce((a, r) => a + num(r.novbeti_mebleg) + Math.max(0, num(r.gecikmis) - num(r.novbeti_mebleg)), 0) };
@@ -372,6 +441,7 @@ async function pagePanel() {
     <tfoot><tr><td>Cəm</td>${['satis','medaxil'].map(k => `<td class="n">${fmt(son12.reduce((s, x) => s + num(x[k]), 0))}</td>`).join('')}${['rasxod','maas','sahib'].map(k => `<td class="n hide-m">${fmt(son12.reduce((s, x) => s + num(x[k]), 0))}</td>`).join('')}<td class="n">${fmt(son12.reduce((s, x) => s + xalis(x), 0))}</td></tr></tfoot></table>`;
 
   $('#page').innerHTML = `
+   ${azMeh.length ? `<div class="banner b-amber-bg"><b>${azMeh.length} məhsul bitmək üzrədir:</b> ${azMeh.slice(0, 5).map(x => `${esc(x.ad)} (${fmt(x.anbar)})`).join(', ')}${azMeh.length > 5 ? ' …' : ''} — <a href="#/mehsullar?az=1">bax</a></div>` : ''}
    <div class="grid kpis">
      ${kpi(`Satış — ${ayAdi(buAy)}`, A.satis, B.satis)}
      ${kpi('Satış sayı', A.satis_sayi, B.satis_sayi, { count: true })}
@@ -437,11 +507,17 @@ async function pageSatislar(params) {
 }
 
 async function satisModal(id) {
-  const [s, pays, qr] = await Promise.all([
+  const [s, pays, qr, z, cer, A] = await Promise.all([
     q(sb.from('v_satislar').select('*').eq('id', id).single()),
     q(sb.from('satis_odenisleri').select('*').eq('satis_id', id).order('tarix').order('id')),
     q(sb.from('v_qrafik').select('*').eq('id', id).maybeSingle()),
+    q(sb.from('satislar').select('zamin_ad,zamin_tel,zamin_qeyd').eq('id', id).single()),
+    q(sb.from('satis_cerimeleri').select('*').eq('satis_id', id).order('tarix')),
+    ayarlar(),
   ]);
+  const ch = cerimeHesabla(s, qr, A);
+  const yazilib = cer.reduce((a, x) => a + num(x.mebleg), 0);
+  const yeniCer = ch ? Math.round((ch.cem - yazilib) * 100) / 100 : 0;
   const w = canWrite();
   const cet = qr && qr.qrafikli ? qrafikCetveli(s, qr) : [];
   const m = modal(`Satış ${esc(s.satis_no)}`, `
@@ -452,6 +528,12 @@ async function satisModal(id) {
       <div><span>Kredit ödənişləri</span><b>${man(s.odenilen)}</b></div><div><span>Qalıq borc</span><b class="${num(s.qaliq) > 0 ? 'neg' : 'pos'}">${man(s.qaliq)}</b></div>
       <div><span>Ödəniş sayı</span><b>${s.odenis_sayi}</b></div><div><span>Son ödəniş</span><b>${fd(s.son_odenis) || '—'}</b></div></div>
     ${s.qeyd ? `<p class="muted">Qeyd: ${esc(s.qeyd)}</p>` : ''}
+    <p id="qytlist" style="margin:6px 0"></p>
+    ${z.zamin_ad ? `<p style="margin:6px 0"><span class="muted">Zamin:</span> <b>${esc(z.zamin_ad)}</b>${z.zamin_tel ? ' · <a href="tel:' + esc(z.zamin_tel) + '">' + esc(z.zamin_tel) + '</a>' : ''}${z.zamin_qeyd ? ' · ' + esc(z.zamin_qeyd) : ''}</p>` : ''}
+    ${cer.length ? `<p style="margin:6px 0"><span class="muted">Yazılmış cərimə:</span> <b class="neg">${man(yazilib)}</b> ${cer.map(c => `<span class="badge b-red" title="${esc(c.qeyd || '')}">${fd(c.tarix)}: ${fmt(c.mebleg)}${w ? ` <a href="#" data-csil="${c.id}" style="color:inherit">✕</a>` : ''}</span>`).join(' ')}</p>` : ''}
+    ${ch && yeniCer > 0.009 ? `<div class="banner b-amber-bg" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <span>Gecikmə cəriməsi: <b>${man(yeniCer)}</b> <span class="muted">(gecikən ${man(ch.gecikmis)}, ən çox ${ch.gun} gün)</span></span>
+      ${w ? '<button class="btn sm" id="cyaz">Borca əlavə et</button>' : ''}</div>` : ''}
     ${qr && qr.maya != null ? `<p class="muted">Maya dəyəri: ${man(qr.maya)} · mənfəət: <b class="${num(s.deyer) - num(qr.maya) < 0 ? 'neg' : 'pos'}">${man(num(s.deyer) - num(qr.maya))}</b></p>` : ''}
     ${cet.length ? `<h4 style="margin:6px 0 8px">Ödəniş qrafiki <span class="muted" style="font-weight:400">· ayda ${man(qr.ayliq)}${num(qr.gecikmis) > 0 ? ` · <span class="neg">gecikən ${man(qr.gecikmis)}</span>` : ''}</span></h4>
       <div class="tbl-wrap" style="box-shadow:none;border:1px solid var(--line);max-height:260px;margin-bottom:14px"><table class="t"><thead><tr><th>#</th><th>Tarix</th><th class="n">Məbləğ</th><th>Vəziyyət</th></tr></thead><tbody>
@@ -467,7 +549,7 @@ async function satisModal(id) {
       <div class="field"><label class="f">Məbləğ (qalıq ${fmt(s.qaliq)})</label><input class="in" type="number" step="0.01" min="0.01" name="m" required></div></div>
       <div class="field"><label class="f">Qeyd (istəyə bağlı)</label><input class="in" name="q"></div>
       <button class="btn green">Ödənişi yaz</button></form>` : ''}`,
-    `<a class="btn" href="#/cek/${s.id}">${ico('print')}Çek</a><a class="btn" href="#/muqavile/${s.id}">Müqavilə (PDF)</a><a class="btn" href="#/musteri/${s.musteri_id}">Müştəriyə bax</a>${w ? '<button class="btn" id="ed">Satışı düzəlt</button>' : ''}<button class="btn" data-close>Bağla</button>`, true);
+    `${w ? '<button class="btn" id="qyt">Qaytarma</button>' : ''}<a class="btn" href="#/cek/${s.id}">${ico('print')}Çek</a><a class="btn" href="#/muqavile/${s.id}">Müqavilə (PDF)</a><a class="btn" href="#/musteri/${s.musteri_id}">Müştəriyə bax</a>${w ? '<button class="btn" id="ed">Satışı düzəlt</button>' : ''}<button class="btn" data-close>Bağla</button>`, true);
   $$('[data-close]', m).forEach(b => b.onclick = closeModal);
   const pf = $('#pf', m);
   if (pf) pf.onsubmit = async e => {
@@ -481,6 +563,19 @@ async function satisModal(id) {
       if (confirm('Ödəniş yazıldı. Müştəri üçün qəbz çap edilsin?')) location.hash = '#/qebz/' + np.id; else { refresh(); satisModal(id); }
     } catch (er) { fail(er); $('button', pf).disabled = false; }
   };
+  if ($('#qyt', m)) $('#qyt', m).onclick = () => qaytarmaModal(s).catch(fail);
+  q(sb.from('satis_qaytarmalari').select('*').eq('satis_id', id).order('tarix')).then(qs => {
+    if (!qs.length || !$('#qytlist', m)) return;
+    $('#qytlist', m).innerHTML = `<span class="muted">Qaytarmalar:</span> ${qs.map(x => `<span class="badge b-amber" title="${esc(x.qeyd || '')}">${fd(x.tarix)}: −${fmt(x.mebleg)}${num(x.geri_pul) ? ` (nağd ${fmt(x.geri_pul)})` : ''}${x.mallar ? ' · ' + esc(x.mallar) : ''}</span>`).join(' ')}`;
+  }).catch(() => {});
+  if ($('#cyaz', m)) $('#cyaz', m).onclick = async () => {
+    if (!confirm(`${man(yeniCer)} gecikmə cəriməsi müştərinin borcuna əlavə edilsin?`)) return;
+    try { await q(sb.from('satis_cerimeleri').insert({ satis_id: id, tarix: today(), mebleg: yeniCer, qeyd: `${ch.gun} gün gecikmə, gecikən ${fmt(ch.gecikmis)} ₼` })); toast('Cərimə borca əlavə olundu'); refresh(); satisModal(id); } catch (er) { fail(er); }
+  };
+  $$('[data-csil]', m).forEach(b => b.onclick = async e => {
+    e.preventDefault(); if (!confirm('Bu cərimə silinsin?')) return;
+    try { await q(sb.from('satis_cerimeleri').delete().eq('id', +b.dataset.csil)); toast('Cərimə silindi'); refresh(); satisModal(id); } catch (er) { fail(er); }
+  });
   $$('[data-del]', m).forEach(b => b.onclick = async () => {
     if (!confirm('Bu ödəniş silinsin?')) return;
     try { await q(sb.from('satis_odenisleri').delete().eq('id', +b.dataset.del)); toast('Ödəniş silindi'); refresh(); satisModal(id); } catch (er) { fail(er); }
@@ -488,21 +583,37 @@ async function satisModal(id) {
   if ($('#ed', m)) $('#ed', m).onclick = () => satisDuzelt(Object.assign({}, s, { ayliq: qr && qr.ayliq, ilk_odenis: qr && qr.ilk_odenis, maya: qr && qr.maya }));
 }
 
-function satisDuzelt(s, birbasa) {
+async function satisDuzelt(s, birbasa) {
+  const [z, kohne] = await Promise.all([
+    q(sb.from('satislar').select('zamin_ad,zamin_tel,zamin_qeyd,isci_id').eq('id', s.id).single()),
+    q(sb.from('satis_mallari').select('*').eq('satis_id', s.id).order('id')),
+  ]);
   const m = modal(`Satışı düzəlt — ${esc(s.satis_no)}`, `<form id="ef">
+    ${MEHSUL_SAHESI}
     <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${s.tarix}" required></div>
     <div class="field"><label class="f">Götürdüyü mal</label><input class="in" name="mal" value="${esc(s.mal || '')}"></div></div>
     <div class="row2"><div class="field"><label class="f">Malın dəyəri</label><input class="in" type="number" step="0.01" min="0" name="d" value="${s.deyer}" required></div>
     <div class="field"><label class="f">İlkin ödəniş</label><input class="in" type="number" step="0.01" min="0" name="i" value="${s.ilkin}"></div></div>
+    ${SATICI_SAHESI}
     ${qrafikSaheleri(s.ayliq, s.ilk_odenis, s.maya)}
+    ${zaminSaheleri(z)}
     <div class="field"><label class="f">Qeyd</label><input class="in" name="q" value="${esc(s.qeyd || '')}"></div></form>`,
     `<button class="btn danger" id="sil" style="margin-right:auto">Satışı sil</button><button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
   $$('[data-close]', m).forEach(b => b.onclick = () => birbasa ? closeModal() : satisModal(s.id));
-  qrafikIzle($('#ef', m));
+  const f = $('#ef', m);
+  const setirler = kohne.map(x => ({ mehsul_id: x.mehsul_id, ad: x.ad, miqdar: num(x.miqdar), qiymet: num(x.qiymet), maya: x.maya == null ? null : num(x.maya) }));
+  const ilkVeziyyet = JSON.stringify(setirler);
+  saticiDoldur(f.sat, z.isci_id || null).catch(() => {});
+  await setirRedaktor(m, f, setirler, null);
+  qrafikIzle(f);
   $('#ok', m).onclick = async () => {
-    const f = $('#ef', m); if (!f.reportValidity()) return;
+    if (!f.reportValidity()) return;
     try {
-      await q(sb.from('satislar').update(Object.assign({ tarix: f.t.value, mal: f.mal.value.trim() || null, deyer: num(f.d.value), ilkin: num(f.i.value), qeyd: f.q.value.trim() || null }, qrafikDeyerleri(f))).eq('id', s.id));
+      await q(sb.from('satislar').update(Object.assign({ tarix: f.t.value, mal: f.mal.value.trim() || null, deyer: num(f.d.value), ilkin: num(f.i.value), qeyd: f.q.value.trim() || null }, qrafikDeyerleri(f), zaminDeyerleri(f), { isci_id: f.sat.value ? +f.sat.value : null })).eq('id', s.id));
+      if (JSON.stringify(setirler) !== ilkVeziyyet) {
+        await q(sb.from('satis_mallari').delete().eq('satis_id', s.id));
+        if (setirler.length) await q(sb.from('satis_mallari').insert(setirler.map(x => ({ satis_id: s.id, mehsul_id: x.mehsul_id, ad: x.ad, miqdar: x.miqdar, qiymet: x.qiymet, maya: x.maya }))));
+      }
       toast('Satış yeniləndi'); refresh(); if (!birbasa) satisModal(s.id);
     } catch (er) { fail(er); }
   };
@@ -526,15 +637,14 @@ async function yeniSatis(musteriId, pref) {
       <div class="field"><label class="f">Ad Soyad</label><input class="in" name="ad"></div>
       <div class="row2"><div class="field"><label class="f">Ünvan</label><input class="in" name="un"></div>
       <div class="field"><label class="f">Telefon</label><input class="in" name="tel" inputmode="tel"></div></div></div>
-    <div class="field"><label class="f">Məhsullar <span class="muted" style="font-weight:400">(kataloqdan seçin və ya aşağıda əl ilə yazın)</span></label>
-      <input class="in" id="pax" placeholder="Məhsul adı və ya kodu yazın…" autocomplete="off">
-      <div class="suggest" id="psug" style="display:none"></div>
-      <div id="psetir"></div></div>
+    ${MEHSUL_SAHESI}
     <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${today()}" required></div>
     <div class="field"><label class="f">Götürdüyü mal</label><input class="in" name="mal" placeholder="məs. Mətbəx mebeli"></div></div>
     <div class="row2"><div class="field"><label class="f">Malın dəyəri <span class="muted" style="font-weight:400" id="endinfo"></span></label><input class="in" type="number" step="0.01" min="0" name="d" required></div>
     <div class="field"><label class="f">İlkin ödəniş</label><input class="in" type="number" step="0.01" min="0" name="i" value="0"></div></div>
+    ${SATICI_SAHESI}
     ${qrafikSaheleri(null, null, null)}
+    ${zaminSaheleri(null)}
     <div class="field"><label class="f">Qeyd (istəyə bağlı)</label><input class="in" name="q"></div>
     <div class="muted" id="qal"></div></form>`,
     `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Satışı yaz</button>`);
@@ -564,43 +674,10 @@ async function yeniSatis(musteriId, pref) {
     const cem = setirler.reduce((a, x) => a + x.miqdar * x.qiymet, 0);
     $('#endinfo', m).textContent = setirler.length && f.d.value && num(f.d.value) < cem - 0.001 ? `· endirim ${fmt(cem - num(f.d.value))}` : ''; };
   f.d.oninput = qal; f.i.oninput = qal;
+  saticiDoldur(f.sat).catch(() => {});
   // --- məhsul sətirləri ---
-  const mehs = S.cache.mehs || (S.cache.mehs = await all(() => sb.from('mehsullar').select('id,ad,kod,kateqoriya,qiymet,maya').eq('aktiv', true).order('ad')));
   const setirler = [];
-  const yenile = (dyaz = true) => {
-    $('#psetir', m).innerHTML = setirler.length ? `<table class="t" style="margin-top:8px"><tbody>${setirler.map((x, i) => `<tr>
-      <td style="padding-left:0">${esc(x.ad)}</td>
-      <td style="width:70px"><input class="in" type="number" min="1" step="1" value="${x.miqdar}" data-mq="${i}" style="padding:5px 6px"></td>
-      <td style="width:100px"><input class="in" type="number" min="0" step="0.01" value="${x.qiymet}" data-qy="${i}" style="padding:5px 6px"></td>
-      <td class="n" style="width:80px"><b>${fmt(x.miqdar * x.qiymet)}</b></td><td style="width:30px;padding-right:0"><button type="button" class="btn sm danger" data-sl="${i}">×</button></td></tr>`).join('')}</tbody>
-      <tfoot><tr><td style="padding-left:0">Cəm</td><td></td><td></td><td class="n">${fmt(setirler.reduce((a, x) => a + x.miqdar * x.qiymet, 0))}</td><td></td></tr></tfoot></table>` : '';
-    if (dyaz && setirler.length) {
-      f.mal.value = setirler.map(x => x.ad + (x.miqdar > 1 ? ' ×' + x.miqdar : '')).join(', ');
-      f.d.value = Math.round(setirler.reduce((a, x) => a + x.miqdar * x.qiymet, 0) * 100) / 100;
-      f.maya.value = setirler.every(x => x.maya != null) ? Math.round(setirler.reduce((a, x) => a + x.miqdar * num(x.maya), 0) * 100) / 100 : '';
-      f.d.dispatchEvent(new Event('input'));
-    }
-    $$('[data-mq]', m).forEach(el => el.onchange = () => { setirler[+el.dataset.mq].miqdar = Math.max(1, num(el.value)); yenile(); });
-    $$('[data-qy]', m).forEach(el => el.onchange = () => { setirler[+el.dataset.qy].qiymet = Math.max(0, num(el.value)); yenile(); });
-    $$('[data-sl]', m).forEach(el => el.onclick = () => { setirler.splice(+el.dataset.sl, 1); yenile(); });
-    qal();
-  };
-  const psug = $('#psug', m);
-  $('#pax', m).oninput = e => {
-    const t = e.target.value.trim().toLocaleLowerCase('az');
-    if (!t) { psug.style.display = 'none'; return; }
-    const list = mehs.filter(x => [x.ad, x.kod, x.kateqoriya].join(' ').toLocaleLowerCase('az').includes(t)).slice(0, 20);
-    psug.style.display = '';
-    psug.innerHTML = list.length ? list.map(x => `<div data-pid="${x.id}"><b>${esc(x.ad)}</b> <span class="muted">${esc(x.kateqoriya || '')}${x.kod ? ' · ' + esc(x.kod) : ''}</span> <span style="float:right"><b>${fmt(x.qiymet)} ₼</b></span></div>`).join('')
-      : `<div class="muted" style="cursor:default">Kataloqda yoxdur${canWrite() ? ' — "Məhsullar" bölməsindən əlavə edin' : ''}</div>`;
-    $$('[data-pid]', psug).forEach(d => d.onclick = () => {
-      const x = mehs.find(z => z.id === +d.dataset.pid);
-      const var_ = setirler.find(z => z.mehsul_id === x.id);
-      if (var_) var_.miqdar += 1; else setirler.push({ mehsul_id: x.id, ad: x.ad, miqdar: 1, qiymet: num(x.qiymet), maya: x.maya == null ? null : num(x.maya) });
-      psug.style.display = 'none'; e.target.value = ''; yenile(); e.target.focus();
-    });
-  };
-  $('#pax', m).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const d = $('[data-pid]', psug); if (d) d.click(); } };
+  await setirRedaktor(m, f, setirler, qal);
   qrafikIzle(f, true);
   if (pref) {
     $('#mtip button[data-t="yeni"]', m).click();
@@ -620,7 +697,7 @@ async function yeniSatis(musteriId, pref) {
         const nm = await q(sb.from('musteriler').insert({ ad: f.ad.value.trim(), unvan: f.un.value.trim() || null, telefon: f.tel.value.trim() || null }).select().single());
         mid = nm.id;
       }
-      const ns = await q(sb.from('satislar').insert(Object.assign({ musteri_id: mid, tarix: f.t.value, mal: f.mal.value.trim() || null, deyer: num(f.d.value), ilkin: num(f.i.value), qeyd: f.q.value.trim() || null }, qrafikDeyerleri(f))).select().single());
+      const ns = await q(sb.from('satislar').insert(Object.assign({ musteri_id: mid, tarix: f.t.value, mal: f.mal.value.trim() || null, deyer: num(f.d.value), ilkin: num(f.i.value), qeyd: f.q.value.trim() || null }, qrafikDeyerleri(f), zaminDeyerleri(f), { isci_id: f.sat.value ? +f.sat.value : null })).select().single());
       if (setirler.length) await q(sb.from('satis_mallari').insert(setirler.map(x => ({ satis_id: ns.id, mehsul_id: x.mehsul_id, ad: x.ad, miqdar: x.miqdar, qiymet: x.qiymet, maya: x.maya }))));
       if (pref && pref.sifarisId) await q(sb.from('sifarisler').update({ status: 'Təhvil verildi' }).eq('id', pref.sifarisId));
       closeModal(); toast(`Satış yazıldı: ${ns.satis_no}`); S.cache = {};
@@ -707,6 +784,7 @@ async function pageMusteri(id) {
     q(sb.from('v_satislar').select('*').eq('musteri_id', id).order('tarix').order('id')),
   ]);
   const pays = sales.length ? await q(sb.from('satis_odenisleri').select('*').in('satis_id', sales.map(s => s.id)).order('tarix').order('id')) : [];
+  const cers = sales.length ? await q(sb.from('satis_cerimeleri').select('*').in('satis_id', sales.map(s => s.id)).order('tarix')) : [];
   const w = canWrite();
   $('.topbar').innerHTML = `<div><h2>${esc(m.ad)}</h2><div class="sub">${esc(m.unvan || '')}${m.telefon ? ' · ' + esc(m.telefon) : ''}</div></div>
     <div class="tools"><a class="btn" href="#/musteriler">← Siyahı</a>${w ? `${num(m.qaliq) > 0 ? `<button class="btn green" id="odal">${ico('cash')}Ödəniş al</button>` : ''}<button class="btn" id="ed">Məlumatı düzəlt</button><button class="btn primary" id="yeni">${ico('plus')}Yeni satış</button>` : ''}
@@ -716,6 +794,7 @@ async function pageMusteri(id) {
   const hereket = [];
   sales.forEach(s => { hereket.push({ t: s.tarix, k: 0, ad: `Satış ${s.satis_no}${s.mal ? ' — ' + s.mal : ''}`, borc: num(s.deyer) });
     if (num(s.ilkin) > 0) hereket.push({ t: s.tarix, k: 1, ad: `İlkin ödəniş (${s.satis_no})`, od: num(s.ilkin) }); });
+  cers.forEach(c => hereket.push({ t: c.tarix, k: 1.5, ad: `Gecikmə cəriməsi (${satNo[c.satis_id]})`, borc: num(c.mebleg) }));
   pays.forEach(p => hereket.push({ t: p.tarix, k: 2, ad: `Ödəniş (${satNo[p.satis_id]})${p.texmini ? ' · təxmini tarix' : ''}${p.qeyd ? ' — ' + p.qeyd : ''}`, od: num(p.mebleg) }));
   hereket.sort((a, b) => a.t < b.t ? -1 : a.t > b.t ? 1 : a.k - b.k);
   let bal = 0;
@@ -762,6 +841,7 @@ async function pageMusteri(id) {
 function odenisAl(m, sales) {
   const acik = sales.filter(s => num(s.qaliq) > 0.001).sort((a, b) => a.tarix < b.tarix ? -1 : a.tarix > b.tarix ? 1 : a.id - b.id);
   const cem = acik.reduce((a, s) => a + num(s.qaliq), 0);
+  if (!acik.length) return toast('Açıq borc yoxdur');
   const md = modal(`Ödəniş al — ${esc(m.ad)}`, `<form id="oa">
     <div class="info" style="margin-bottom:14px"><div><span>Qalıq borc</span><b class="neg">${man(cem)}</b></div><div><span>Açıq satış</span><b>${acik.length}</b></div></div>
     ${acik.length > 1 ? `<div class="field"><label class="f">Hansı satışa</label><select class="in" name="s">
@@ -818,26 +898,30 @@ async function pageMehsullar(params) {
   shell('mehsullar', 'Məhsullar', '', `<input class="in search" id="axtar" placeholder="Axtar: ad, kod, kateqoriya">
     <select class="in" id="kat" style="width:auto"><option value="">Bütün kateqoriyalar</option></select>
     <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;white-space:nowrap"><input type="checkbox" id="passiv"> Passivlər</label>
-    ${w ? `<button class="btn" id="toplu">${ico('up')}Excel-dən yüklə</button><button class="btn primary" id="yeni">${ico('plus')}Yeni məhsul</button>` : ''}`);
+    <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;white-space:nowrap"><input type="checkbox" id="azal" ${params.get('az') ? 'checked' : ''}> Bitmək üzrə</label>
+    ${w ? `<button class="btn" id="toplu">${ico('up')}Excel-dən yüklə</button><button class="btn" id="medaxil">${ico('box')}Mal mədaxili</button><button class="btn primary" id="yeni">${ico('plus')}Yeni məhsul</button>` : ''}`);
   const rows = await all(() => sb.from('v_mehsullar').select('*').order('ad'));
+  const azdir = r => r.anbar_izle && num(r.anbar) <= num(r.min_qaliq);
   const kats = [...new Set(rows.map(r => r.kateqoriya).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'az'));
   $('#kat').innerHTML += kats.map(k => `<option>${esc(k)}</option>`).join('');
   const draw = () => {
-    const t = ($('#axtar').value || '').toLocaleLowerCase('az'), k = $('#kat').value, pas = $('#passiv').checked;
-    const list = rows.filter(r => (pas || r.aktiv) && (!k || r.kateqoriya === k) && (!t || [r.ad, r.kod, r.kateqoriya].join(' ').toLocaleLowerCase('az').includes(t)));
+    const t = ($('#axtar').value || '').toLocaleLowerCase('az'), k = $('#kat').value, pas = $('#passiv').checked, az = $('#azal').checked;
+    const list = rows.filter(r => (pas || r.aktiv) && (!az || azdir(r)) && (!k || r.kateqoriya === k) && (!t || [r.ad, r.kod, r.kateqoriya].join(' ').toLocaleLowerCase('az').includes(t)));
     $('.topbar .sub').textContent = `${list.length} məhsul`;
-    $('#page').innerHTML = rows.length ? (list.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Məhsul</th><th class="hide-m">Kateqoriya</th><th class="hide-m">Kod</th><th class="n">Qiymət</th><th class="n hide-m">Maya</th><th class="n hide-m">Mənfəət</th><th class="n hide-m">Satılıb</th></tr></thead>
+    $('#page').innerHTML = rows.length ? (list.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Məhsul</th><th class="hide-m">Kateqoriya</th><th class="hide-m">Kod</th><th class="n">Qiymət</th><th class="n hide-m">Maya</th><th class="n hide-m">Mənfəət</th><th class="n hide-m">Satılıb</th><th class="n">Anbarda</th></tr></thead>
       <tbody>${list.map(r => { const mf = r.maya != null && num(r.qiymet) > 0 ? (num(r.qiymet) - num(r.maya)) / num(r.qiymet) * 100 : null;
         return `<tr class="${w ? 'click' : ''}" data-p="${r.id}" style="${r.aktiv ? '' : 'opacity:.55'}"><td><div class="cell-main">${esc(r.ad)}</div>${r.qeyd ? `<div class="cell-sub">${esc(r.qeyd)}</div>` : ''}${r.aktiv ? '' : '<span class="badge b-gray">passiv</span>'}</td>
         <td class="hide-m">${esc(r.kateqoriya || '')}</td><td class="hide-m muted">${esc(r.kod || '')}</td><td class="n"><b>${fmt(r.qiymet)}</b></td>
         <td class="n hide-m">${r.maya == null ? '—' : fmt(r.maya)}</td><td class="n hide-m">${mf == null ? '—' : `<span class="${mf < 0 ? 'neg' : 'pos'}">${Math.round(mf)}%</span>`}</td>
-        <td class="n hide-m">${num(r.satilib) ? fmt(r.satilib) + ' ədəd' : '—'}</td></tr>`; }).join('')}</tbody></table></div>`
+        <td class="n hide-m">${num(r.satilib) ? fmt(r.satilib) + ' ədəd' : '—'}</td>
+        <td class="n">${r.anbar_izle ? `<span class="badge ${azdir(r) ? 'b-red' : 'b-green'}">${fmt(r.anbar)} ədəd</span>` : '<span class="muted">—</span>'}</td></tr>`; }).join('')}</tbody></table></div>`
       : '<div class="card empty">Məhsul tapılmadı</div>')
       : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Hələ məhsul yoxdur</div>
          <div class="muted">Satdığınız malları (məs. "Künc divan Milano", "Mətbəx dəsti 2.4 m") bir dəfə qiyməti ilə yazın — satış zamanı siyahıdan seçəcəksiniz.</div></div>`;
     if (w) $$('[data-p]').forEach(tr => tr.onclick = () => mehsulForm(rows.find(r => r.id === +tr.dataset.p), kats));
   };
-  ['axtar', 'kat', 'passiv'].forEach(id => $('#' + id).addEventListener(id === 'axtar' ? 'input' : 'change', draw));
+  ['axtar', 'kat', 'passiv', 'azal'].forEach(id => $('#' + id).addEventListener(id === 'axtar' ? 'input' : 'change', draw));
+  if ($('#medaxil')) $('#medaxil').onclick = () => malMedaxili(rows);
   if ($('#yeni')) $('#yeni').onclick = () => mehsulForm(null, kats);
   if ($('#toplu')) $('#toplu').onclick = () => mehsulIdxal();
   draw();
@@ -852,17 +936,34 @@ function mehsulForm(r, kats) {
     <div class="row2"><div class="field"><label class="f">Satış qiyməti</label><input class="in" type="number" step="0.01" min="0" name="qy" value="${r ? r.qiymet : ''}" required></div>
     <div class="field"><label class="f">Maya dəyəri <span class="muted" style="font-weight:400">(istəyə bağlı)</span></label><input class="in" type="number" step="0.01" min="0" name="my" value="${r && r.maya != null ? r.maya : ''}"></div></div>
     <div class="field"><label class="f">Qeyd (ölçü, rəng və s.)</label><input class="in" name="q" value="${esc(r && r.qeyd || '')}"></div>
+    <div style="background:#faf4ea;border-radius:10px;padding:10px 12px;margin-bottom:12px">
+      <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" name="ai" ${r && r.anbar_izle ? 'checked' : ''}> Anbar qalığını izlə</label>
+      <div class="row2" style="margin-top:8px"><div class="field" style="margin:0"><label class="f">Minimum qalıq (xəbərdarlıq üçün)</label><input class="in" type="number" min="0" step="1" name="mq" value="${r ? num(r.min_qaliq) : 1}"></div>
+      ${r && r.anbar_izle ? `<div class="field" style="margin:0"><label class="f">Sayım: faktiki qalıq <span class="muted" style="font-weight:400">(indi ${fmt(r.anbar)})</span></label><input class="in" type="number" step="1" name="say" placeholder="${fmt(r.anbar)}"></div>` : ''}</div>
+      ${r ? '<div id="hrk" style="margin-top:10px"></div>' : ''}</div>
     ${r ? `<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="ak" ${r.aktiv ? 'checked' : ''}> Aktivdir (satışda görünür)</label>` : ''}</form>`,
     `${r ? '<button class="btn danger" id="sil" style="margin-right:auto">Sil</button>' : ''}<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
   const f = $('#pf', m);
   setTimeout(() => f.ad.focus(), 50);
+  if (r && $('#hrk', m)) Promise.all([
+    q(sb.from('anbar_hereketleri').select('*').eq('mehsul_id', r.id).order('tarix', { ascending: false }).limit(15)),
+    q(sb.from('satis_mallari').select('miqdar,satis_id').eq('mehsul_id', r.id).order('id', { ascending: false }).limit(15)),
+  ]).then(([h, sm]) => {
+    const list = [...h.map(x => ({ t: x.tarix, ad: x.nov + (x.techizatci ? ' · ' + x.techizatci : '') + (x.qeyd && x.nov !== 'Mədaxil' ? ' · ' + x.qeyd : ''), m: num(x.miqdar), qy: x.qiymet })),
+      ...sm.map(x => ({ t: '', ad: 'Satış', m: -num(x.miqdar) }))].slice(0, 20);
+    $('#hrk', m).innerHTML = list.length ? `<div class="muted" style="font-size:12.5px;margin-bottom:4px">Son hərəkətlər</div>
+      <div style="max-height:150px;overflow:auto;font-size:13px">${list.map(x => `<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:3px 0">
+        <span>${x.t ? fd(x.t) + ' · ' : ''}${esc(x.ad)}${x.qy != null ? ` <span class="muted">(${fmt(x.qy)} ₼)</span>` : ''}</span><b class="${x.m < 0 ? 'neg' : 'pos'}">${x.m > 0 ? '+' : ''}${fmt(x.m)}</b></div>`).join('')}</div>` : '';
+  }).catch(() => {});
   $('#ok', m).onclick = async () => {
     if (!f.reportValidity()) return;
     const v = { ad: f.ad.value.trim(), kateqoriya: f.kat.value.trim() || null, kod: f.kod.value.trim() || null, qiymet: num(f.qy.value),
-                maya: f.my.value === '' ? null : num(f.my.value), qeyd: f.q.value.trim() || null };
+                maya: f.my.value === '' ? null : num(f.my.value), qeyd: f.q.value.trim() || null, anbar_izle: f.ai.checked, min_qaliq: num(f.mq.value) };
     if (r) v.aktiv = f.ak.checked;
     try {
       if (r) await q(sb.from('mehsullar').update(v).eq('id', r.id)); else await q(sb.from('mehsullar').insert(v));
+      if (r && f.say && f.say.value !== '' && num(f.say.value) !== num(r.anbar))
+        await q(sb.from('anbar_hereketleri').insert({ mehsul_id: r.id, tarix: today(), nov: 'Sayım', miqdar: num(f.say.value) - num(r.anbar), qeyd: `Sayım: ${fmt(r.anbar)} → ${fmt(f.say.value)}` }));
       closeModal(); toast('Yadda saxlanıldı'); refresh();
     } catch (er) { fail(er); }
   };
@@ -874,6 +975,116 @@ function mehsulForm(r, kats) {
     }
     if (!confirm(`"${r.ad}" silinsin?`)) return;
     try { await q(sb.from('mehsullar').delete().eq('id', r.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); }
+  };
+}
+
+function malMedaxili(mehs) {
+  const akt = mehs.filter(x => x.aktiv);
+  const m = modal('Mal mədaxili (anbara gələn mal)', `<form id="mf">
+    <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${today()}" required></div>
+    <div class="field"><label class="f">Təchizatçı / haradan</label><input class="in" name="tc" placeholder="məs. İstehsalat sexi, Bakı anbarı"></div></div>
+    <div class="field"><label class="f">Məhsullar</label><input class="in" id="max" placeholder="Məhsul adı və ya kodu yazın…" autocomplete="off">
+      <div class="suggest" id="msug" style="display:none"></div><div id="msetir"></div></div>
+    <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><input type="checkbox" name="my" checked> Məhsulun maya dəyərini bu alış qiymətinə yenilə</label>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="rx"> Pulu kassadan ödənilib — cəmi "Rasxodlar"a yaz</label>
+    <div class="field" style="margin-top:10px"><label class="f">Qeyd</label><input class="in" name="q"></div></form>`,
+    `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Anbara yaz</button>`, true);
+  const f = $('#mf', m), set = [];
+  const ciz = () => {
+    $('#msetir', m).innerHTML = set.length ? `<table class="t" style="margin-top:8px"><thead><tr><th>Məhsul</th><th class="n">Anbarda</th><th class="n">Miqdar</th><th class="n">Alış qiyməti</th><th class="n">Cəm</th><th></th></tr></thead><tbody>${set.map((x, i) => `<tr>
+      <td>${esc(x.ad)}</td><td class="n muted">${x.anbar_izle ? fmt(x.anbar) : '—'}</td>
+      <td style="width:80px"><input class="in" type="number" min="1" step="1" value="${x.miqdar}" data-mq="${i}" style="padding:5px 6px"></td>
+      <td style="width:110px"><input class="in" type="number" min="0" step="0.01" value="${x.qiymet}" data-qy="${i}" style="padding:5px 6px"></td>
+      <td class="n"><b>${fmt(x.miqdar * x.qiymet)}</b></td><td style="width:30px"><button type="button" class="btn sm danger" data-sl="${i}">×</button></td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>Cəm</td><td></td><td class="n">${fmt(set.reduce((a, x) => a + x.miqdar, 0))}</td><td></td><td class="n">${fmt(set.reduce((a, x) => a + x.miqdar * x.qiymet, 0))}</td><td></td></tr></tfoot></table>` : '';
+    $$('[data-mq]', m).forEach(el => el.onchange = () => { set[+el.dataset.mq].miqdar = Math.max(1, num(el.value)); setTimeout(() => ciz()); });
+    $$('[data-qy]', m).forEach(el => el.onchange = () => { set[+el.dataset.qy].qiymet = Math.max(0, num(el.value)); setTimeout(() => ciz()); });
+    $$('[data-sl]', m).forEach(el => el.onclick = () => { set.splice(+el.dataset.sl, 1); ciz(); });
+  };
+  const sug = $('#msug', m);
+  $('#max', m).oninput = e => {
+    const t = azLow(e.target.value); if (!t) { sug.style.display = 'none'; return; }
+    const list = akt.filter(x => azLow([x.ad, x.kod, x.kateqoriya].join(' ')).includes(t)).slice(0, 20);
+    sug.style.display = '';
+    sug.innerHTML = list.length ? list.map(x => `<div data-id="${x.id}"><b>${esc(x.ad)}</b> <span class="muted">${esc(x.kateqoriya || '')}</span>${x.anbar_izle ? ` <span class="badge b-gray">anbarda ${fmt(x.anbar)}</span>` : ''}</div>`).join('') : '<div class="muted" style="cursor:default">Tapılmadı — əvvəlcə "Yeni məhsul" ilə əlavə edin</div>';
+    $$('[data-id]', sug).forEach(d => d.onclick = () => {
+      const x = akt.find(z => z.id === +d.dataset.id); const v = set.find(z => z.id === x.id);
+      if (v) v.miqdar += 1; else set.push({ id: x.id, ad: x.ad, anbar_izle: x.anbar_izle, anbar: x.anbar, miqdar: 1, qiymet: x.maya != null ? num(x.maya) : 0 });
+      sug.style.display = 'none'; e.target.value = ''; ciz(); e.target.focus();
+    });
+  };
+  $('#max', m).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const d = $('[data-id]', sug); if (d) d.click(); } };
+  $('#ok', m).onclick = async () => {
+    if (!f.reportValidity()) return;
+    if (!set.length) return toast('Ən azı bir məhsul seçin');
+    $('#ok', m).disabled = true;
+    try {
+      await q(sb.from('anbar_hereketleri').insert(set.map(x => ({ mehsul_id: x.id, tarix: f.t.value, nov: 'Mədaxil', miqdar: x.miqdar, qiymet: x.qiymet, techizatci: f.tc.value.trim() || null, qeyd: f.q.value.trim() || null }))));
+      for (const x of set) {
+        const v = { anbar_izle: true }; if (f.my.checked && x.qiymet > 0) v.maya = x.qiymet;
+        await q(sb.from('mehsullar').update(v).eq('id', x.id));
+      }
+      const cem = set.reduce((a, x) => a + x.miqdar * x.qiymet, 0);
+      if (f.rx.checked && cem > 0) await q(sb.from('rasxodlar').insert({ tarix: f.t.value, mebleg: Math.round(cem * 100) / 100, kateqoriya: 'Material', kim: f.tc.value.trim() || null,
+        aciqlama: 'Mal mədaxili: ' + set.map(x => `${x.ad} ×${x.miqdar}`).join(', ').slice(0, 200) }));
+      closeModal(); toast(`${set.reduce((a, x) => a + x.miqdar, 0)} ədəd mal anbara yazıldı`); refresh();
+    } catch (er) { fail(er); $('#ok', m).disabled = false; }
+  };
+}
+
+// Satışdan qaytarma: mal anbara qayıdır, satışın dəyəri azalır, istəyə görə nağd pul geri verilir
+async function qaytarmaModal(s) {
+  const mallar = await q(sb.from('satis_mallari').select('*').eq('satis_id', s.id).order('id'));
+  const cem = mallar.reduce((a, x) => a + num(x.miqdar) * num(x.qiymet), 0);
+  const nisbet = cem > 0 ? num(s.deyer) / cem : 1;           // endirim varsa mütənasib
+  const odenib = num(s.ilkin) + num(s.odenilen);
+  const m = modal(`Qaytarma — ${esc(s.satis_no)}`, `<form id="qf">
+    ${mallar.length ? `<div class="muted" style="font-size:13px;margin-bottom:6px">Qaytarılan malların sayını yazın:</div>
+      <table class="t"><thead><tr><th>Məhsul</th><th class="n">Satılıb</th><th class="n">Qiymət</th><th class="n">Qaytarılır</th></tr></thead><tbody>${mallar.map((x, i) => `<tr>
+        <td>${esc(x.ad)}</td><td class="n">${fmt(x.miqdar)}</td><td class="n">${fmt(x.qiymet)}</td>
+        <td style="width:100px"><input class="in" type="number" min="0" max="${num(x.miqdar)}" step="1" value="0" data-qm="${i}" style="padding:5px 6px"></td></tr>`).join('')}</tbody></table>`
+      : '<p class="muted" style="margin-top:0">Bu satışda kataloq məhsulu yoxdur — qaytarılan məbləği yazın.</p>'}
+    <div class="row2" style="margin-top:12px"><div class="field"><label class="f">Satışın dəyərindən çıxılır</label><input class="in" type="number" min="0" step="0.01" name="mb" value="0" required></div>
+    <div class="field"><label class="f">Müştəriyə nağd qaytarılır</label><input class="in" type="number" min="0" step="0.01" name="gp" value="0"></div></div>
+    <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${today()}" required></div>
+    <div class="field"><label class="f">Səbəb / qeyd</label><input class="in" name="q" placeholder="məs. zədəli gəldi, rəng uyğun deyil"></div></div>
+    <div class="muted" id="qinfo" style="font-size:13px"></div>
+    <p class="muted" style="font-size:12.5px;margin-bottom:0">Dəyişmə üçün: əvvəl qaytarmanı yazın, sonra "Satışı düzəlt" ilə yeni məhsulu əlavə edin.</p></form>`,
+    `<button class="btn" data-close>Ləğv et</button><button class="btn danger" id="ok">Qaytarmanı yaz</button>`, true);
+  const f = $('#qf', m);
+  const hesabla = (avto = true) => {
+    const qm = mallar.map((x, i) => Math.min(num(x.miqdar), Math.max(0, num(($(`[data-qm="${i}"]`, m) || {}).value))));
+    if (avto && mallar.length) f.mb.value = Math.round(qm.reduce((a, k, i) => a + k * num(mallar[i].qiymet), 0) * nisbet * 100) / 100;
+    const yeniDeyer = num(s.deyer) - num(f.mb.value);
+    if (avto) f.gp.value = Math.max(0, Math.round((odenib - yeniDeyer) * 100) / 100);
+    $('#qinfo', m).innerHTML = `Yeni dəyər: <b>${man(yeniDeyer)}</b> · ödənilib: ${man(odenib)} · yeni qalıq borc: <b>${man(yeniDeyer - odenib + num(f.gp.value) + num(s.cerime || 0))}</b>`;
+    return qm;
+  };
+  $$('[data-qm]', m).forEach(el => el.oninput = () => hesabla(true));
+  f.mb.oninput = () => hesabla(false); f.gp.oninput = () => hesabla(false);
+  hesabla(true);
+  $('#ok', m).onclick = async () => {
+    if (!f.reportValidity()) return;
+    const qm = hesabla(false), mb = num(f.mb.value), gp = num(f.gp.value);
+    if (!(mb > 0) && !qm.some(x => x > 0)) return toast('Qaytarılan malı və ya məbləği yazın');
+    if (mb > num(s.deyer)) return toast('Çıxılan məbləğ satışın dəyərindən çox ola bilməz');
+    if (!confirm(`${s.satis_no}: dəyərdən ${man(mb)} çıxılsın${gp > 0 ? `, müştəriyə ${man(gp)} nağd qaytarılsın` : ''}?`)) return;
+    $('#ok', m).disabled = true;
+    try {
+      const mallarMetn = mallar.map((x, i) => qm[i] > 0 ? `${x.ad} ×${qm[i]}` : '').filter(Boolean).join(', ');
+      for (const [i, x] of mallar.entries()) {
+        if (!(qm[i] > 0)) continue;
+        if (qm[i] >= num(x.miqdar)) await q(sb.from('satis_mallari').delete().eq('id', x.id));
+        else await q(sb.from('satis_mallari').update({ miqdar: num(x.miqdar) - qm[i] }).eq('id', x.id));
+      }
+      const qalan = mallar.map((x, i) => ({ ad: x.ad, m: num(x.miqdar) - qm[i] })).filter(x => x.m > 0);
+      const v = { deyer: Math.round((num(s.deyer) - mb) * 100) / 100 };
+      if (mallar.length) v.mal = qalan.length ? qalan.map(x => x.ad + (x.m > 1 ? ' ×' + x.m : '')).join(', ') : (s.mal || '') + ' (qaytarılıb)';
+      await q(sb.from('satislar').update(v).eq('id', s.id));
+      await q(sb.from('satis_qaytarmalari').insert({ satis_id: s.id, tarix: f.t.value, mebleg: mb, geri_pul: gp, mallar: mallarMetn || null, qeyd: f.q.value.trim() || null }));
+      if (gp > 0) await q(sb.from('kassa_diger').insert({ tarix: f.t.value, nov: 'Məxaric', mebleg: gp, aciqlama: `Qaytarma ${s.satis_no} — ${s.musteri}${mallarMetn ? ': ' + mallarMetn : ''}`.slice(0, 250) }));
+      closeModal(); toast('Qaytarma yazıldı'); refresh();
+    } catch (er) { fail(er); $('#ok', m).disabled = false; }
   };
 }
 
@@ -908,11 +1119,14 @@ async function pageCek(id) {
   shell('', 'Satış çeki', '', `<button class="btn" onclick="history.back()">← Geri</button>
     <div class="seg" id="olcu"><button data-o="80" class="${olcu === '80' ? 'on' : ''}">Kiçik çek (80 mm)</button><button data-o="a4" class="${olcu === 'a4' ? 'on' : ''}">A4</button></div>
     <button class="btn primary" onclick="window.print()">${ico('print')}Çap / PDF</button>`);
-  const [s, mallar, qr, A] = await Promise.all([
+  const [s, mallar, qr, A, sx] = await Promise.all([
     q(sb.from('v_satislar').select('*').eq('id', +id).single()),
     q(sb.from('satis_mallari').select('*').eq('satis_id', +id).order('id')),
     q(sb.from('v_qrafik').select('*').eq('id', +id).maybeSingle()), ayarlar(),
+    q(sb.from('satislar').select('isci_id').eq('id', +id).single()).catch(() => ({})),
   ]);
+  let satici = S.ad;
+  if (sx && sx.isci_id) { try { const i = await q(sb.from('isciler').select('ad').eq('id', sx.isci_id).single()); satici = i.ad; } catch (_) {} }
   const setir = mallar.length ? mallar : [{ ad: s.mal || 'Mal', miqdar: 1, qiymet: s.deyer }];
   const cem = setir.reduce((a, x) => a + num(x.miqdar) * num(x.qiymet), 0);
   const endirim = Math.round((cem - num(s.deyer)) * 100) / 100;
@@ -939,7 +1153,7 @@ async function pageCek(id) {
         ${A.firma_unvan ? `<div>${esc(A.firma_unvan)}</div>` : ''}${A.firma_telefon ? `<div>Tel: ${esc(A.firma_telefon)}</div>` : ''}${A.firma_voen ? `<div>VÖEN: ${esc(A.firma_voen)}</div>` : ''}</div>
         <div style="border-top:1px dashed #000;margin:8px 0"></div>
         <div style="text-align:center;font-weight:700">SATIŞ ÇEKİ № ${esc(s.satis_no)}</div>
-        ${sira('Tarix', fd(s.tarix) + (vaxt ? ' ' + vaxt : ''))}${sira('Müştəri', esc(s.musteri))}${s.telefon ? sira('Telefon', esc(s.telefon)) : ''}${sira('Satıcı', esc(S.ad))}
+        ${sira('Tarix', fd(s.tarix) + (vaxt ? ' ' + vaxt : ''))}${sira('Müştəri', esc(s.musteri))}${s.telefon ? sira('Telefon', esc(s.telefon)) : ''}${sira('Satıcı', esc(satici))}
         <div style="border-top:1px dashed #000;margin:8px 0 2px"></div>${satirlar}
         <div style="border-top:1px dashed #000;margin:8px 0"></div>${yekun}
         <div style="border-top:1px dashed #000;margin:8px 0"></div>
@@ -949,7 +1163,7 @@ async function pageCek(id) {
           <div><div style="font-size:22px;font-weight:700;color:var(--brand);font-family:var(--serif)">${esc(firma)}</div><div class="muted" style="font-size:13px">${[A.firma_unvan, A.firma_telefon].filter(Boolean).map(esc).join(' · ')}${A.firma_voen ? '<br>VÖEN: ' + esc(A.firma_voen) : ''}</div></div>
           <div style="text-align:right"><div style="font-size:18px;font-weight:700">SATIŞ ÇEKİ</div><div>№ ${esc(s.satis_no)}</div><div class="muted">${fd(s.tarix)}${vaxt ? ' ' + vaxt : ''}</div></div></div>
         <div style="display:flex;justify-content:space-between;gap:16px;margin:16px 0;flex-wrap:wrap"><div><span class="muted">Müştəri:</span> <b>${esc(s.musteri)}</b>${s.telefon ? ' · ' + esc(s.telefon) : ''}${s.unvan ? '<br><span class="muted">' + esc(s.unvan) + '</span>' : ''}</div>
-          <div><span class="muted">Satıcı:</span> ${esc(S.ad)}</div></div>
+          <div><span class="muted">Satıcı:</span> ${esc(satici)}</div></div>
         <table class="t"><thead><tr><th>Məhsul</th><th class="n">Miqdar</th><th class="n">Qiymət</th><th class="n">Məbləğ</th></tr></thead><tbody>${satirlar}</tbody></table>
         <div style="max-width:330px;margin:16px 0 0 auto;display:grid;gap:5px">${yekun}</div>
         <p class="muted" style="text-align:center;margin-top:22px">${esc(A.cek_altyazi || 'Təşəkkür edirik!')}</p>
@@ -1125,6 +1339,7 @@ async function isciForm(i) {
     <div class="field"><label class="f">Başlanğıc maaş</label><input class="in" type="number" step="0.01" min="0" name="m" value="${i ? i.baslangic_maas : ''}" required></div></div>
     <div class="row2"><div class="field"><label class="f">Növ</label><select class="in" name="n"><option ${!i || i.nov === 'İşçi' ? 'selected' : ''}>İşçi</option><option ${i && i.nov === 'Sahib' ? 'selected' : ''}>Sahib</option></select></div>
     <div class="field"><label class="f">Çıxış tarixi (işdən çıxıbsa)</label><input class="in" type="date" name="c" value="${i ? i.cixis || '' : ''}"></div></div>
+    <div class="row2"><div class="field"><label class="f">Satışdan bonus, % <span class="muted" style="font-weight:400">(satıcıdırsa)</span></label><input class="in" type="number" step="0.1" min="0" name="sf" value="${i ? num(i.satis_faizi) : 0}"></div><div></div></div>
     </form>
     ${i ? `<h4 style="margin:10px 0 8px">Maaş dəyişiklikləri</h4>
       ${deg.length ? `<table class="t" style="margin-bottom:10px"><tbody>${deg.map(d => `<tr><td>${fd(d.tarixden)}-dən</td><td class="n">${fmt(d.maas)}</td><td class="n"><button class="btn sm danger" data-dd="${d.id}">Sil</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">Maaş dəyişikliyi yoxdur.</p>'}
@@ -1136,7 +1351,7 @@ async function isciForm(i) {
   const f = $('#if', m);
   $('#ok', m).onclick = async () => {
     if (!f.reportValidity()) return;
-    const row = { ad: f.ad.value.trim(), vezife: f.v.value.trim() || null, ise_giris: f.g.value, baslangic_maas: num(f.m.value), nov: f.n.value, cixis: f.c.value || null };
+    const row = { ad: f.ad.value.trim(), vezife: f.v.value.trim() || null, ise_giris: f.g.value, baslangic_maas: num(f.m.value), nov: f.n.value, cixis: f.c.value || null, satis_faizi: num(f.sf.value) };
     try {
       if (i) await q(sb.from('isciler').update(row).eq('id', i.id)); else await q(sb.from('isciler').insert(row));
       closeModal(); toast(i ? 'İşçi yeniləndi' : 'İşçi əlavə olundu'); refresh();
@@ -1299,6 +1514,40 @@ async function pageCixaris(id, params) {
    KASSA
    ===================================================================== */
 async function pageKassa() {
+  await pageKassa0();
+  try { await kassaBaglanis(); } catch (er) { console.warn(er); }
+}
+async function kassaBaglanis() {
+  const w = canWrite();
+  const [hes, son] = await Promise.all([q(sb.rpc('kassa_qaliq', { t: today() })), q(sb.from('kassa_baglanislari').select('*').order('tarix', { ascending: false }).limit(31))]);
+  const bu = son.find(x => x.tarix === today());
+  const card = document.createElement('div'); card.className = 'card'; card.style.marginBottom = '16px';
+  card.innerHTML = `<h3>Günün bağlanışı — ${fd(today())}</h3>
+    <div class="grid two" style="gap:16px;align-items:end">
+      <div class="info" style="margin:0"><div><span>Proqrama görə kassada</span><b>${man(hes)}</b></div>
+        <div><span>Sayılan pul</span><b>${bu ? man(bu.sayilan) : '—'}</b></div>
+        <div><span>Fərq</span><b class="${bu && Math.abs(num(bu.sayilan) - num(bu.hesablanan)) > 0.009 ? 'neg' : 'pos'}">${bu ? (num(bu.sayilan) - num(bu.hesablanan) > 0 ? '+' : '') + man(num(bu.sayilan) - num(bu.hesablanan)) : '—'}</b></div></div>
+      ${w ? `<form id="kbf" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap"><div class="field" style="margin:0;flex:1;min-width:140px"><label class="f">Kassada sayılan pul</label><input class="in" type="number" step="0.01" name="s" value="${bu ? bu.sayilan : ''}" required></div>
+        <div class="field" style="margin:0;flex:2;min-width:160px"><label class="f">Qeyd</label><input class="in" name="q" value="${esc(bu && bu.qeyd || '')}" placeholder="məs. 20 ₼ xırda pul banka verildi"></div>
+        <button class="btn primary">${bu ? 'Yenilə' : 'Günü bağla'}</button></form>` : ''}</div>
+    <div class="muted" id="kbfark" style="font-size:13px;margin-top:8px"></div>
+    ${son.length ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:13.5px">Son bağlanışlar</summary><table class="t" style="margin-top:8px"><thead><tr><th>Tarix</th><th class="n">Proqram</th><th class="n">Sayılan</th><th class="n">Fərq</th><th>Qeyd</th><th>Kim</th></tr></thead><tbody>
+      ${son.map(x => { const d = num(x.sayilan) - num(x.hesablanan); return `<tr><td>${fd(x.tarix)}</td><td class="n">${fmt(x.hesablanan)}</td><td class="n">${fmt(x.sayilan)}</td><td class="n ${Math.abs(d) > 0.009 ? 'neg' : 'pos'}">${d > 0 ? '+' : ''}${fmt(d)}</td><td>${esc(x.qeyd || '')}</td><td class="muted">${esc(x.kim || '')}</td></tr>`; }).join('')}</tbody></table></details>` : ''}`;
+  $('#page').prepend(card);
+  const f = $('#kbf', card);
+  if (f) {
+    f.s.oninput = () => { const d = num(f.s.value) - num(hes); $('#kbfark', card).innerHTML = f.s.value === '' ? '' : Math.abs(d) < 0.01 ? '<span class="pos">Kassa düz gəlir</span>' : `<span class="neg">${d > 0 ? 'Artıq' : 'Əskik'}: ${man(Math.abs(d))}</span>`; };
+    f.onsubmit = async e => {
+      e.preventDefault();
+      try {
+        if (bu) await q(sb.from('kassa_baglanislari').update({ hesablanan: hes, sayilan: num(f.s.value), qeyd: f.q.value.trim() || null, kim: S.ad }).eq('id', bu.id));
+        else await q(sb.from('kassa_baglanislari').insert({ tarix: today(), hesablanan: hes, sayilan: num(f.s.value), qeyd: f.q.value.trim() || null, kim: S.ad }));
+        toast('Gün bağlandı'); route();
+      } catch (er) { fail(er); }
+    };
+  }
+}
+async function pageKassa0() {
   const w = canWrite();
   shell('kassa', 'Kassa', 'Pul hansı ayda real olaraq kassaya girib-çıxıbsa, o ayda görünür',
     `${w ? `<button class="btn green" id="emel">${ico('plus')}Digər əməliyyat</button><button class="btn" id="ayar">Başlanğıc</button>` : ''}
@@ -1535,6 +1784,86 @@ function qrafikCetveli(s, qr) {
   }
   return out;
 }
+// Satış formasında məhsul sətirləri: kataloqdan seçim, miqdar, qiymət; malın adı/dəyəri/maya avtomatik
+async function setirRedaktor(m, f, setirler, qal) {
+  const mehs = S.cache.mehs || (S.cache.mehs = await all(() => sb.from('v_mehsullar').select('id,ad,kod,kateqoriya,qiymet,maya,anbar_izle,anbar').eq('aktiv', true).order('ad')));
+  const yenile = (dyaz = true) => {
+    $('#psetir', m).innerHTML = setirler.length ? `<table class="t" style="margin-top:8px"><tbody>${setirler.map((x, i) => `<tr>
+      <td style="padding-left:0">${esc(x.ad)}</td>
+      <td style="width:70px"><input class="in" type="number" min="1" step="1" value="${x.miqdar}" data-mq="${i}" style="padding:5px 6px"></td>
+      <td style="width:100px"><input class="in" type="number" min="0" step="0.01" value="${x.qiymet}" data-qy="${i}" style="padding:5px 6px"></td>
+      <td class="n" style="width:80px"><b>${fmt(x.miqdar * x.qiymet)}</b></td><td style="width:30px;padding-right:0"><button type="button" class="btn sm danger" data-sl="${i}">×</button></td></tr>`).join('')}</tbody>
+      <tfoot><tr><td style="padding-left:0">Cəm</td><td></td><td></td><td class="n">${fmt(setirler.reduce((a, x) => a + x.miqdar * x.qiymet, 0))}</td><td></td></tr></tfoot></table>` : '';
+    if (dyaz && setirler.length) {
+      f.mal.value = setirler.map(x => x.ad + (x.miqdar > 1 ? ' ×' + x.miqdar : '')).join(', ');
+      f.d.value = Math.round(setirler.reduce((a, x) => a + x.miqdar * x.qiymet, 0) * 100) / 100;
+      f.maya.value = setirler.every(x => x.maya != null) ? Math.round(setirler.reduce((a, x) => a + x.miqdar * num(x.maya), 0) * 100) / 100 : '';
+      f.d.dispatchEvent(new Event('input'));
+    }
+    $$('[data-mq]', m).forEach(el => el.onchange = () => { setirler[+el.dataset.mq].miqdar = Math.max(1, num(el.value)); setTimeout(() => yenile()); });
+    $$('[data-qy]', m).forEach(el => el.onchange = () => { setirler[+el.dataset.qy].qiymet = Math.max(0, num(el.value)); setTimeout(() => yenile()); });
+    $$('[data-sl]', m).forEach(el => el.onclick = () => { setirler.splice(+el.dataset.sl, 1); yenile(); });
+    if (qal) qal();
+  };
+  const psug = $('#psug', m);
+  $('#pax', m).oninput = e => {
+    const t = e.target.value.trim().toLocaleLowerCase('az');
+    if (!t) { psug.style.display = 'none'; return; }
+    const list = mehs.filter(x => [x.ad, x.kod, x.kateqoriya].join(' ').toLocaleLowerCase('az').includes(t)).slice(0, 20);
+    psug.style.display = '';
+    psug.innerHTML = list.length ? list.map(x => `<div data-pid="${x.id}"><b>${esc(x.ad)}</b> <span class="muted">${esc(x.kateqoriya || '')}${x.kod ? ' · ' + esc(x.kod) : ''}</span>
+        ${x.anbar_izle ? `<span class="badge ${num(x.anbar) > 0 ? 'b-green' : 'b-red'}">anbarda ${fmt(x.anbar)}</span>` : ''} <span style="float:right"><b>${fmt(x.qiymet)} ₼</b></span></div>`).join('')
+      : `<div class="muted" style="cursor:default">Kataloqda yoxdur${canWrite() ? ' — "Məhsullar" bölməsindən əlavə edin' : ''}</div>`;
+    $$('[data-pid]', psug).forEach(d => d.onclick = () => {
+      const x = mehs.find(z => z.id === +d.dataset.pid);
+      const var_ = setirler.find(z => z.mehsul_id === x.id);
+      if (var_) var_.miqdar += 1; else setirler.push({ mehsul_id: x.id, ad: x.ad, miqdar: 1, qiymet: num(x.qiymet), maya: x.maya == null ? null : num(x.maya) });
+      if (x.anbar_izle && (var_ ? var_.miqdar : 1) > num(x.anbar)) toast(`Diqqət: "${x.ad}" anbarda ${fmt(x.anbar)} ədəddir`, 4000);
+      psug.style.display = 'none'; e.target.value = ''; yenile(); e.target.focus();
+    });
+  };
+  $('#pax', m).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const d = $('[data-pid]', psug); if (d) d.click(); } };
+  yenile(false);
+  return yenile;
+}
+const SATICI_SAHESI = `<div class="field"><label class="f">Satıcı</label><select class="in" name="sat"><option value="">— seçilməyib —</option></select></div>`;
+async function saticiDoldur(sel, cari) {
+  const isc = S.cache.isc0 || (S.cache.isc0 = await q(sb.from('isciler').select('id,ad,nov,cixis').order('ad')));
+  const aktiv = isc.filter(i => !i.cixis || i.cixis >= today() || i.id === cari);
+  let son = null; try { son = +localStorage.getItem('son_satici') || null; } catch (_) {}
+  const sec = cari !== undefined ? cari : son;
+  sel.innerHTML = '<option value="">— seçilməyib —</option>' + aktiv.map(i => `<option value="${i.id}" ${i.id === sec ? 'selected' : ''}>${esc(i.ad)}</option>`).join('');
+  sel.onchange = () => { try { localStorage.setItem('son_satici', sel.value); } catch (_) {} };
+}
+const MEHSUL_SAHESI = `<div class="field"><label class="f">Məhsullar <span class="muted" style="font-weight:400">(kataloqdan seçin və ya aşağıda əl ilə yazın)</span></label>
+      <input class="in" id="pax" placeholder="Məhsul adı və ya kodu yazın…" autocomplete="off">
+      <div class="suggest" id="psug" style="display:none"></div>
+      <div id="psetir"></div></div>`;
+// Zamin sahələri
+const zaminSaheleri = s => `<details class="zamin" ${s && s.zamin_ad ? 'open' : ''}><summary>Zamin <span class="muted" style="font-weight:400">(istəyə bağlı)</span></summary>
+    <div class="row2" style="margin-top:8px"><div class="field"><label class="f">Zaminin adı soyadı</label><input class="in" name="zad" value="${esc(s && s.zamin_ad || '')}"></div>
+    <div class="field"><label class="f">Zaminin telefonu</label><input class="in" name="ztel" inputmode="tel" value="${esc(s && s.zamin_tel || '')}"></div></div>
+    <div class="field"><label class="f">Şəxsiyyət vəsiqəsi / iş yeri / qeyd</label><input class="in" name="zq" value="${esc(s && s.zamin_qeyd || '')}"></div></details>`;
+const zaminDeyerleri = f => ({ zamin_ad: f.zad.value.trim() || null, zamin_tel: f.ztel.value.trim() || null, zamin_qeyd: f.zq.value.trim() || null });
+
+// Gecikmə cəriməsi: hər gecikən hissə üçün ödənməmiş məbləğ × günlük faiz × gecikmə günü (güzəşt günlərindən sonra), yuxarı hədd ilə
+function cerimeHesabla(s, qr, A) {
+  const gun = num(A.cerime_gunluk); if (!(gun > 0) || !qr || !qr.qrafikli) return null;
+  const guz = num(A.cerime_guzest), maxF = num(A.cerime_max);
+  const bugun = new Date(today() + 'T00:00:00'); let cem = 0, gecikmis = 0, maxGun = 0;
+  for (const c of qrafikCetveli(s, qr)) {
+    if (c.status !== 'gecikib' && c.status !== 'qismen') continue;
+    const odenmemis = Math.max(0, Math.min(c.mebleg, c.cem - num(s.odenilen)));
+    const g = Math.round((bugun - new Date(c.tarix + 'T00:00:00')) / 864e5) - guz;
+    if (odenmemis <= 0 || g <= 0) continue;
+    gecikmis += odenmemis; maxGun = Math.max(maxGun, g + guz);
+    cem += odenmemis * gun / 100 * g;
+  }
+  if (maxF > 0) cem = Math.min(cem, gecikmis * maxF / 100);
+  cem = Math.round(cem * 100) / 100;
+  return cem > 0 ? { cem, gecikmis, gun: maxGun } : null;
+}
+
 const qrafikBadge = st => ({ odenib: '<span class="badge b-green">Ödənilib</span>', qismen: '<span class="badge b-amber">Qismən</span>', gecikib: '<span class="badge b-red">Gecikib</span>', bugun: '<span class="badge b-amber">Bu gün</span>', gozleyir: '<span class="badge b-gray">Gözləyir</span>' }[st] || '');
 
 async function ayarlar() {
@@ -1661,7 +1990,7 @@ async function pageAyarlar() {
   shell('ayarlar', 'Ayarlar', '', '');
   const [A, ist] = await Promise.all([ayarlar(), q(sb.from('uzvler').select('*').order('yaradildi'))]);
   const yaz = S.rol === 'muhasib';
-  const rolAd = { muhasib: 'Mühasib (yazır)', sahibkar: 'Sahibkar (yalnız baxır)', bloklu: 'Bloklanıb' };
+  const rolAd = { muhasib: 'Mühasib (yazır)', sahibkar: 'Sahibkar (yalnız baxır)', kuryer: 'Kuryer (yalnız pul yığır)', bloklu: 'Bloklanıb' };
   $('#page').innerHTML = `
     <div class="card" style="margin-bottom:16px"><h3>Dükan və abunə</h3>
       <div class="grid two" style="gap:16px;align-items:end">
@@ -1677,6 +2006,9 @@ async function pageAyarlar() {
           <div class="field"><label class="f">Ünvan</label><input class="in" name="firma_unvan" value="${esc(A.firma_unvan || '')}" ${w ? '' : 'disabled'}></div>
           <div class="row2"><div class="field"><label class="f">Telefon</label><input class="in" name="firma_telefon" value="${esc(A.firma_telefon || '')}" ${w ? '' : 'disabled'}></div>
           <div class="field"><label class="f">VÖEN</label><input class="in" name="firma_voen" value="${esc(A.firma_voen || '')}" ${w ? '' : 'disabled'}></div></div>
+          <div class="row2"><div class="field"><label class="f">Gecikmə cəriməsi, gündəlik %</label><input class="in" type="number" step="0.01" min="0" name="cerime_gunluk" value="${esc(A.cerime_gunluk || '0')}" ${w ? '' : 'disabled'} title="0 = cərimə yoxdur"></div>
+          <div class="field"><label class="f">Güzəşt (gün) / maksimum %</label><div style="display:flex;gap:6px"><input class="in" type="number" min="0" name="cerime_guzest" value="${esc(A.cerime_guzest || '3')}" ${w ? '' : 'disabled'}><input class="in" type="number" min="0" name="cerime_max" value="${esc(A.cerime_max || '20')}" ${w ? '' : 'disabled'}></div></div></div>
+          <div class="muted" style="font-size:12.5px;margin:-6px 0 12px">Məs. 0,1% gündəlik: 300 ₼ gecikən ödəniş 10 gün gecikəndə 3 ₼. 0 yazsanız cərimə hesablanmır. Cərimə borca yalnız siz "Borca əlavə et" basanda yazılır.</div>
           <div class="field"><label class="f">Çekin altındakı yazı</label><input class="in" name="cek_altyazi" value="${esc(A.cek_altyazi || '')}" ${w ? '' : 'disabled'}></div>
           <div class="field"><label class="f">Müqavilənin şərtləri</label><textarea class="in" name="muqavile_sertleri" rows="4" ${w ? '' : 'disabled'}>${esc(A.muqavile_sertleri || '')}</textarea></div>
           ${w ? '<button class="btn primary">Yadda saxla</button>' : ''}</form></div>
@@ -1696,7 +2028,7 @@ async function pageAyarlar() {
   if (w) ff.onsubmit = async e => {
     e.preventDefault();
     try {
-      for (const k of ['firma_adi', 'firma_unvan', 'firma_telefon', 'firma_voen', 'cek_altyazi', 'muqavile_sertleri']) {
+      for (const k of ['firma_adi', 'firma_unvan', 'firma_telefon', 'firma_voen', 'cerime_gunluk', 'cerime_guzest', 'cerime_max', 'cek_altyazi', 'muqavile_sertleri']) {
         if ((A[k] || '') !== ff[k].value) await q(sb.from('ayarlar').update({ deyer: ff[k].value.trim() }).eq('acar', k));
       }
       toast('Yadda saxlanıldı'); S.cache = {};
@@ -1796,7 +2128,13 @@ async function telegramKart() {
 async function pageAdmin() {
   shell('admin', 'Admin panel', 'Dükanlar və abunələr', `<input class="in search" id="axtar" placeholder="Axtar: dükan, ad, telefon, e-poçt">
     <div class="seg" id="fil">${[['hamisi', 'Hamısı'], ['aktiv', 'Aktiv'], ['bitir', 'Bitir (7 gün)'], ['bitib', 'Bitib']].map(([k, t], i) => `<button data-f="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>`);
-  const [rows, sis] = await Promise.all([q(sb.rpc('admin_magazalar')), sistemOxu()]);
+  const [rows, sis, ode] = await Promise.all([q(sb.rpc('admin_magazalar')), sistemOxu(), q(sb.from('abune_odenisleri').select('*').order('tarix', { ascending: false }))]);
+  const buAy = ayBasi(today());
+  const gelirAy = ode.filter(o => o.tarix >= buAy).reduce((a, o) => a + num(o.mebleg), 0);
+  const gelirCem = ode.reduce((a, o) => a + num(o.mebleg), 0);
+  const son12 = Array.from({ length: 12 }, (_, i) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 11 + i); const a = iso(d).slice(0, 7);
+    return { ay: a + '-01', c: ode.filter(o => o.tarix.slice(0, 7) === a).reduce((x, o) => x + num(o.mebleg), 0) }; });
+  const mx = Math.max(1, ...son12.map(x => x.c));
   rows.forEach(r => { r.qalan = gunFerqi(r.abune_bitir); });
   let fil = 'hamisi';
   const wa = t => t ? `https://wa.me/${(t.replace(/\D/g, '').replace(/^0/, '994'))}` : '';
@@ -1813,16 +2151,20 @@ async function pageAdmin() {
         <div class="card kpi"><div class="lbl">Aktiv</div><div class="val pos">${say(r => r.aktiv)}</div></div>
         <div class="card kpi"><div class="lbl">7 gün içində bitir</div><div class="val">${say(r => r.aktiv && r.qalan <= 7)}</div></div>
         <div class="card kpi"><div class="lbl">Bitib / dayandırılıb</div><div class="val neg">${say(r => !r.aktiv)}</div></div>
+        <div class="card kpi"><div class="lbl">Gəlir — ${ayAdi(buAy)}</div><div class="val pos">${man(gelirAy)}</div><div class="cmp">Cəmi: ${man(gelirCem)}</div></div>
       </div>
-      <div class="tbl-wrap" style="margin-top:16px"><table class="t"><thead><tr><th>Dükan</th><th class="hide-m">Əlaqə</th><th class="hide-m">Qeydiyyat</th><th>Abunə</th><th class="n hide-m">Müştəri / satış</th><th class="hide-m">Son iş</th><th></th></tr></thead>
+      <div class="card" style="margin-top:16px"><h3>Abunə gəliri — son 12 ay</h3>
+        <div class="bars">${son12.map(x => `<div class="col" title="${ayAdi(x.ay)}: ${man(x.c)}"><div class="pair"><div class="bar" style="height:${x.c / mx * 100}%;background:var(--c1)"></div></div><div class="lbl">${ayQisa(x.ay)}</div></div>`).join('')}</div></div>
+      <div class="tbl-wrap" style="margin-top:16px"><table class="t"><thead><tr><th>Dükan</th><th class="hide-m">Əlaqə</th><th class="hide-m">Qeydiyyat</th><th>Abunə</th><th class="n hide-m">Ödəyib</th><th class="n hide-m">Müştəri / satış</th><th class="hide-m">Son iş</th><th></th></tr></thead>
       <tbody>${list.map(r => `<tr><td><div class="cell-main">${esc(r.ad)}</div><div class="cell-sub">${esc(r.sahib_ad || '')}${r.uzv_sayi > 1 ? ` · ${r.uzv_sayi} istifadəçi` : ''}${r.admin_qeyd ? ` · <i>${esc(r.admin_qeyd)}</i>` : ''}</div></td>
         <td class="hide-m"><div>${esc(r.telefon || '')}${r.telefon ? ` <a href="${wa(r.telefon)}" target="_blank" title="WhatsApp">WA</a>` : ''}</div><div class="cell-sub">${esc(r.email || '')}</div></td>
         <td class="hide-m">${fd(String(r.qeydiyyat).slice(0, 10))}</td>
         <td>${fd(r.abune_bitir)}<div>${r.dayandirilib ? '<span class="badge b-red">Dayandırılıb</span>' : r.qalan < 0 ? `<span class="badge b-red">${-r.qalan} gün keçib</span>` : `<span class="badge ${r.qalan <= 7 ? 'b-amber' : 'b-green'}">${r.qalan} gün qalıb</span>`}</div></td>
+        <td class="n hide-m">${num(r.odenilib) ? fmt(r.odenilib) + ' ₼' : '—'}${r.son_odenis ? `<div class="cell-sub">${fd(r.son_odenis)}</div>` : ''}</td>
         <td class="n hide-m">${fmt(r.musteri_sayi)} / ${fmt(r.satis_sayi)}</td>
         <td class="hide-m">${r.son_aktivlik ? fd(String(r.son_aktivlik).slice(0, 10)) : '—'}</td>
-        <td class="n" style="white-space:nowrap"><button class="btn sm green" data-uz="${r.id}" data-ay="1">+1 ay</button> <button class="btn sm" data-uz="${r.id}" data-ay="12">+1 il</button> <button class="btn sm" data-ed="${r.id}">…</button></td></tr>`).join('')
-        || '<tr><td colspan="7" class="empty">Dükan tapılmadı</td></tr>'}</tbody></table></div>
+        <td class="n" style="white-space:nowrap"><button class="btn sm green" data-od="${r.id}">₼ Ödəniş</button> <button class="btn sm" data-uz="${r.id}" data-ay="1">+1 ay</button> <button class="btn sm" data-ed="${r.id}">…</button></td></tr>`).join('')
+        || '<tr><td colspan="8" class="empty">Dükan tapılmadı</td></tr>'}</tbody></table></div>
       <div class="card" style="margin-top:16px;max-width:720px"><h3>Sistem ayarları</h3><p class="muted" style="margin-top:-6px;font-size:13px">Qeydiyyat səhifəsində və abunə xəbərdarlıqlarında görünür.</p>
         <form id="sf"><div class="row2"><div class="field"><label class="f">Əlaqə telefonu</label><input class="in" name="elaqe_telefon" value="${esc(sis.elaqe_telefon || '')}"></div>
         <div class="field"><label class="f">WhatsApp nömrəsi (994…)</label><input class="in" name="elaqe_whatsapp" value="${esc(sis.elaqe_whatsapp || '')}"></div></div>
@@ -1834,13 +2176,33 @@ async function pageAdmin() {
       if (!confirm(`${r.ad} — abunə ${ay === 12 ? '1 il' : '1 ay'} uzadılsın?`)) return;
       try { const d = await q(sb.rpc('admin_uzat', { m: r.id, aylar: ay })); toast(`${r.ad}: ${fd(d)} tarixinə qədər`); pageAdmin(); } catch (er) { fail(er); }
     });
+    $$('[data-od]').forEach(b => b.onclick = () => {
+      const r = rows.find(x => x.id === +b.dataset.od);
+      const md = modal(`Ödəniş qəbul et — ${esc(r.ad)}`, `<form id="of">
+        <div class="row2"><div class="field"><label class="f">Məbləğ (₼)</label><input class="in" type="number" step="0.01" min="0" name="m" required></div>
+        <div class="field"><label class="f">Neçə aylıq</label><select class="in" name="a">${[1, 2, 3, 6, 12].map(n => `<option value="${n}">${n === 12 ? '1 il' : n + ' ay'}</option>`).join('')}</select></div></div>
+        <div class="field"><label class="f">Qeyd</label><input class="in" name="q" placeholder="məs. kartla, nağd"></div>
+        <div class="muted" style="font-size:13px">İndiki bitmə tarixi: <b>${fd(r.abune_bitir)}</b></div></form>`,
+        `<button class="btn" data-close>Ləğv et</button><button class="btn green" id="ok">Qəbul et və uzat</button>`);
+      $('#ok', md).onclick = async () => {
+        const f = $('#of', md); if (!f.reportValidity()) return;
+        try { const d = await q(sb.rpc('admin_odenis', { m: r.id, mebleg: num(f.m.value), aylar: +f.a.value, qeyd: f.q.value })); closeModal(); toast(`${r.ad}: ${fd(d)} tarixinə qədər`); pageAdmin(); } catch (er) { fail(er); }
+      };
+    });
     $$('[data-ed]').forEach(b => b.onclick = () => {
       const r = rows.find(x => x.id === +b.dataset.ed);
+      const ro = ode.filter(o => o.magaza_id === r.id);
       const md = modal(esc(r.ad), `<form id="af">
         <div class="row2"><div class="field"><label class="f">Abunə bitir</label><input class="in" type="date" name="d" value="${r.abune_bitir}" required></div>
         <div class="field"><label class="f">Vəziyyət</label><select class="in" name="st"><option value="0">Aktiv</option><option value="1" ${r.dayandirilib ? 'selected' : ''}>Dayandırılıb</option></select></div></div>
-        <div class="field"><label class="f">Qeyd (yalnız siz görürsünüz)</label><input class="in" name="q" value="${esc(r.admin_qeyd || '')}" placeholder="məs. 3 ay ödəyib, kartla"></div></form>`,
-        `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
+        <div class="field"><label class="f">Qeyd (yalnız siz görürsünüz)</label><input class="in" name="q" value="${esc(r.admin_qeyd || '')}" placeholder="məs. 3 ay ödəyib, kartla"></div></form>
+        <h4 style="margin:12px 0 6px">Ödənişlər</h4>${ro.length ? `<table class="t"><tbody>${ro.map(o => `<tr><td>${fd(o.tarix)}</td><td class="n">${fmt(o.mebleg)} ₼</td><td>${o.aylar} ay</td><td class="muted">${esc(o.qeyd || '')}</td><td class="n"><button class="btn sm danger" data-os="${o.id}">Sil</button></td></tr>`).join('')}</tbody></table>` : '<div class="muted">Hələ ödəniş yoxdur</div>'}
+        ${num(r.satis_sayi) === 0 ? `<div class="banner b-amber-bg" style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:10px">Bu dükan boşdur — tanıtım üçün nümunə məlumatla doldurmaq olar.<button class="btn sm" id="demo">Demo məlumatla doldur</button></div>` : ''}`,
+        `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`, true);
+      $$('[data-os]', md).forEach(x => x.onclick = async () => { if (!confirm('Bu ödəniş qeydi silinsin? (bitmə tarixi dəyişmir)')) return;
+        try { await q(sb.from('abune_odenisleri').delete().eq('id', +x.dataset.os)); closeModal(); pageAdmin(); } catch (er) { fail(er); } });
+      if ($('#demo', md)) $('#demo', md).onclick = async () => { if (!confirm(`"${r.ad}" dükanı 10 məhsul, 30 müştəri, ~45 satış, ödəniş və xərclərlə doldurulsun?`)) return;
+        try { toast(await q(sb.rpc('admin_demo_doldur', { m: r.id }))); closeModal(); pageAdmin(); } catch (er) { fail(er); } };
       $('#ok', md).onclick = async () => {
         const f = $('#af', md); if (!f.reportValidity()) return;
         try { await q(sb.rpc('admin_deyis', { m: r.id, bitir: f.d.value, dayan: f.st.value === '1', qeyd: f.q.value.trim() })); closeModal(); toast('Yadda saxlanıldı'); pageAdmin(); } catch (er) { fail(er); }
@@ -2262,18 +2624,21 @@ async function qebzKart(id) {
 
 async function pageMuqavile(id) {
   shell('', 'Kredit müqaviləsi', '', `<button class="btn" onclick="history.back()">← Geri</button><button class="btn primary" onclick="window.print()">${ico('print')}Çap / PDF</button>`);
-  const [s, qr, A] = await Promise.all([
+  const [s, qr, A, z] = await Promise.all([
     q(sb.from('v_satislar').select('*').eq('id', +id).single()),
     q(sb.from('v_qrafik').select('*').eq('id', +id).maybeSingle()), ayarlar(),
+    q(sb.from('satislar').select('zamin_ad,zamin_tel,zamin_qeyd').eq('id', +id).single()),
   ]);
   const cet = qr && qr.qrafikli ? qrafikCetveli(s, qr) : [];
   const firma = A.firma_adi || firmaAdi();
   const kr = num(s.deyer) - num(s.ilkin);
+  const cerSert = num(A.cerime_gunluk) > 0 ? ` Ödəniş ${fmt(A.cerime_guzest)} gündən çox gecikdikdə gecikən məbləğə hər gün üçün ${fmt(A.cerime_gunluk, 2)}% cərimə hesablanır${num(A.cerime_max) > 0 ? ` (gecikən məbləğin ${fmt(A.cerime_max)}%-dən çox olmamaqla)` : ''}.` : '';
   $('#page').innerHTML = `<div class="card" style="max-width:760px;margin:0 auto;padding:30px 36px;line-height:1.55">
     <div style="text-align:center"><div style="font-size:19px;font-weight:700">HİSSƏ-HİSSƏ ÖDƏNİŞLƏ ALQI-SATQI MÜQAVİLƏSİ № ${esc(s.satis_no)}</div>
       <div class="muted">${fd(s.tarix)}${A.firma_unvan ? ' · ' + esc(A.firma_unvan) : ''}</div></div>
     <p><b>Satıcı:</b> ${esc(firma)}${A.firma_voen ? ', VÖEN ' + esc(A.firma_voen) : ''}${A.firma_telefon ? ', tel. ' + esc(A.firma_telefon) : ''}<br>
-       <b>Alıcı:</b> ${esc(s.musteri)}${s.unvan ? ', ünvan: ' + esc(s.unvan) : ''}${s.telefon ? ', tel. ' + esc(s.telefon) : ''}</p>
+       <b>Alıcı:</b> ${esc(s.musteri)}${s.unvan ? ', ünvan: ' + esc(s.unvan) : ''}${s.telefon ? ', tel. ' + esc(s.telefon) : ''}
+       ${z.zamin_ad ? `<br><b>Zamin:</b> ${esc(z.zamin_ad)}${z.zamin_tel ? ', tel. ' + esc(z.zamin_tel) : ''}${z.zamin_qeyd ? ', ' + esc(z.zamin_qeyd) : ''}` : ''}</p>
     <p>1. Satıcı aşağıdakı malı Alıcıya satır, Alıcı isə onun dəyərini bu müqavilədə göstərilən qaydada ödəyir.</p>
     <table class="t"><tbody>
       <tr><td>Mal</td><td><b>${esc(s.mal || '')}</b></td></tr>
@@ -2283,8 +2648,10 @@ async function pageMuqavile(id) {
       ${cet.length ? `<tr><td>Aylıq ödəniş</td><td>${man(qr.ayliq)} · ${cet.length} ay · ${fd(cet[0].tarix)} — ${fd(cet[cet.length - 1].tarix)}</td></tr>` : ''}</tbody></table>
     ${cet.length ? `<p style="margin-top:14px">2. Ödəniş qrafiki:</p><table class="t"><thead><tr><th>#</th><th>Ödəniş tarixi</th><th class="n">Məbləğ</th><th class="n">Qalıq</th></tr></thead>
       <tbody>${cet.map(c => `<tr><td>${c.no}</td><td>${fd(c.tarix)}</td><td class="n">${fmt(c.mebleg)}</td><td class="n">${fmt(kr - c.cem)}</td></tr>`).join('')}</tbody></table>` : ''}
-    <p style="margin-top:14px">${cet.length ? '3' : '2'}. ${esc(A.muqavile_sertleri || '')}</p>
+    <p style="margin-top:14px">${cet.length ? '3' : '2'}. ${esc(A.muqavile_sertleri || '')}${cerSert}</p>
+    ${z.zamin_ad ? `<p>${cet.length ? '4' : '3'}. Zamin Alıcının bu müqavilə üzrə öhdəliklərini yerinə yetirməsinə zəmanət verir.</p>` : ''}
     ${imza(`Satıcı: ${esc(firma)}`, `Alıcı: ${esc(s.musteri)}`)}
+    ${z.zamin_ad ? imza(`Zamin: ${esc(z.zamin_ad)}`, '&nbsp;') : ''}
     <p class="muted no-print" style="font-size:12px;margin-top:24px">Bu, nümunə müqavilə şablonudur. Mətni "Ayarlar → Müqavilənin şərtləri" bölməsində dəyişə bilərsiniz; hüquqi məsələlərdə hüquqşünasla məsləhətləşin.</p></div>`;
 }
 
@@ -2363,7 +2730,7 @@ function tabloFiltr(tb) {
   if (!thead || !body || !thead.rows[0]) return;
   const ths = Array.from(thead.rows[0].cells);
   const rows = () => Array.from(body.rows).filter(r => r.cells.length === ths.length);
-  if (!rows().length || tb.closest('.cek,.modal')) return;
+  if (!rows().length || tb.closest('.cek,.modal') || /^#\/(muqavile|qebz|cek)\//.test(location.hash)) return;
   const acar = location.hash.split('?')[0] + '|' + ths.map(th => th.innerText.trim()).join('/');
   const st = FLT[acar] || (FLT[acar] = {});
   const BOS = '(Boş)';
