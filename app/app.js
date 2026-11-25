@@ -2398,9 +2398,15 @@ function tabloFiltr(tb) {
   const cemSut = foot ? ths.map((th, i) => !!fCell[i] && i > 0 && fCell[i].classList.contains('n') && ededle(xanaMetni(fCell[i])) != null
     && rows().every(r => !xanaMetni(r.cells[i]) || ededle(xanaMetni(r.cells[i])) != null)) : [];
   const ilkFoot = foot ? foot.cells[0].innerHTML : '';
-  const host = tb.closest('.tbl-wrap') || tb;
+  let host = tb.closest('.tbl-wrap') || tb;
   let bar = host.previousElementSibling && host.previousElementSibling.classList.contains('flt-bar') ? host.previousElementSibling : null;
-  if (!bar) { bar = document.createElement('div'); bar.className = 'flt-bar no-print'; bar.innerHTML = '<div class="flt-info"></div><div class="flt-tools"></div>'; host.parentElement.insertBefore(bar, host); }
+  if (!bar) {
+    bar = document.createElement('div'); bar.className = 'flt-bar no-print'; bar.innerHTML = '<div class="flt-info"></div><div class="flt-tools"></div>';
+    // cədvəl grid/flex içindədirsə, alət sətri ayrıca sütun olmasın: ikisini bir qutuya yığ
+    const d = getComputedStyle(host.parentElement).display;
+    if (/grid|flex/.test(d)) { const w = document.createElement('div'); w.className = 'flt-qutu'; w.style.minWidth = '0'; host.parentElement.insertBefore(w, host); w.appendChild(host); }
+    host.parentElement.insertBefore(bar, host);
+  }
   const info = $('.flt-info', bar);
   $('.flt-tools', bar).innerHTML = `<button type="button" class="btn sm" data-x="xls" title="Görünən sətirləri Excel faylına yüklə">${ico('down')}Excel</button><button type="button" class="btn sm" data-x="pdf" title="Yalnız bu cədvəli çap et və ya PDF kimi saxla">${ico('print')}PDF</button>`;
   $('[data-x=xls]', bar).onclick = () => cedveliExcel(tb);

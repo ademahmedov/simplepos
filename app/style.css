@@ -316,3 +316,4 @@ table.t tfoot td{border-top:2px solid #d6c4ab}
   body.pt table.t tr{display:table-row}
   body.pt table.t tr[style*="none"]{display:none}
 }
+.card[style*="padding:0"] > .flt-bar{padding:0 16px}
