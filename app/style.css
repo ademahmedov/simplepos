@@ -350,3 +350,13 @@ details.zamin summary{cursor:pointer;font-weight:600}
 .yigim .yg{padding:14px 16px}
 @media (max-width:760px){ .yigim{grid-template-columns:1fr} }
 .kamera-ov{z-index:300}
+/* barkod etiketləri */
+.etk-vereq{display:flex;flex-wrap:wrap;gap:6px;background:#eee;padding:10px;border-radius:10px}
+.etk-vereq.a4{display:grid;grid-template-columns:repeat(3,70mm);gap:0;justify-content:center;background:#fff;padding:0}
+.etk{box-sizing:border-box;background:#fff;color:#000;border:1px dashed #ccc;padding:1.5mm 2.5mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;font-family:Arial,Helvetica,sans-serif;break-inside:avoid}
+.etk-f{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.3px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.etk-ad{font-size:8pt;line-height:1.15;text-align:center;max-height:2.3em;overflow:hidden}
+.etk-bk{flex:1;width:100%;min-height:0;display:flex;align-items:center;justify-content:center}
+.etk-bk .bk-svg{width:100%;height:100%;max-height:100%}
+.etk-q{font-size:11pt;font-weight:700}
+@media print{ .etk-vereq.a4 .etk{border-color:transparent} }

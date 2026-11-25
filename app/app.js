@@ -287,7 +287,7 @@ function route() {
   const [path, qs] = h.split('?');
   const params = new URLSearchParams(qs || '');
   const [p, id] = path.split('/');
-  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id),
+  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id), etiket: () => pageEtiket(),
     rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
     kassa: () => pageKassa(), sifarisler: () => pageSifarisler(params), hesabat: () => pageHesabat(params),
     teqvim: () => pageTeqvim(params), menfeet: () => pageMenfeet(), jurnal: () => pageJurnal(params), ayarlar: () => pageAyarlar(),
@@ -908,7 +908,7 @@ async function pageMehsullar(params) {
     <select class="in" id="kat" style="width:auto"><option value="">Bütün kateqoriyalar</option></select>
     <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;white-space:nowrap"><input type="checkbox" id="passiv"> Passivlər</label>
     <label style="display:flex;align-items:center;gap:6px;font-size:13.5px;white-space:nowrap"><input type="checkbox" id="azal" ${params.get('az') ? 'checked' : ''}> Bitmək üzrə</label>
-    ${w ? `<button class="btn" id="toplu">${ico('up')}Excel-dən yüklə</button><button class="btn" id="medaxil">${ico('box')}Mal mədaxili</button><button class="btn primary" id="yeni">${ico('plus')}Yeni məhsul</button>` : ''}`);
+    ${w ? `<button class="btn" id="toplu">${ico('up')}Excel-dən yüklə</button><button class="btn" id="medaxil">${ico('box')}Mal mədaxili</button><button class="btn" id="etk">${ico('print')}Barkod etiketi</button><button class="btn primary" id="yeni">${ico('plus')}Yeni məhsul</button>` : ''}`);
   const rows = await all(() => sb.from('v_mehsullar').select('*').order('ad'));
   const azdir = r => r.anbar_izle && num(r.anbar) <= num(r.min_qaliq);
   const kats = [...new Set(rows.map(r => r.kateqoriya).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'az'));
@@ -931,6 +931,7 @@ async function pageMehsullar(params) {
   };
   ['axtar', 'kat', 'passiv', 'azal'].forEach(id => $('#' + id).addEventListener(id === 'axtar' ? 'input' : 'change', draw));
   if ($('#medaxil')) $('#medaxil').onclick = () => malMedaxili(rows);
+  if ($('#etk')) $('#etk').onclick = () => etiketPencere([]).catch(fail);
   if ($('#yeni')) $('#yeni').onclick = () => mehsulForm(null, kats);
   if ($('#toplu')) $('#toplu').onclick = () => mehsulIdxal();
   draw();
@@ -941,7 +942,7 @@ function mehsulForm(r, kats) {
     <div class="field"><label class="f">Məhsulun adı</label><input class="in" name="ad" value="${esc(r ? r.ad : '')}" required placeholder="məs. Künc divan Milano"></div>
     <div class="row2"><div class="field"><label class="f">Kateqoriya</label><input class="in" name="kat" list="katlist" value="${esc(r && r.kateqoriya || '')}" placeholder="məs. Divanlar">
       <datalist id="katlist">${kats.map(k => `<option value="${esc(k)}">`).join('')}</datalist></div>
-    <div class="field"><label class="f">Barkod / kod <span class="muted" style="font-weight:400">(oxuyucu ilə oxudun)</span></label><div style="display:flex;gap:6px"><input class="in" name="kod" value="${esc(r && r.kod || '')}" placeholder="məs. 4760001234567"><button type="button" class="btn" id="kcam" title="Kamera ilə oxu">📷</button></div></div></div>
+    <div class="field"><label class="f">Barkod / kod <span class="muted" style="font-weight:400">(oxuyucu ilə oxudun)</span></label><div style="display:flex;gap:6px"><input class="in" name="kod" value="${esc(r && r.kod || '')}" placeholder="məs. 4760001234567"><button type="button" class="btn" id="kcam" title="Kamera ilə oxu">📷</button>${r ? `<button type="button" class="btn" id="kyar" title="Barkodu yoxdursa proqram yaratsın">Yarat</button>` : ''}</div></div></div>
     <div class="row2"><div class="field"><label class="f">Satış qiyməti</label><input class="in" type="number" step="0.01" min="0" name="qy" value="${r ? r.qiymet : ''}" required></div>
     <div class="field"><label class="f">Maya dəyəri <span class="muted" style="font-weight:400">(istəyə bağlı)</span></label><input class="in" type="number" step="0.01" min="0" name="my" value="${r && r.maya != null ? r.maya : ''}"></div></div>
     <div class="field"><label class="f">Qeyd (ölçü, rəng və s.)</label><input class="in" name="q" value="${esc(r && r.qeyd || '')}"></div>
@@ -951,11 +952,13 @@ function mehsulForm(r, kats) {
       ${r && r.anbar_izle ? `<div class="field" style="margin:0"><label class="f">Sayım: faktiki qalıq <span class="muted" style="font-weight:400">(indi ${fmt(r.anbar)})</span></label><input class="in" type="number" step="1" name="say" placeholder="${fmt(r.anbar)}"></div>` : ''}</div>
       ${r ? '<div id="hrk" style="margin-top:10px"></div>' : ''}</div>
     ${r ? `<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="ak" ${r.aktiv ? 'checked' : ''}> Aktivdir (satışda görünür)</label>` : ''}</form>`,
-    `${r ? '<button class="btn danger" id="sil" style="margin-right:auto">Sil</button>' : ''}<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
+    `${r ? '<button class="btn danger" id="sil" style="margin-right:auto">Sil</button><button class="btn" id="ketk">Etiket çap et</button>' : ''}<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
   const f = $('#pf', m);
   setTimeout(() => f.ad.focus(), 50);
   f.kod.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); f.qy.focus(); } };   // oxuyucunun Enter-i formu göndərməsin
   $('#kcam', m).onclick = () => kameraOxu(k => { f.kod.value = k; f.qy.focus(); });
+  if ($('#kyar', m)) $('#kyar', m).onclick = () => { if (f.kod.value.trim() && !confirm('Mövcud barkod dəyişdirilsin?')) return; f.kod.value = daxiliBarkod(r.id); };
+  if ($('#ketk', m)) $('#ketk', m).onclick = () => etiketPencere([r.id]).catch(fail);
   if (r && $('#hrk', m)) Promise.all([
     q(sb.from('anbar_hereketleri').select('*').eq('mehsul_id', r.id).order('tarix', { ascending: false }).limit(15)),
     q(sb.from('satis_mallari').select('miqdar,satis_id').eq('mehsul_id', r.id).order('id', { ascending: false }).limit(15)),
@@ -1135,6 +1138,125 @@ function mehsulToplu() {
     try { for (let i = 0; i < list.length; i += 500) await q(sb.from('mehsullar').insert(list.slice(i, i + 500)));
       closeModal(); toast(list.length + ' məhsul əlavə olundu'); refresh(); } catch (er) { fail(er); $('#ok', m).disabled = false; }
   };
+}
+
+/* =====================================================================
+   BARKOD — EAN-13 və Code 128 (SVG), avtomatik barkod, etiket çapı
+   ===================================================================== */
+const EAN_L = ['0001101', '0011001', '0010011', '0111101', '0100011', '0110001', '0101111', '0111011', '0110111', '0001011'];
+const EAN_G = ['0100111', '0110011', '0011011', '0100001', '0011101', '0111001', '0000101', '0010001', '0001001', '0010111'];
+const EAN_R = ['1110010', '1100110', '1101100', '1000010', '1011100', '1001110', '1010000', '1000100', '1001000', '1110100'];
+const EAN_P = ['LLLLLL', 'LLGLGG', 'LLGGLG', 'LLGGGL', 'LGLLGG', 'LGGLLG', 'LGGGLL', 'LGLGLG', 'LGLGGL', 'LGGLGL'];
+const eanYoxla = d12 => { let s = 0; for (let i = 0; i < 12; i++) s += +d12[i] * (i % 2 ? 3 : 1); return String((10 - s % 10) % 10); };
+const eanDuzdur = k => /^\d{13}$/.test(k) && eanYoxla(k.slice(0, 12)) === k[12];
+// Dükanın daxili barkodu: 20 + dükan (3) + məhsul nömrəsi (7) + yoxlama rəqəmi
+function daxiliBarkod(mehsulId) {
+  const d12 = '20' + String((S.magaza && S.magaza.id) % 1000).padStart(3, '0') + String(mehsulId % 1e7).padStart(7, '0');
+  return d12 + eanYoxla(d12);
+}
+function eanBitler(k) {
+  let b = '101'; const p = EAN_P[+k[0]];
+  for (let i = 1; i <= 6; i++) b += (p[i - 1] === 'L' ? EAN_L : EAN_G)[+k[i]];
+  b += '01010';
+  for (let i = 7; i <= 12; i++) b += EAN_R[+k[i]];
+  return b + '101';
+}
+const C128 = ['212222', '222122', '222221', '121223', '121322', '131222', '122213', '122312', '132212', '221213', '221312', '231212', '112232', '122132', '122231', '113222', '123122', '123221', '223211', '221132', '221231', '213212', '223112', '312131', '311222', '321122', '321221', '312212', '322112', '322211', '212123', '212321', '232121', '111323', '131123', '131321', '112313', '132113', '132311', '211313', '231113', '231311', '112133', '112331', '132131', '113123', '113321', '133121', '313121', '211331', '231131', '213113', '213311', '213131', '311123', '311321', '331121', '312113', '312311', '332111', '314111', '221411', '431111', '111224', '111422', '121124', '121421', '141122', '141221', '112214', '112412', '122114', '122411', '142112', '142211', '241211', '221114', '413111', '241112', '134111', '111242', '121142', '121241', '114212', '124112', '124211', '411212', '421112', '421211', '212141', '214121', '412121', '111143', '111341', '131141', '114113', '114311', '411113', '411311', '113141', '114131', '311141', '411131', '211412', '211214', '211232', '2331112'];
+function c128Bitler(t) {
+  t = String(t).replace(/[^\x20-\x7e]/g, '?');
+  const kod = [104]; for (const ch of t) kod.push(ch.charCodeAt(0) - 32);
+  let s = kod[0]; for (let i = 1; i < kod.length; i++) s += kod[i] * i;
+  kod.push(s % 103, 106);
+  let b = ''; for (const c of kod) { const w = C128[c]; for (let i = 0; i < w.length; i++) b += (i % 2 ? '0' : '1').repeat(+w[i]); }
+  return b;
+}
+// SVG: modul eni = 1 vahid; hündürlük və altdakı yazı
+function barkodSvg(kod, hund = 40) {
+  kod = String(kod || '').trim(); if (!kod) return '';
+  const ean = eanDuzdur(kod), bit = ean ? eanBitler(kod) : c128Bitler(kod);
+  const ses = ean ? 9 : 10, W = bit.length + ses * 2;
+  let rect = '', i = 0;
+  while (i < bit.length) { if (bit[i] === '1') { let j = i; while (j < bit.length && bit[j] === '1') j++;
+    const uzun = ean && (i < 3 || (i >= 45 && i < 50) || i >= 92);
+    rect += `<rect x="${ses + i}" y="0" width="${j - i}" height="${uzun ? hund + 5 : hund}"/>`; i = j; } else i++; }
+  const yazi = ean
+    ? `<text x="${ses - 2}" y="${hund + 11}" text-anchor="end">${kod[0]}</text><text x="${ses + 3 + 21}" y="${hund + 11}" text-anchor="middle">${kod.slice(1, 7)}</text><text x="${ses + 50 + 21}" y="${hund + 11}" text-anchor="middle">${kod.slice(7)}</text>`
+    : `<text x="${W / 2}" y="${hund + 11}" text-anchor="middle">${esc(kod)}</text>`;
+  return `<svg class="bk-svg" viewBox="0 0 ${W} ${hund + 13}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><g fill="#000">${rect}</g><g font-family="Arial,Helvetica,sans-serif" font-size="10" fill="#000">${yazi}</g></svg>`;
+}
+
+const ETIKET_OLCU = {
+  '58x40': { ad: 'Etiket printeri 58 × 40 mm', w: 58, h: 40 },
+  '40x30': { ad: 'Etiket printeri 40 × 30 mm', w: 40, h: 30 },
+  'a4': { ad: 'A4 vərəq — 3 × 8 (24 etiket)', w: 70, h: 37 },
+};
+// Etiket pəncərəsi: məhsul seçimi, say, ölçü; barkodu olmayanlara barkod verilir
+async function etiketPencere(secilmis) {
+  const rows = (await all(() => sb.from('v_mehsullar').select('id,ad,kod,qiymet,kateqoriya,anbar_izle,anbar,aktiv').order('ad'))).filter(r => r.aktiv);
+  const sec = new Map((secilmis || []).map(id => [id, 1]));
+  let olcu = 'a4'; try { olcu = localStorage.getItem('etiket_olcu') || 'a4'; } catch (_) {}
+  const m = modal('Barkod etiketləri', `
+    <div class="row2"><div class="field"><label class="f">Etiket ölçüsü</label><select class="in" id="eo">${Object.entries(ETIKET_OLCU).map(([k, v]) => `<option value="${k}" ${k === olcu ? 'selected' : ''}>${v.ad}</option>`).join('')}</select></div>
+      <div class="field"><label class="f">Etiketdə</label><div style="display:flex;gap:14px;padding-top:8px;flex-wrap:wrap">
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="eq" checked> qiymət</label>
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="ef" checked> dükanın adı</label></div></div></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <input class="in" id="ea" placeholder="Məhsul axtar…" style="flex:1;min-width:180px">
+      <button type="button" class="btn sm" id="ehamisi">Hamısını seç</button><button type="button" class="btn sm" id="eanbar">Say = anbar qalığı</button><button type="button" class="btn sm" id="esil">Təmizlə</button></div>
+    <div class="tbl-wrap" style="max-height:320px;box-shadow:none"><table class="t"><thead><tr><th style="width:34px"></th><th>Məhsul</th><th>Barkod</th><th class="n">Qiymət</th><th class="n" style="width:90px">Etiket sayı</th></tr></thead><tbody id="elist"></tbody></table></div>
+    <div class="muted" id="einfo" style="font-size:13px;margin-top:8px"></div>`,
+    `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ecap">${ico('print')}Çap et</button>`, true);
+  const ciz = () => {
+    const t = azLow($('#ea', m).value);
+    $('#elist', m).innerHTML = rows.filter(r => !t || azLow([r.ad, r.kod, r.kateqoriya].join(' ')).includes(t)).map(r => `<tr>
+      <td><input type="checkbox" data-c="${r.id}" ${sec.has(r.id) ? 'checked' : ''}></td><td>${esc(r.ad)}</td>
+      <td>${r.kod ? `<span class="muted">${esc(r.kod)}</span>` : '<span class="badge b-amber">yaradılacaq</span>'}</td><td class="n">${fmt(r.qiymet)}</td>
+      <td><input class="in" type="number" min="1" step="1" data-n="${r.id}" value="${sec.get(r.id) || 1}" style="padding:4px 6px"></td></tr>`).join('');
+    $$('[data-c]', m).forEach(c => c.onchange = () => { const id = +c.dataset.c; if (c.checked) sec.set(id, num($(`[data-n="${id}"]`, m).value) || 1); else sec.delete(id); info(); });
+    $$('[data-n]', m).forEach(c => c.oninput = () => { const id = +c.dataset.n; if (num(c.value) > 0) { sec.set(id, Math.round(num(c.value))); $(`[data-c="${id}"]`, m).checked = true; } info(); });
+    info();
+  };
+  const info = () => {
+    const say = [...sec.values()].reduce((a, n) => a + n, 0), yeni = [...sec.keys()].filter(id => !rows.find(r => r.id === id).kod).length;
+    $('#einfo', m).innerHTML = `${sec.size} məhsul, cəmi <b>${say}</b> etiket${yeni ? ` · ${yeni} məhsula yeni barkod veriləcək` : ''}`;
+  };
+  $('#ea', m).oninput = ciz;
+  $('#ehamisi', m).onclick = () => { rows.forEach(r => { if (!sec.has(r.id)) sec.set(r.id, 1); }); ciz(); };
+  $('#eanbar', m).onclick = () => { rows.forEach(r => { if (r.anbar_izle && num(r.anbar) > 0) sec.set(r.id, Math.round(num(r.anbar))); }); ciz(); };
+  $('#esil', m).onclick = () => { sec.clear(); ciz(); };
+  ciz();
+  $('#ecap', m).onclick = async () => {
+    if (!sec.size) return toast('Ən azı bir məhsul seçin');
+    $('#ecap', m).disabled = true;
+    try {
+      for (const id of sec.keys()) {
+        const r = rows.find(x => x.id === id);
+        if (!r.kod) { r.kod = daxiliBarkod(r.id); if (canWrite()) await q(sb.from('mehsullar').update({ kod: r.kod }).eq('id', r.id)); }
+      }
+      olcu = $('#eo', m).value; try { localStorage.setItem('etiket_olcu', olcu); } catch (_) {}
+      S.etiket = { olcu, qiymet: $('#eq', m).checked, firma: $('#ef', m).checked, list: [...sec.entries()].map(([id, n]) => ({ r: rows.find(x => x.id === id), n })) };
+      closeModal(); S.cache = {}; location.hash = '#/etiket';
+    } catch (er) { fail(er); $('#ecap', m).disabled = false; }
+  };
+}
+async function pageEtiket() {
+  const E = S.etiket;
+  shell('', 'Barkod etiketləri', E ? `${E.list.reduce((a, x) => a + x.n, 0)} etiket · ${ETIKET_OLCU[E.olcu].ad}` : '',
+    `<button class="btn" onclick="history.back()">← Geri</button><button class="btn primary" onclick="window.print()">${ico('print')}Çap et</button>`);
+  if (!E) { $('#page').innerHTML = '<div class="card empty">Əvvəlcə "Məhsullar → Barkod etiketi" bölməsindən məhsul seçin</div>'; return; }
+  const O = ETIKET_OLCU[E.olcu], a4 = E.olcu === 'a4';
+  const firma = firmaAdi();
+  const tek = r => `<div class="etk" style="width:${O.w}mm;height:${O.h}mm">
+    ${E.firma ? `<div class="etk-f">${esc(firma)}</div>` : ''}
+    <div class="etk-ad">${esc(r.ad)}</div>
+    <div class="etk-bk">${barkodSvg(r.kod)}</div>
+    ${E.qiymet ? `<div class="etk-q">${fmt(r.qiymet)} ₼</div>` : ''}</div>`;
+  const hamisi = E.list.flatMap(x => Array.from({ length: x.n }, () => x.r));
+  let st = $('#etkpage'); if (!st) { st = document.createElement('style'); st.id = 'etkpage'; document.head.appendChild(st); }
+  st.textContent = a4 ? '@media print{@page{size:A4;margin:8mm 0 0 0} .topbar{display:none!important} .main{padding:0!important} body{background:#fff!important}}'
+    : `@media print{@page{size:${O.w}mm ${O.h}mm;margin:0} .topbar{display:none!important} .main{padding:0!important} body{background:#fff!important} .etk-vereq{display:block!important;gap:0!important;padding:0!important;background:none!important} .etk{break-after:page;border:0!important;margin:0!important}}`;
+  $('#page').innerHTML = `<div class="etk-vereq ${a4 ? 'a4' : ''}">${hamisi.map(tek).join('')}</div>
+    <p class="muted no-print" style="font-size:13px;margin-top:14px">${a4 ? 'A4 üçün 70 × 37 mm-lik 24-lük yapışqan etiket vərəqi istifadə edin; çap pəncərəsində miqyas "100%" (Actual size) olsun.' : `Etiket printerində kağız ölçüsünü ${O.w} × ${O.h} mm seçin; çap pəncərəsində kənar boşluq "Yoxdur" (None) və miqyas "100%" olsun.`}</p>`;
 }
 
 /* =====================================================================
