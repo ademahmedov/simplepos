@@ -1959,7 +1959,7 @@ function tabloFiltr(tb) {
   if (!thead || !body || !thead.rows[0]) return;
   const ths = Array.from(thead.rows[0].cells);
   const rows = () => Array.from(body.rows).filter(r => r.cells.length === ths.length);
-  if (rows().length < 3 || tb.closest('.cek,.modal')) return;
+  if (!rows().length || tb.closest('.cek,.modal')) return;
   const acar = location.hash.split('?')[0] + '|' + ths.map(th => th.innerText.trim()).join('/');
   const st = FLT[acar] || (FLT[acar] = {});
   const fr = thead.insertRow(-1); fr.className = 'flt-row no-print';
