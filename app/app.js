@@ -1182,6 +1182,7 @@ const aylarSiyahi = (n = 24) => { const d = new Date(); d.setDate(1); const o = 
 const ayOpt = (sec, hamisi) => (hamisi ? `<option value="">Bütün aylar</option>` : '') + aylarSiyahi().map(a => `<option value="${a}" ${a === sec ? 'selected' : ''}>${ayAdi(a)}</option>`).join('');
 const ayinSonu = a => { const d = new Date(a + 'T00:00:00'); d.setMonth(d.getMonth() + 1); d.setDate(0); return iso(d); };
 const kecenAy = () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return iso(d); };
+const qisaAd = t => String(t || '').replace(/MƏHDUD MƏSULİYYƏTLİ CƏMİYYƏTİ/gi, 'MMC').replace(/AÇIQ SƏHMDAR CƏMİYYƏTİ/gi, 'ASC').replace(/QAPALI SƏHMDAR CƏMİYYƏTİ/gi, 'QSC').replace(/\s+/g, ' ').trim();
 const qaimeNo = r => [r.seriya, r.nomre].filter(Boolean).join(' ') || '—';
 const odenisBadge = r => num(r.qaliq) <= 0.005 ? '<span class="badge b-green">Ödənilib</span>' : num(r.odenilib) > 0 ? '<span class="badge b-amber">Qismən</span>' : '<span class="badge b-gray">Ödənilməyib</span>';
 const xlsxEndir = (ad, sheets) => { const a = document.createElement('a'); a.href = URL.createObjectURL(xlsxYarat(sheets)); a.download = ad.replace(/[^\wəöüğıçşƏÖÜĞIÇŞ .-]/g, '') + '.xlsx'; document.body.appendChild(a); a.click(); a.remove(); };
@@ -1227,7 +1228,7 @@ async function pageMPanel() {
 function kontrSiyahi(l) {
   const m = new Map(); l.forEach(x => { const k = x.voen || x.kontragent; const o = m.get(k) || { ad: x.kontragent || x.voen, voen: x.voen, s: 0, n: 0 }; o.s += num(x.qaliq); o.n++; m.set(k, o); });
   const top = [...m.values()].sort((a, b) => b.s - a.s).slice(0, 8);
-  return top.length ? `<table class="t"><tbody>${top.map(o => `<tr><td><div class="cell-main">${esc(o.ad || '—')}</div><div class="cell-sub">${esc(o.voen || '')} · ${o.n} qaimə</div></td><td class="n"><b>${fmt(o.s, 2)}</b></td></tr>`).join('')}</tbody></table>`
+  return top.length ? `<table class="t"><tbody>${top.map(o => `<tr><td><div class="cell-main">${esc(qisaAd(o.ad) || '—')}</div><div class="cell-sub">${esc(o.voen || '')} · ${o.n} qaimə</div></td><td class="n"><b>${fmt(o.s, 2)}</b></td></tr>`).join('')}</tbody></table>`
     : '<div class="empty muted" style="padding:20px">Borc yoxdur</div>';
 }
 
@@ -1248,7 +1249,7 @@ async function pageQaimeler(ist, params) {
   $('.topbar .sub').textContent = `${list.length} qaimə · cəmi ${man(sum('cem'))} · qalıq ${man(sum('qaliq'))}`;
   $('#page').innerHTML = list.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Tarix</th><th>Seriya / №</th><th>VÖEN</th><th>${gelen ? 'Təchizatçı' : 'Alıcı'}</th>
       <th class="n">Əsas</th><th class="n">ƏDV</th><th class="n hide-m">ƏDV-siz</th><th class="n">Cəm</th><th class="n">Ödənilib</th><th class="n">Qalıq</th><th>Vəziyyət</th></tr></thead>
-    <tbody>${list.map(r => `<tr class="click" data-q="${r.id}"><td>${fd(r.tarix)}</td><td>${esc(qaimeNo(r))}</td><td class="muted">${esc(r.voen || '')}</td><td>${esc(r.kontragent || '')}</td>
+    <tbody>${list.map(r => `<tr class="click" data-q="${r.id}"><td>${fd(r.tarix)}</td><td>${esc(qaimeNo(r))}</td><td class="muted">${esc(r.voen || '')}</td><td>${esc(qisaAd(r.kontragent))}</td>
       <td class="n">${fmt(r.esas, 2)}</td><td class="n">${fmt(r.edv, 2)}</td><td class="n hide-m">${fmt(r.edvsiz, 2)}</td><td class="n"><b>${fmt(r.cem, 2)}</b></td>
       <td class="n">${fmt(r.odenilib, 2)}</td><td class="n"><b class="${num(r.qaliq) > 0.005 ? 'neg' : ''}">${fmt(r.qaliq, 2)}</b></td><td>${odenisBadge(r)}</td></tr>`).join('')}</tbody>
     <tfoot><tr><td>${list.length} qaimə</td><td></td><td></td><td></td><td class="n">${fmt(sum('esas'), 2)}</td><td class="n">${fmt(sum('edv'), 2)}</td><td class="n hide-m">${fmt(sum('edvsiz'), 2)}</td>
@@ -1343,26 +1344,35 @@ function qaimeIdxal(ist) {
   const gelen = ist === 'gelen';
   idxalPencere({
     basliq: gelen ? 'Gələn e-qaimələri yüklə' : 'Gedən e-qaimələri yüklə',
-    izah: `e-taxes.gov.az → E-qaimə → ${gelen ? 'Daxil olan' : 'Göndərilmiş'} qaimələr siyahısını Excel kimi yükləyin və həmin faylı seçin. Lazımsız sütunlar nəzərə alınmır. Artıq olan qaimə (eyni VÖEN, seriya, nömrə) təkrar yaradılmır — məbləği yenilənir.`,
+    izah: `e-taxes.gov.az → E-qaimə → ${gelen ? 'Daxil olan' : 'Göndərilmiş'} qaimələr → "Excel" ilə yüklədiyiniz faylı olduğu kimi seçin (yuxarıdakı filtr sətirləri nəzərə alınmır). Eyni VÖEN + seriya + nömrə artıq varsa, təkrar yaradılmır — məbləği və statusu yenilənir. "Passiv" və "Ləğv edildi" statuslu qaimələr yüklənmir.`,
     saheler: [
-      { k: 'voen', ad: gelen ? 'Təchizatçının VÖEN-i' : 'Alıcının VÖEN-i', lazim: true, ox: gelen ? ['təqdimedəninvöeni', 'təqdimedənvöen', 'təqdimedəninvoeni', 'satıcınınvöeni', 'göndərəninvöeni', 'vöen', 'voen'] : ['alıcınınvöeni', 'alıcıvöen', 'alıcınınvoeni', 'qəbuledəninvöeni', 'vöen', 'voen'] },
-      { k: 'kontragent', ad: gelen ? 'Təchizatçının adı' : 'Alıcının adı', ox: gelen ? ['təqdimedəninadı', 'təqdimedən', 'satıcınınadı', 'satıcı', 'göndərən', 'adı', 'ad'] : ['alıcınınadı', 'alıcı', 'qəbuledən', 'adı', 'ad'] },
-      { k: 'seriya', ad: 'Seriya', ox: ['seriya', 'seria', 'qaiməninseriyası', 'series'] },
-      { k: 'nomre', ad: 'Nömrə', lazim: true, ox: ['nömrə', 'nomre', 'qaiməninnömrəsi', '№', 'no', 'number'] },
-      { k: 'tarix', ad: 'Tarix', lazim: true, tip: 'tarix', ox: ['tarix', 'qaiməninttarixi', 'qaiməningtarixi', 'qaiməntarixi', 'təqdimolunmatarixi', 'tarixi', 'date'] },
-      { k: 'esas', ad: 'Əsas məbləğ (ƏDV-yə cəlb olunan)', lazim: true, tip: 'eded', ox: ['ədvyəcəlbedilənməbləğ', 'ədvyəcəlbolunanməbləğ', 'ədvyəcəlbolunan', 'əsasməbləğ', 'əsasdəyər', 'ədvsizməbləğ', 'məbləğ'] },
-      { k: 'edv', ad: 'ƏDV məbləği', tip: 'eded', ox: ['ədvməbləği', 'ədvnin məbləği', 'ədvdəyəri', 'ədv18', 'ədv'] },
-      { k: 'edvsiz', ad: 'ƏDV-yə cəlb olunmayan', tip: 'eded', ox: ['ədvyəcəlbedilməyənməbləğ', 'ədvyəcəlbolunmayan', 'ədvdənazad', 'azadolunan', 'cəlbedilməyən'] },
-      { k: 'status', ad: 'Status', ox: ['status', 'vəziyyət', 'qaiməninstatusu'] }],
-    numune: [['1234567891', 'Nümunə MMC', 'MT2611', '0012345', '05.11.2026', 1000, 180, 0, 'Təsdiqlənib'], ['9876543211', 'Test ASC', 'MT2611', '0012399', '12.11.2026', 2500, 450, 100, 'Təsdiqlənib']],
+      { k: 'voen', ad: gelen ? 'Təchizatçının VÖEN-i' : 'Alıcının VÖEN-i', lazim: true, ox: gelen ? ['vöen', 'voen', 'təqdimedəninvöeni', 'təqdimedənvöen', 'satıcınınvöeni', 'göndərəninvöeni'] : ['vöen', 'voen', 'alıcınınvöeni', 'alıcıvöen', 'qəbuledəninvöeni'] },
+      { k: 'kontragent', ad: gelen ? 'Təchizatçının adı' : 'Alıcının adı', ox: gelen ? ['adı', 'ad', 'təqdimedəninadı', 'təqdimedən', 'satıcınınadı', 'satıcı'] : ['adı', 'ad', 'alıcınınadı', 'alıcı', 'qəbuledən'] },
+      { k: 'seriya', ad: 'Seriya', ox: ['qaiməseriyası', 'seriya', 'seria', 'qaiməninseriyası', 'series'] },
+      { k: 'nomre', ad: 'Nömrə', lazim: true, ox: ['qaimənömrəsi', 'nömrə', 'nomre', 'qaiməninnömrəsi', 'number'] },
+      { k: 'tarix', ad: 'Tarix', lazim: true, tip: 'tarix', ox: ['qaimətarixi', 'tarix', 'qaiməntarixi', 'təqdimolunmatarixi', 'tarixi', 'date'] },
+      { k: 'esas', ad: 'ƏDV-yə cəlb edilən', tip: 'eded', ox: ['ədvyəcəlbedilən', 'ədvyəcəlbedilənməbləğ', 'ədvyəcəlbolunanməbləğ', 'ədvyəcəlbolunan', 'əsasməbləğ', 'əsasdəyər'] },
+      { k: 'edv', ad: 'ƏDV məbləği', tip: 'eded', ox: ['malınədvməbləği', 'ədvməbləği', 'ədvdəyəri', 'ədv'] },
+      { k: 'umumi', ad: 'ƏDV-siz ümumi dəyər', tip: 'eded', ox: ['malınədvsizümumidəyəri', 'ədvsizümumidəyər', 'ədvsizdəyər', 'ədvsizməbləğ'] },
+      { k: 'yekun', ad: 'Yekun məbləğ', tip: 'eded', ox: ['yekunməbləğ', 'yekun', 'cəmiməbləğ', 'cəmi'] },
+      { k: 'status', ad: 'Status', ox: ['vəziyyəti', 'status', 'vəziyyət', 'qaiməninstatusu'] },
+      { k: 'qeyd', ad: 'Əsas qeyd', ox: ['əsasqeyd', 'qeyd', 'açıqlama'] }],
+    numune: [['1300123451', 'Nümunə MMC', 'MT2611', '0012345', '05-11-2026', 1000, 180, 1000, 1180, 'Təsdiqləndi', 'Material'], ['9876543211', 'Test ASC', 'MT2611', '0012399', '12-11-2026', 2500, 450, 2600, 3050, 'Təsdiqləndi', '']],
     yaz: async (rows, ir) => {
       const var_ = await all(() => sb.from('qaimeler').select('id,voen,seriya,nomre').eq('istiqamet', ist).order('id'));
       const acar = x => [x.voen || '', azLow(x.seriya || ''), azLow(x.nomre || '')].join('|');
       const ix = new Map(var_.map(x => [acar(x), x.id])), gor = new Set();
-      const yeni = [], yen = [];
+      const yeni = [], yen = []; let buraxildi = 0;
       rows.forEach(r => {
+        if (/passiv|ləğv edildi/i.test(r.status || '')) { buraxildi++; return; }
+        // məbləğlər: yekun = əsas (ƏDV-yə cəlb edilən) + ƏDV + qalan hissə (cəlb edilməyən, azad, 0%, aksiz, yol vergisi)
+        const edv = r2(r.edv || 0); let esas = r2(r.esas || 0);
+        if (!esas && edv > 0 && r.umumi) esas = r2(r.umumi);
+        const yekun = r.yekun != null ? r2(r.yekun) : r2((r.umumi != null ? num(r.umumi) : esas) + edv);
+        const edvsiz = Math.max(0, r2(yekun - esas - edv));
+        if (esas + edv > yekun + 0.01) esas = Math.max(0, r2(yekun - edv));
         const v = { istiqamet: ist, voen: String(r.voen).replace(/\D/g, '') || r.voen, kontragent: r.kontragent, seriya: r.seriya, nomre: r.nomre, tarix: r.tarix,
-          esas: r2(r.esas), edv: r2(r.edv || 0), edvsiz: r2(r.edvsiz || 0), status: r.status };
+          esas, edv, edvsiz, status: r.status, qeyd: r.qeyd ? String(r.qeyd).slice(0, 500) : null };
         const k = acar(v); if (gor.has(k)) return; gor.add(k);
         if (ix.has(k)) yen.push([ix.get(k), v]); else yeni.push(v);
       });
@@ -1371,7 +1381,7 @@ function qaimeIdxal(ist) {
       for (const [id, v] of yen) { await q(sb.from('qaimeler').update({ esas: v.esas, edv: v.edv, edvsiz: v.edvsiz, status: v.status, kontragent: v.kontragent, tarix: v.tarix }).eq('id', id)); i++; if (i % 10 === 0) ir(i, n); }
       const k = await kontragentSaxla(rows.map(r => ({ voen: String(r.voen).replace(/\D/g, '') || r.voen, ad: r.kontragent })));
       try { localStorage.setItem('son_yukleme_' + S.magaza.id, new Date().toLocaleString('az-AZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })); } catch (_) {}
-      return `${yeni.length} qaimə əlavə olundu${yen.length ? `, ${yen.length} qaimə yeniləndi` : ''}${k ? `, ${k} yeni kontragent` : ''}`;
+      return `${yeni.length} qaimə əlavə olundu${yen.length ? `, ${yen.length} qaimə yeniləndi` : ''}${buraxildi ? `, ${buraxildi} passiv/ləğv buraxıldı` : ''}${k ? `, ${k} yeni kontragent` : ''}`;
     },
   });
 }
@@ -1549,7 +1559,7 @@ async function pageEvez(params) {
       <div class="card kpi"><div class="lbl">${net >= 0 ? 'Büdcəyə ödəniləcək ƏDV' : 'Artıq ödənilmiş ƏDV'}</div><div class="val ${net > 0 ? 'neg' : 'pos'}">${man(Math.abs(net))}</div><div class="cmp">${ayAdi(ay)}</div></div></div>
     <div class="card" style="padding:0;margin-top:16px"><h3 style="padding:18px 20px 0">Əvəzləşməyə daxil olan ödənişlər (gələn qaimələr)</h3>
     ${od.length ? `<table class="t"><thead><tr><th>VÖEN</th><th>Təchizatçı</th><th>Seriya</th><th>Nömrə</th><th>Qaimə tarixi</th><th>Ödəniş tarixi</th><th class="n">Qaimə ƏDV-si</th><th class="n">Ödənilən məbləğ</th><th class="n">o cümlədən ƏDV</th></tr></thead>
-      <tbody>${od.map(x => `<tr><td>${esc(x.voen || '')}</td><td>${esc(x.kontragent || '')}</td><td>${esc(x.seriya || '')}</td><td>${esc(x.nomre || '')}</td><td>${fd(x.qaime_tarix)}</td><td>${fd(x.tarix)}</td>
+      <tbody>${od.map(x => `<tr><td>${esc(x.voen || '')}</td><td>${esc(qisaAd(x.kontragent))}</td><td>${esc(x.seriya || '')}</td><td>${esc(x.nomre || '')}</td><td>${fd(x.qaime_tarix)}</td><td>${fd(x.tarix)}</td>
         <td class="n">${fmt(x.qaime_edv, 2)}</td><td class="n">${fmt(x.mebleg, 2)}</td><td class="n"><b>${fmt(x.edv, 2)}</b></td></tr>`).join('')}</tbody>
       <tfoot><tr><td>${od.length}</td><td></td><td></td><td></td><td></td><td></td><td></td><td class="n">${fmt(sum(od, 'mebleg'), 2)}</td><td class="n">${fmt(ev1, 2)}</td></tr></tfoot></table>`
       : '<div class="empty muted" style="padding:24px">Bu ay gələn qaimələrə ödəniş yazılmayıb</div>'}</div>
@@ -1703,7 +1713,7 @@ async function pageKontragent() {
   $('.topbar .sub').textContent = `${k.length} kontragent`;
   $('#page').innerHTML = k.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>VÖEN</th><th>Ad</th><th class="hide-m">Telefon</th><th class="n">Gələn qaimələr</th><th class="n">Bizim borc</th><th class="n">Gedən qaimələr</th><th class="n">Onun borcu</th></tr></thead>
     <tbody>${k.map(x => { const o = st.get(x.voen) || { g: 0, d: 0, gq: 0, dq: 0 };
-      return `<tr class="${w ? 'click' : ''}" data-k="${x.id}"><td>${esc(x.voen || '')}</td><td>${esc(x.ad)}</td><td class="hide-m">${esc(x.telefon || '')}</td><td class="n">${fmt(o.g, 2)}</td><td class="n"><b class="${o.gq > 0.005 ? 'neg' : ''}">${fmt(o.gq, 2)}</b></td><td class="n">${fmt(o.d, 2)}</td><td class="n"><b>${fmt(o.dq, 2)}</b></td></tr>`; }).join('')}</tbody></table></div>`
+      return `<tr class="${w ? 'click' : ''}" data-k="${x.id}"><td>${esc(x.voen || '')}</td><td>${esc(qisaAd(x.ad))}</td><td class="hide-m">${esc(x.telefon || '')}</td><td class="n">${fmt(o.g, 2)}</td><td class="n"><b class="${o.gq > 0.005 ? 'neg' : ''}">${fmt(o.gq, 2)}</b></td><td class="n">${fmt(o.d, 2)}</td><td class="n"><b>${fmt(o.dq, 2)}</b></td></tr>`; }).join('')}</tbody></table></div>`
     : '<div class="card empty">Kontragent yoxdur. Qaimələri yükləyəndə avtomatik əlavə olunur.</div>';
   $('#kax').oninput = e => { const t = azLow(e.target.value); $$('[data-k]').forEach(tr => { tr.style.display = !t || azLow(tr.textContent).includes(t) ? '' : 'none'; }); };
   $$('[data-k]').forEach(tr => tr.onclick = () => w && kontragentForm(k.find(x => x.id === +tr.dataset.k)));
@@ -1828,8 +1838,8 @@ async function pageQaime(params) {
   $('.topbar .sub').textContent = `${rows.length} qaimə · gələn ${man(sum(g, 'cem'))} · gedən ${man(sum(d, 'cem'))}`;
   $('#page').innerHTML = `${D.html}<div class="hes-link"><span class="muted">Hesabatlar:</span>${[['dinamika', 'Aylıq dinamika'], ['kxulase', 'Kontragent xülasəsi'], ['quzles', 'Qaimələr üzrə üzləşmə'], ['yaslanma', 'Borcların yaşlanması']].map(([k, t]) => `<a class="chip" href="#/hesab?r=${k}">${t}</a>`).join('')}</div>
     ${rows.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>İstiqamət</th><th>Tarix</th><th>Seriya / №</th><th>VÖEN</th><th>Kontragent</th><th class="n">Əsas</th><th class="n">ƏDV</th><th class="n">Cəm</th><th class="n">Ödənilib</th><th class="n">Qalıq</th><th>Vəziyyət</th><th class="hide-m">e-taxes</th></tr></thead>
-      <tbody>${rows.map(r => `<tr class="click" data-q="${r.id}"><td><span class="badge ${r.istiqamet === 'gelen' ? 'b-blue' : 'b-amber'}">${r.istiqamet === 'gelen' ? 'Gələn' : 'Gedən'}</span></td><td>${fd(r.tarix)}</td><td>${esc(qaimeNo(r))}</td><td class="muted">${esc(r.voen || '')}</td><td>${esc(r.kontragent || '')}</td>
-        <td class="n">${fmt(r.esas, 2)}</td><td class="n">${fmt(r.edv, 2)}</td><td class="n"><b>${fmt(r.cem, 2)}</b></td><td class="n">${fmt(r.odenilib, 2)}</td><td class="n"><b class="${num(r.qaliq) > 0.005 ? 'neg' : ''}">${fmt(r.qaliq, 2)}</b></td><td>${odenisBadge(r)}</td><td class="hide-m muted">${esc(r.status || '')}</td></tr>`).join('')}</tbody>
+      <tbody>${rows.map(r => `<tr class="click" data-q="${r.id}"><td><span class="badge ${r.istiqamet === 'gelen' ? 'b-blue' : 'b-amber'}">${r.istiqamet === 'gelen' ? 'Gələn' : 'Gedən'}</span></td><td class="nw">${fd(r.tarix)}</td><td class="nw">${esc(qaimeNo(r))}</td><td class="muted nw">${esc(r.voen || '')}</td><td class="kname" title="${esc(qisaAd(r.kontragent))}">${esc(qisaAd(r.kontragent))}</td>
+        <td class="n">${fmt(r.esas, 2)}</td><td class="n">${fmt(r.edv, 2)}</td><td class="n"><b>${fmt(r.cem, 2)}</b></td><td class="n">${fmt(r.odenilib, 2)}</td><td class="n"><b class="${num(r.qaliq) > 0.005 ? 'neg' : ''}">${fmt(r.qaliq, 2)}</b></td><td class="nw">${odenisBadge(r)}</td><td class="hide-m muted nw">${esc(r.status || '')}</td></tr>`).join('')}</tbody>
       <tfoot><tr><td>${rows.length}</td><td></td><td></td><td></td><td></td><td class="n">${fmt(sum(rows, 'esas'), 2)}</td><td class="n">${fmt(sum(rows, 'edv'), 2)}</td><td class="n">${fmt(sum(rows, 'cem'), 2)}</td><td class="n">${fmt(sum(rows, 'odenilib'), 2)}</td><td class="n">${fmt(sum(rows, 'qaliq'), 2)}</td><td></td><td class="hide-m"></td></tr></tfoot></table></div>`
       : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Bu dövrdə qaimə yoxdur</div><div class="muted">e-taxes.gov.az-dan qaimələrin siyahısını Excel kimi yükləyib "Gələnləri yüklə" / "Gedənləri yüklə" ilə köçürün.</div></div>`}`;
   D.bagla();
@@ -1898,7 +1908,7 @@ async function pageOdenis(params) {
     const sum = (l, k) => l.reduce((a, r) => a + num(r[k]), 0);
     $('.topbar .sub').textContent = `${rows.length} ödəniş · ödənilən ${man(sum(rows.filter(r => r.istiqamet === 'gelen'), 'mebleg'))} · alınan ${man(sum(rows.filter(r => r.istiqamet === 'geden'), 'mebleg'))}`;
     $('#page').innerHTML = `${D.html}${rows.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Tarix</th><th>Növ</th><th>Kontragent</th><th>VÖEN</th><th>Qaimə</th><th class="n">Məbləğ</th><th class="n">o cümlədən ƏDV</th><th>Hesab</th><th>Qeyd</th></tr></thead>
-      <tbody>${rows.map(r => `<tr><td>${fd(r.tarix)}</td><td><span class="badge ${r.istiqamet === 'gelen' ? 'b-red' : 'b-green'}">${r.istiqamet === 'gelen' ? 'Ödənilib' : 'Alınıb'}</span></td><td>${esc(r.kontragent || '')}</td><td class="muted">${esc(r.voen || '')}</td><td>${esc(qaimeNo(r))}</td>
+      <tbody>${rows.map(r => `<tr><td>${fd(r.tarix)}</td><td><span class="badge ${r.istiqamet === 'gelen' ? 'b-red' : 'b-green'}">${r.istiqamet === 'gelen' ? 'Ödənilib' : 'Alınıb'}</span></td><td>${esc(qisaAd(r.kontragent))}</td><td class="muted">${esc(r.voen || '')}</td><td>${esc(qaimeNo(r))}</td>
         <td class="n"><b>${fmt(r.mebleg, 2)}</b></td><td class="n">${fmt(r.edv, 2)}</td><td>${esc(hAd(r.hesab_id))}</td><td>${esc(r.qeyd || '')}</td></tr>`).join('')}</tbody>
       <tfoot><tr><td>${rows.length}</td><td></td><td></td><td></td><td></td><td class="n">${fmt(sum(rows, 'mebleg'), 2)}</td><td class="n">${fmt(sum(rows, 'edv'), 2)}</td><td></td><td></td></tr></tfoot></table></div>` : '<div class="card empty">Bu dövrdə ödəniş yoxdur</div>'}`;
     D.bagla(); return;
@@ -1911,7 +1921,7 @@ async function pageOdenis(params) {
   $('#page').innerHTML = `${D.html}<p class="muted" style="font-size:13px">VÖEN-i olan, amma heç bir qaiməyə bağlanmamış bank əməliyyatları. "Bağla" basanda əməliyyat seçdiyiniz qaimənin ödənişinə çevrilir (bank qalığı dəyişmir).</p>
     ${l.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Tarix</th><th>Növ</th><th>Kontragent</th><th>VÖEN</th><th>Təyinat</th><th class="n">Məbləğ</th><th>Hesab</th><th>Açıq qaimə</th>${w ? '<th></th>' : ''}</tr></thead>
       <tbody>${l.map(x => { const ac = qm.filter(y => y.voen === x.voen && num(y.qaliq) > 0.005 && y.istiqamet === (x.nov === 'Məxaric' ? 'gelen' : 'geden'));
-        return `<tr><td>${fd(x.tarix)}</td><td>${x.nov}</td><td>${esc(x.kontragent || '')}</td><td class="muted">${esc(x.voen)}</td><td>${esc(x.teyinat || '')}</td><td class="n"><b>${fmt(x.mebleg, 2)}</b></td><td>${esc(hAd(x.hesab_id))}</td>
+        return `<tr><td>${fd(x.tarix)}</td><td>${x.nov}</td><td>${esc(qisaAd(x.kontragent))}</td><td class="muted">${esc(x.voen)}</td><td>${esc(x.teyinat || '')}</td><td class="n"><b>${fmt(x.mebleg, 2)}</b></td><td>${esc(hAd(x.hesab_id))}</td>
           <td>${ac.length ? `<select class="in" data-bq="${x.id}" style="min-width:200px">${ac.map(y => `<option value="${y.id}">${esc(qaimeNo(y))} · ${fd(y.tarix)} · qalıq ${fmt(y.qaliq, 2)}</option>`).join('')}</select>` : '<span class="muted">açıq qaimə yoxdur</span>'}</td>
           ${w ? `<td>${ac.length ? `<button class="btn sm primary" data-bg="${x.id}">Bağla</button>` : ''}</td>` : ''}</tr>`; }).join('')}</tbody></table></div>` : '<div class="card empty">Bağlanmamış əməliyyat yoxdur</div>'}`;
   D.bagla();
@@ -1955,7 +1965,7 @@ async function pageEdv(params) {
     const dm = ay(be, f).filter(x => dep.has(x.hesab_id)), dOd = ay(od, f).filter(x => dep.has(x.hesab_id));
     const depGir = S_(dm.filter(x => x.nov === 'Mədaxil'), 'mebleg') + S_(dOd.filter(x => x.istiqamet === 'geden'), 'mebleg');
     const depCix = S_(dm.filter(x => x.nov === 'Məxaric'), 'mebleg') + S_(dOd.filter(x => x.istiqamet === 'gelen'), 'mebleg');
-    return { f, satis: S_(g, 'esas'), alis: S_(q_, 'esas'), alisEdv: S_(q_, 'edv'), hes, ev, net: hes - ev, depGir, depCix };
+    return { f, satis: S_(g, 'esas') + S_(g, 'edvsiz'), alis: S_(q_, 'esas') + S_(q_, 'edvsiz'), alisEdv: S_(q_, 'edv'), hes, ev, net: hes - ev, depGir, depCix };
   });
   const C = k => rows.reduce((s, x) => s + x[k], 0);
   const th = r === 'dovr' ? ['Ay', 'Satış dövriyyəsi', 'Hesablanmış ƏDV', 'Alış dövriyyəsi', 'Alış qaimələrində ƏDV', 'Əvəzləşən ƏDV', 'Büdcəyə (+) / artıq (−)']
@@ -2006,18 +2016,18 @@ async function pageMHesabat(params) {
     if (r === 'uzles') {
       const S_ = k => l.reduce((s, x) => s + x[k], 0);
       return out(`<div class="tbl-wrap"><table class="t"><thead><tr><th>VÖEN</th><th>Kontragent</th><th class="n">Alış (gələn)</th><th class="n">Ödənilib</th><th class="n">Kreditor qalığı</th><th class="n">Satış (gedən)</th><th class="n">Alınıb</th><th class="n">Debitor qalığı</th><th class="n">Saldo</th></tr></thead>
-        <tbody>${l.sort((a, b) => Math.abs(b.deb - b.kred) - Math.abs(a.deb - a.kred)).map(o => `<tr class="click" data-k="${esc(o.voen || o.ad)}"><td class="muted">${esc(o.voen || '')}</td><td>${esc(o.ad || '')}</td><td class="n">${fmt(o.gc, 2)}</td><td class="n">${fmt(o.go, 2)}</td><td class="n"><b class="${o.kred > 0.005 ? 'neg' : ''}">${fmt(o.kred, 2)}</b></td>
+        <tbody>${l.sort((a, b) => Math.abs(b.deb - b.kred) - Math.abs(a.deb - a.kred)).map(o => `<tr class="click" data-k="${esc(o.voen || o.ad)}"><td class="muted">${esc(o.voen || '')}</td><td>${esc(qisaAd(o.ad))}</td><td class="n">${fmt(o.gc, 2)}</td><td class="n">${fmt(o.go, 2)}</td><td class="n"><b class="${o.kred > 0.005 ? 'neg' : ''}">${fmt(o.kred, 2)}</b></td>
           <td class="n">${fmt(o.dc, 2)}</td><td class="n">${fmt(o.do_, 2)}</td><td class="n"><b>${fmt(o.deb, 2)}</b></td><td class="n">${fmt(o.deb - o.kred, 2)}</td></tr>`).join('')}</tbody>
         <tfoot><tr><td></td><td>${l.length} kontragent</td>${['gc', 'go', 'kred', 'dc', 'do_', 'deb'].map(k => `<td class="n">${fmt(S_(k), 2)}</td>`).join('')}<td class="n">${fmt(S_('deb') - S_('kred'), 2)}</td></tr></tfoot></table></div>
         <p class="muted" style="font-size:12.5px">${fd(D.b)} tarixinə qalıqlar. Sətrə basanda həmin kontragentlə üzləşmə aktı açılır.</p>`), $$('[data-k]').forEach(tr => tr.onclick = () => { location.hash = `#/hesab?r=akt&k=${encodeURIComponent(tr.dataset.k)}&a=${D.a}&b=${D.b}`; });
     }
     const kr = l.filter(o => o.kred > 0.005).sort((a, b) => b.kred - a.kred), db = l.filter(o => o.deb > 0.005).sort((a, b) => b.deb - a.deb);
-    const tb = (t, ll, k) => `<div class="card" style="padding:0"><h3 style="padding:16px 20px 0">${t} — ${man(ll.reduce((s, x) => s + x[k], 0))}</h3><table class="t"><tbody>${ll.map(o => `<tr><td><div class="cell-main">${esc(o.ad || '')}</div><div class="cell-sub">${esc(o.voen || '')}</div></td><td class="n"><b>${fmt(o[k], 2)}</b></td></tr>`).join('') || '<tr><td class="muted">Yoxdur</td></tr>'}</tbody></table></div>`;
+    const tb = (t, ll, k) => `<div class="card" style="padding:0"><h3 style="padding:16px 20px 0">${t} — ${man(ll.reduce((s, x) => s + x[k], 0))}</h3><table class="t"><tbody>${ll.map(o => `<tr><td><div class="cell-main">${esc(qisaAd(o.ad))}</div><div class="cell-sub">${esc(o.voen || '')}</div></td><td class="n"><b>${fmt(o[k], 2)}</b></td></tr>`).join('') || '<tr><td class="muted">Yoxdur</td></tr>'}</tbody></table></div>`;
     return out(`<div class="grid two">${tb('Kreditorlar (biz borcluyuq)', kr, 'kred')}${tb('Debitorlar (bizə borcludurlar)', db, 'deb')}</div>`);
   }
   if (r === 'akt') {
     const k = params.get('k') || '';
-    const sec = `<div class="dovr"><span class="muted">Kontragent:</span><select class="in" id="hk" style="min-width:280px"><option value="">— seçin —</option>${[...kontr.entries()].sort((a, b) => String(a[1].ad).localeCompare(String(b[1].ad), 'az')).map(([kk, o]) => `<option value="${esc(kk)}" ${kk === k ? 'selected' : ''}>${esc(o.ad || '')} ${o.voen ? '· ' + esc(o.voen) : ''}</option>`).join('')}</select></div>`;
+    const sec = `<div class="dovr"><span class="muted">Kontragent:</span><select class="in" id="hk" style="min-width:280px"><option value="">— seçin —</option>${[...kontr.entries()].sort((a, b) => String(a[1].ad).localeCompare(String(b[1].ad), 'az')).map(([kk, o]) => `<option value="${esc(kk)}" ${kk === k ? 'selected' : ''}>${esc(qisaAd(o.ad))} ${o.voen ? '· ' + esc(o.voen) : ''}</option>`).join('')}</select></div>`;
     if (!k) { out(sec + '<div class="card empty">Kontragenti seçin</div>'); }
     else {
       const ql = qm.filter(x => (x.voen || x.kontragent) === k), ids = new Set(ql.map(x => x.id));
@@ -2031,12 +2041,12 @@ async function pageMHesabat(params) {
       let s = ilk; const A = await ayarlar(), o = kontr.get(k);
       out(sec + `<div class="card akt-cap"><h3 style="text-align:center;margin:0 0 4px">Qarşılıqlı hesablaşmaların üzləşmə aktı</h3>
         <div style="text-align:center" class="muted">${fd(D.a)} — ${fd(D.b)}</div>
-        <div class="row2" style="margin:12px 0;font-size:13.5px"><div><b>${esc(A.firma_adi || S.magaza.ad)}</b><br>VÖEN: ${esc(A.firma_voen || '—')}</div><div style="text-align:right"><b>${esc(o.ad || '')}</b><br>VÖEN: ${esc(o.voen || '—')}</div></div>
+        <div class="row2" style="margin:12px 0;font-size:13.5px"><div><b>${esc(A.firma_adi || S.magaza.ad)}</b><br>VÖEN: ${esc(A.firma_voen || '—')}</div><div style="text-align:right"><b>${esc(qisaAd(o.ad))}</b><br>VÖEN: ${esc(o.voen || '—')}</div></div>
         <table class="t"><thead><tr><th>Tarix</th><th>Sənəd</th><th class="n">Debet</th><th class="n">Kredit</th><th class="n">Saldo</th></tr></thead><tbody>
           <tr><td></td><td><b>Dövrün əvvəlinə saldo</b></td><td class="n"></td><td class="n"></td><td class="n"><b>${fmt(ilk, 2)}</b></td></tr>
           ${dv.map(x => { s += x.d - x.c; return `<tr><td>${fd(x.t)}</td><td>${esc(x.ad)}</td><td class="n">${x.d ? fmt(x.d, 2) : ''}</td><td class="n">${x.c ? fmt(x.c, 2) : ''}</td><td class="n">${fmt(s, 2)}</td></tr>`; }).join('')}</tbody>
           <tfoot><tr><td></td><td>Dövr üzrə dövriyyə / son saldo</td><td class="n">${fmt(dv.reduce((a, x) => a + x.d, 0), 2)}</td><td class="n">${fmt(dv.reduce((a, x) => a + x.c, 0), 2)}</td><td class="n sabit">${fmt(s, 2)}</td></tr></tfoot></table>
-        <p style="font-size:13.5px;margin-top:12px">${fd(D.b)} tarixinə ${s > 0.005 ? `<b>${esc(o.ad || '')}</b> tərəfindən <b>${esc(A.firma_adi || S.magaza.ad)}</b>-ə borc: <b>${man(s)}</b>` : s < -0.005 ? `<b>${esc(A.firma_adi || S.magaza.ad)}</b> tərəfindən <b>${esc(o.ad || '')}</b>-ə borc: <b>${man(-s)}</b>` : 'borc yoxdur'}.</p>
+        <p style="font-size:13.5px;margin-top:12px">${fd(D.b)} tarixinə ${s > 0.005 ? `<b>${esc(qisaAd(o.ad))}</b> tərəfindən <b>${esc(A.firma_adi || S.magaza.ad)}</b>-ə borc: <b>${man(s)}</b>` : s < -0.005 ? `<b>${esc(A.firma_adi || S.magaza.ad)}</b> tərəfindən <b>${esc(qisaAd(o.ad))}</b>-ə borc: <b>${man(-s)}</b>` : 'borc yoxdur'}.</p>
         <div class="row2" style="margin-top:30px;font-size:13px"><div>________________ ${esc(A.direktor || '')}<br><span class="muted">imza, möhür</span></div><div style="text-align:right">________________<br><span class="muted">imza, möhür</span></div></div></div>
         <div style="margin-top:10px"><button class="btn" onclick="window.print()">${ico('print')}Çap / PDF</button></div>`);
     }
@@ -2046,7 +2056,7 @@ async function pageMHesabat(params) {
   if (r === 'quzles') {
     const l = qm.filter(dovrde);
     return out(`<div class="tbl-wrap"><table class="t"><thead><tr><th>İstiqamət</th><th>Tarix</th><th>Qaimə</th><th>Kontragent</th><th class="n">Cəm</th><th class="n">Ödənilib</th><th class="n">Qalıq</th><th>Son ödəniş</th><th>Vəziyyət</th><th>e-taxes</th></tr></thead>
-      <tbody>${l.map(x => `<tr><td>${x.istiqamet === 'gelen' ? 'Gələn' : 'Gedən'}</td><td>${fd(x.tarix)}</td><td>${esc(qaimeNo(x))}</td><td>${esc(x.kontragent || '')}</td><td class="n">${fmt(x.cem, 2)}</td><td class="n">${fmt(x.odenilib, 2)}</td><td class="n"><b>${fmt(x.qaliq, 2)}</b></td><td>${fd(x.son_odenis)}</td><td>${odenisBadge(x)}</td><td class="muted">${esc(x.status || '')}</td></tr>`).join('')}</tbody></table></div>`);
+      <tbody>${l.map(x => `<tr><td>${x.istiqamet === 'gelen' ? 'Gələn' : 'Gedən'}</td><td>${fd(x.tarix)}</td><td>${esc(qaimeNo(x))}</td><td>${esc(qisaAd(x.kontragent))}</td><td class="n">${fmt(x.cem, 2)}</td><td class="n">${fmt(x.odenilib, 2)}</td><td class="n"><b>${fmt(x.qaliq, 2)}</b></td><td>${fd(x.son_odenis)}</td><td>${odenisBadge(x)}</td><td class="muted">${esc(x.status || '')}</td></tr>`).join('')}</tbody></table></div>`);
   }
   if (r === 'yaslanma') {
     const bu = D.b, gun = t => Math.round((new Date(bu + 'T00:00:00') - new Date(t + 'T00:00:00')) / 864e5);
@@ -2055,7 +2065,7 @@ async function pageMHesabat(params) {
         const g = gun(x.tarix), i = qr.findIndex(([a, b]) => g >= a && g <= b); o.b[i] += num(x.qaliq); o.c += num(x.qaliq); m.set(k, o); });
       const l = [...m.values()].sort((a, b) => b.c - a.c);
       return `<div class="tbl-wrap" style="margin-bottom:16px"><table class="t"><thead><tr><th>${ist === 'gelen' ? 'Kreditor (təchizatçı)' : 'Debitor (alıcı)'}</th>${qr.map(x => `<th class="n">${x[2]}</th>`).join('')}<th class="n">Cəmi</th></tr></thead>
-        <tbody>${l.map(o => `<tr><td><div class="cell-main">${esc(o.ad || '')}</div><div class="cell-sub">${esc(o.voen || '')}</div></td>${o.b.map((v, i) => `<td class="n ${i === 3 && v > 0 ? 'neg' : ''}">${v ? fmt(v, 2) : ''}</td>`).join('')}<td class="n"><b>${fmt(o.c, 2)}</b></td></tr>`).join('') || '<tr><td class="muted">Yoxdur</td></tr>'}</tbody>
+        <tbody>${l.map(o => `<tr><td><div class="cell-main">${esc(qisaAd(o.ad))}</div><div class="cell-sub">${esc(o.voen || '')}</div></td>${o.b.map((v, i) => `<td class="n ${i === 3 && v > 0 ? 'neg' : ''}">${v ? fmt(v, 2) : ''}</td>`).join('')}<td class="n"><b>${fmt(o.c, 2)}</b></td></tr>`).join('') || '<tr><td class="muted">Yoxdur</td></tr>'}</tbody>
         <tfoot><tr><td>Cəmi</td>${[0, 1, 2, 3].map(i => `<td class="n">${fmt(l.reduce((s, o) => s + o.b[i], 0), 2)}</td>`).join('')}<td class="n">${fmt(l.reduce((s, o) => s + o.c, 0), 2)}</td></tr></tfoot></table></div>`; };
     return out(`<h3>Kreditor borcları</h3>${blok('gelen')}<h3>Debitor borcları</h3>${blok('geden')}<p class="muted" style="font-size:12.5px">Gün qaimənin tarixindən ${fd(bu)}-ə qədər hesablanır.</p>`);
   }
@@ -2072,7 +2082,7 @@ async function pageMHesabat(params) {
     l.forEach(x => { const k = x.voen || x.kontragent; const o = m.get(k) || { ...kontr.get(k), gn: 0, gc: 0, dn: 0, dc: 0 }; if (x.istiqamet === 'gelen') { o.gn++; o.gc += num(x.cem); } else { o.dn++; o.dc += num(x.cem); } m.set(k, o); });
     const ll = [...m.values()].sort((a, b) => (b.gc + b.dc) - (a.gc + a.dc)), cem = ll.reduce((s, o) => s + o.gc + o.dc, 0) || 1;
     return out(`<div class="tbl-wrap"><table class="t"><thead><tr><th>VÖEN</th><th>Kontragent</th><th class="n">Alış qaiməsi</th><th class="n">Alış cəmi</th><th class="n">Satış qaiməsi</th><th class="n">Satış cəmi</th><th class="n">Payı</th></tr></thead>
-      <tbody>${ll.map(o => `<tr><td class="muted">${esc(o.voen || '')}</td><td>${esc(o.ad || '')}</td><td class="n">${o.gn}</td><td class="n">${fmt(o.gc, 2)}</td><td class="n">${o.dn}</td><td class="n">${fmt(o.dc, 2)}</td><td class="n">${fmt((o.gc + o.dc) / cem * 100, 1)}%</td></tr>`).join('')}</tbody></table></div>`);
+      <tbody>${ll.map(o => `<tr><td class="muted">${esc(o.voen || '')}</td><td>${esc(qisaAd(o.ad))}</td><td class="n">${o.gn}</td><td class="n">${fmt(o.gc, 2)}</td><td class="n">${o.dn}</td><td class="n">${fmt(o.dc, 2)}</td><td class="n">${fmt((o.gc + o.dc) / cem * 100, 1)}%</td></tr>`).join('')}</tbody></table></div>`);
   }
   out('<div class="card empty">Hesabat tapılmadı</div>');
 }

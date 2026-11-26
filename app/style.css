@@ -605,3 +605,5 @@ body.muh .ay-nav a.on{background:#e8f0fd;color:#0f4fb8}
 .dkod{font-size:22px;font-weight:700;letter-spacing:4px;background:var(--sand);border:1px dashed var(--oak);border-radius:10px;padding:6px 14px}
 @media (max-width:760px){.ay-lay{grid-template-columns:1fr}.ay-nav{position:static;flex-direction:row;overflow-x:auto}.ay-nav a{white-space:nowrap}#rf{grid-template-columns:1fr}}
 .ay-t{width:100%;border-collapse:collapse;font-size:14px}
+td.nw{white-space:nowrap}
+td.kname{max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
