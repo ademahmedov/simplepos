@@ -1436,7 +1436,7 @@ function gomrukForm(nov, r) {
 }
 
 /* ---------- Bank hesabları ---------- */
-const BANK_KAT = ['Alıcıdan daxilolma', 'Təchizatçıya ödəniş', 'Vergi ödənişi', 'Əmək haqqı', 'DSMF / sığorta', 'Kredit / borc', 'Təsisçi', 'Bank xərci', 'Hesablar arası', 'Digər xərc', 'Digər gəlir'];
+const BANK_KAT = ['Alıcıdan daxilolma', 'Təchizatçıya ödəniş', 'Vergi ödənişi', 'Əmək haqqı', 'DSMF / sığorta', 'Kredit / borc', 'Təsisçi', 'Kassadan mədaxil', 'Bank xərci', 'Hesablar arası', 'Digər xərc', 'Digər gəlir'];
 async function pageBank(params) {
   const w = canWrite(), dep = params.get('dep') === '1';
   shell(dep ? 'depozit' : 'bank', dep ? 'ƏDV depozit' : 'Bank hesabları', '', `${w ? `<button class="btn" id="bidx">${ico('up')}Çıxarışı Excel-dən yüklə</button><button class="btn" id="bhyeni">${ico('plus')}Yeni hesab</button><button class="btn primary" id="byeni">${ico('plus')}Əməliyyat</button>` : ''}`);
@@ -1445,7 +1445,7 @@ async function pageBank(params) {
   const sec = +(params.get('h') || (bh[0] && bh[0].id) || 0);
   if ($('#bhyeni')) $('#bhyeni').onclick = () => bankHesabForm(null);
   if ($('#byeni')) $('#byeni').onclick = () => bh.length ? bankEmForm(null, sec) : toast('Əvvəlcə bank hesabı əlavə edin');
-  if ($('#bidx')) $('#bidx').onclick = () => bh.length ? bankIdxal(sec, bh) : toast('Əvvəlcə bank hesabı əlavə edin');
+  if ($('#bidx')) $('#bidx').onclick = () => bankIdxal(sec, bh);
   const hereket = h => {
     const l = [...be.filter(x => x.hesab_id === h.id).map(x => ({ t: x.tarix, nov: x.nov, m: num(x.mebleg), kat: x.kateqoriya, kontr: [x.kontragent, x.voen].filter(Boolean).join(' · '), tey: x.teyinat, em: x })),
       ...qo.filter(x => x.hesab_id === h.id).map(x => ({ t: x.tarix, nov: x.istiqamet === 'gelen' ? 'Məxaric' : 'Mədaxil', m: num(x.mebleg), kat: x.istiqamet === 'gelen' ? 'Təchizatçıya ödəniş' : 'Alıcıdan daxilolma',
@@ -1513,29 +1513,106 @@ async function bankEmForm(e, hesabId) {
   if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!confirm('Əməliyyat silinsin?')) return;
     try { await q(sb.from('bank_emeliyyatlari').delete().eq('id', e.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); } };
 }
+// Bank çıxarışı (Kapital Bank və s.): əməliyyatları yükləyir, təyinatdakı qaimə nömrələrinə görə ödənişləri qaimələrə özü bağlayır
+const BANK_KODLARI = { AIIB: 'Kapital Bank', IBAZ: 'ABB', PAHA: 'PAŞA Bank', UBAZ: 'Unibank', CAPN: 'Xalq Bank', BRES: 'Bank Respublika', ACAB: 'AccessBank', NABZ: 'Bank of Baku', RZBA: 'Rabitəbank', AZER: 'Azər Türk Bank', YAPI: 'Yapı Kredi', VTBA: 'VTB', TURA: 'TuranBank', AGRB: 'Gunay Bank' };
+function qaimeRefler(t) {
+  const T = String(t || '').toUpperCase().replace(/([A-Z]{2}\d{4})(\d{6,9})/g, '$1 $2');
+  const refs = []; let ser = null;
+  T.split(/[\s,;]+/).forEach(w => { if (/^[A-Z]{2}\d{4}$/.test(w)) ser = w; else if (ser && /^\d{6,9}$/.test(w)) refs.push([ser, w.replace(/^0+/, '')]); });
+  const aralig = /\bDEN\b/.test(T) && /\bDEK\b/.test(T) && refs.length === 2;
+  const tm = T.match(/(\d{2})\.(\d{2})\.(\d{4})\s*-\s*(\d{2})\.(\d{2})\.(\d{4})/);
+  return { refs, aralig, tarix: tm ? [`${tm[3]}-${tm[2]}-${tm[1]}`, `${tm[6]}-${tm[5]}-${tm[4]}`] : null };
+}
 function bankIdxal(hesabId, bh) {
-  const h = bh.find(x => x.id === hesabId) || bh[0];
+  let ust = [];
   idxalPencere({
-    basliq: `Bank çıxarışını yüklə — ${h.bank}`,
-    izah: 'Bankın internet-bankından çıxarışı Excel kimi yükləyin. Mədaxil və məxaric ayrı sütundadırsa hər ikisini seçin; tək "Məbləğ" sütunudursa mənfi rəqəmlər məxaric sayılır.',
+    basliq: 'Bank çıxarışını yüklə',
+    izah: 'İnternet-bankdan çıxarışı Excel kimi yükləyib olduğu kimi seçin (Kapital Bank formatı tam tanınır). Hesab nömrəsinə görə bank hesabı tapılır və ya yaradılır. Təyinatda qaimə seriyası və nömrəsi varsa (məs. "MT2601 10071114 EQ ESAS ODEN", "EDV odenisi ..."), ödəniş həmin qaiməyə özü bağlanır. Eyni sənəd nömrəli əməliyyat təkrar yüklənmir.',
+    ust: r => { ust = r; },
     saheler: [{ k: 'tarix', ad: 'Tarix', lazim: true, tip: 'tarix', ox: ['tarix', 'əməliyyattarixi', 'date', 'valyutalaşmatarixi'] },
+      { k: 'sened', ad: 'Sənədin nömrəsi', ox: ['sənədinnömrəsi', 'sənəd', 'sənədnömrəsi', 'referans'] },
+      { k: 'eks', ad: 'Əks hesab (hesab / ad / VÖEN)', ox: ['əkshesabınnömrəsiadıvəvöeni', 'əkshesab', 'qarşıtərəf', 'kontragent'] },
+      { k: 'mebleg', ad: 'Məbləğ (±)', tip: 'eded', ox: ['azndəyəri', 'məbləğ', 'mebleg', 'amount'] },
       { k: 'medaxil', ad: 'Mədaxil (kredit)', tip: 'eded', ox: ['mədaxil', 'medaxil', 'kredit', 'daxilolma', 'credit'] },
       { k: 'mexaric', ad: 'Məxaric (debet)', tip: 'eded', ox: ['məxaric', 'mexaric', 'debet', 'debit', 'silinmə'] },
-      { k: 'mebleg', ad: 'Məbləğ (±)', tip: 'eded', ox: ['məbləğ', 'mebleg', 'amount'] },
-      { k: 'kontragent', ad: 'Kontragent', ox: ['kontragent', 'qarşıtərəf', 'alanödəyən', 'ödəyən', 'alan', 'ad'] },
-      { k: 'voen', ad: 'VÖEN', ox: ['vöen', 'voen'] },
+      { k: 'voen', ad: 'VÖEN (ayrıca sütundursa)', ox: ['vöen', 'voen'] },
       { k: 'teyinat', ad: 'Təyinat', ox: ['təyinat', 'teyinat', 'ödənişintəyinatı', 'açıqlama', 'description'] }],
-    numune: [['03.11.2026', 1180, '', '', 'Nümunə MMC', '1234567891', 'Qaimə MT2611 0012345 üzrə'], ['05.11.2026', '', 250, '', 'Kapital Bank', '', 'Hesab xidməti']],
+    numune: [['05.01.2026', '27225598585', 'AZ27IBAZ40060019445923365262 / CAHAN TICARAT MMC / 0200680041', -622.92, '', '', '', 'MT2601 10071114 EQ ESAS ODEN']],
     yaz: async (rows, ir) => {
-      const v = [];
+      // --- başlıqdan: hesab nömrəsi, ilkin/son qalıq, VÖEN, dövr
+      const U = {}; ust.forEach(r => { for (let i = 0; i < r.length - 1; i += 2) { const k = normBas(r[i]); if (k) U[k] = String(r[i + 1] == null ? '' : r[i + 1]).trim(); } });
+      const tap = (...a) => { for (const k of Object.keys(U)) if (a.some(x => k.startsWith(x))) return U[k]; return ''; };
+      const iban = tap('hesabnömrəsi').replace(/\s/g, ''), val = tap('hesabınvalyutası') || 'AZN', ilkin = idxalEded(tap('ilkinqalıq')), son = idxalEded(tap('sonqalıq'));
+      const voenOz = tap('vöen').replace(/\D/g, ''), dovr = tap('dövrüçün').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      const A = await ayarlar(); if (voenOz && !A.firma_voen) { await ayarYaz(A, 'firma_voen', voenOz); S.cache.ayar = null; }
+      let hesablar = await q(sb.from('bank_hesablari').select('*').order('id'));
+      let h = iban ? hesablar.find(x => (x.hesab_no || '').replace(/\s/g, '') === iban) : hesablar.find(x => x.id === hesabId);
+      if (!h) {
+        const bank = (iban && BANK_KODLARI[iban.slice(4, 8)]) || (hesablar.find(x => x.id === hesabId) || {}).bank || 'Bank';
+        h = await q(sb.from('bank_hesablari').insert({ bank, hesab_no: iban || null, valyuta: val, ilkin_qaliq: ilkin != null && !isNaN(ilkin) ? ilkin : 0, ilkin_tarix: dovr ? `${dovr[3]}-${dovr[2]}-${dovr[1]}` : null }).select().single());
+      }
+      S.cache.bh = null;
+      // --- mövcud məlumat: təkrar sənədlər, qaimələr və onların qalıqları
+      const [kb, ko, qm, od] = await Promise.all([all(() => sb.from('bank_emeliyyatlari').select('sened').order('id')), all(() => sb.from('qaime_odenisleri').select('sened').order('id')),
+        all(() => sb.from('qaimeler').select('id,istiqamet,voen,seriya,nomre,tarix,esas,edv,edvsiz').order('tarix').order('id')), all(() => sb.from('qaime_odenisleri').select('qaime_id,mebleg,edv').order('id'))]);
+      const kohne = new Set([...kb, ...ko].map(x => x.sened).filter(Boolean));
+      const Q = new Map(qm.map(x => [x.id, { ...x, cem: num(x.esas) + num(x.edv) + num(x.edvsiz), pb: 0, pe: 0 }]));
+      od.forEach(o => { const x = Q.get(o.qaime_id); if (x) { x.pe += num(o.edv); x.pb += num(o.mebleg) - num(o.edv); } });
+      const bazaQal = x => r2(x.cem - num(x.edv) - x.pb), edvQal = x => r2(num(x.edv) - x.pe);
+      const qaimeTap = (ist, voen, ser, no) => qm.find(x => x.istiqamet === ist && x.voen === voen && String(x.seriya || '').toUpperCase() === ser && String(x.nomre || '').replace(/^0+/, '') === no);
+      const emel = [], oden = []; let bagli = 0, fifo = 0, tekrar = 0, qalan = 0;
       rows.forEach(r => {
-        let mx = num(r.mexaric), md = num(r.medaxil);
-        if (!mx && !md && r.mebleg != null) { if (num(r.mebleg) < 0) mx = -num(r.mebleg); else md = num(r.mebleg); }
-        if (md > 0) v.push({ hesab_id: h.id, tarix: r.tarix, nov: 'Mədaxil', mebleg: r2(md), kateqoriya: 'Digər gəlir', voen: r.voen, kontragent: r.kontragent, teyinat: r.teyinat });
-        if (mx > 0) v.push({ hesab_id: h.id, tarix: r.tarix, nov: 'Məxaric', mebleg: r2(mx), kateqoriya: 'Digər xərc', voen: r.voen, kontragent: r.kontragent, teyinat: r.teyinat });
+        const sened = r.sened ? String(r.sened).trim() : null;
+        if (sened && kohne.has(sened)) { tekrar++; return; } if (sened) kohne.add(sened);
+        let m = r.mebleg != null ? num(r.mebleg) : num(r.medaxil) - num(r.mexaric); if (!m) return;
+        const nov = m > 0 ? 'Mədaxil' : 'Məxaric'; m = r2(Math.abs(m));
+        const p = String(r.eks || '').split('/').map(x => x.trim());
+        const voen = (r.voen ? String(r.voen) : (p.length >= 3 ? p[p.length - 1] : '')).replace(/\D/g, ''), kontr = p.length >= 3 ? p.slice(1, -1).join(' / ') : (p[0] || null), tey = String(r.teyinat || '').trim();
+        const T = tey.toUpperCase(), R = qaimeRefler(tey), edvOd = /^EDV\s*ODEN/.test(T), esasOd = !edvOd && (/ESAS\s*ODE|QAIME|EQF|\bEQ\b/.test(T) || R.refs.length > 0);
+        let kat = nov === 'Mədaxil' ? 'Digər gəlir' : 'Digər xərc';
+        if (/XİDMƏT HAQQI|XIDMET HAQQI/.test(T) || /xidmət haqqı/i.test(tey)) kat = 'Bank xərci';
+        else if (/VID=\d+|VERGI XIDM|VERGİ XİDM/.test(T)) kat = 'Vergi ödənişi';
+        else if ((voenOz && voen === voenOz) || /OZ HESABLARIM/.test(T)) kat = 'Hesablar arası';
+        else if (/KAPITAL BANK/i.test(kontr || '') && nov === 'Mədaxil') kat = 'Kassadan mədaxil';
+        else if (edvOd || esasOd) kat = nov === 'Məxaric' ? 'Təchizatçıya ödəniş' : 'Alıcıdan daxilolma';
+        // --- qaiməyə bağlama
+        let qal = m;
+        if ((edvOd || esasOd) && voen && voen !== voenOz) {
+          const ist = nov === 'Məxaric' ? 'gelen' : 'geden';
+          let hedef = [];
+          if (R.aralig) { const a = qaimeTap(ist, voen, ...R.refs[0]), b = qaimeTap(ist, voen, ...R.refs[1]);
+            // aralığın bir ucu bu ildən əvvəldirsə (yüklənməyib), tapılan ucdan istifadə et
+            const t1 = a ? a.tarix : '0000-01-01', t2 = b ? b.tarix : r.tarix;
+            if (a || b) hedef = qm.filter(x => x.istiqamet === ist && x.voen === voen && x.tarix >= (t1 < t2 ? t1 : t2) && x.tarix <= (t1 < t2 ? t2 : t1)); }
+          else if (R.refs.length) hedef = R.refs.map(([s_, n_]) => qaimeTap(ist, voen, s_, n_)).filter(Boolean);
+          else if (R.tarix) hedef = qm.filter(x => x.istiqamet === ist && x.voen === voen && x.tarix >= R.tarix[0] && x.tarix <= R.tarix[1]);
+          let isFifo = false;
+          if (!hedef.length && !R.refs.length && !R.tarix) { hedef = qm.filter(x => x.istiqamet === ist && x.voen === voen && x.tarix <= r.tarix); isFifo = true; }
+          hedef = [...new Set(hedef)].map(x => Q.get(x.id)).sort((a, b) => a.tarix < b.tarix ? -1 : a.tarix > b.tarix ? 1 : a.id - b.id);
+          for (const x of hedef) {
+            if (qal <= 0.004) break;
+            const bos = edvOd ? edvQal(x) : bazaQal(x); if (bos <= 0.004) continue;
+            const v = r2(Math.min(bos, qal));
+            oden.push({ qaime_id: x.id, tarix: r.tarix, mebleg: v, edv: edvOd ? v : 0, hesab_id: h.id, sened, qeyd: (isFifo ? '[avtomatik, köhnədən yeniyə] ' : '') + tey.slice(0, 300) });
+            if (edvOd) x.pe += v; else x.pb += v; qal = r2(qal - v);
+          }
+          if (qal < m) { bagli++; if (isFifo) fifo++; }
+          if (qal > 0.004 && qal < m) qalan++;
+        }
+        if (qal > 0.004) emel.push({ hesab_id: h.id, tarix: r.tarix, nov, mebleg: qal, kateqoriya: kat, voen: voen || null, kontragent: kontr || null, teyinat: (qal < m ? `[qaimələrdən artıq qalan] ` : '') + tey.slice(0, 480) || null, sened });
       });
-      let i = 0; for (const x of hisse(v, 500)) { await q(sb.from('bank_emeliyyatlari').insert(x)); i += x.length; ir(i, v.length); }
-      return `${v.length} əməliyyat yükləndi`;
+      const n = emel.length + oden.length; let i = 0;
+      for (const x of hisse(emel, 500)) { await q(sb.from('bank_emeliyyatlari').insert(x)); i += x.length; ir(i, n); }
+      for (const x of hisse(oden, 500)) { await q(sb.from('qaime_odenisleri').insert(x)); i += x.length; ir(i, n); }
+      // --- yoxlama: hesablanan son qalıq bankın son qalığı ilə
+      let yoxla = '';
+      if (son != null && !isNaN(son)) {
+        const [be2, qo2, hh] = await Promise.all([all(() => sb.from('bank_emeliyyatlari').select('nov,mebleg').eq('hesab_id', h.id).order('id')), all(() => sb.from('v_qaime_odenisleri').select('istiqamet,mebleg').eq('hesab_id', h.id).order('id')), q(sb.from('bank_hesablari').select('ilkin_qaliq').eq('id', h.id).single())]);
+        const hes = r2(num(hh.ilkin_qaliq) + be2.reduce((s, x) => s + (x.nov === 'Mədaxil' ? 1 : -1) * num(x.mebleg), 0) + qo2.reduce((s, x) => s + (x.istiqamet === 'geden' ? 1 : -1) * num(x.mebleg), 0));
+        yoxla = Math.abs(hes - son) < 0.01 ? ` Son qalıq bankla eynidir: ${fmt(son, 2)} ₼ ✓` : ` Diqqət: hesablanan qalıq ${fmt(hes, 2)} ₼, bankda ${fmt(son, 2)} ₼.`;
+      }
+      try { localStorage.setItem('son_yukleme_' + S.magaza.id, new Date().toLocaleString('az-AZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })); } catch (_) {}
+      return `${h.bank}: ${rows.length - tekrar} əməliyyat yükləndi — ${oden.length} ödəniş qaimələrə bağlandı${fifo ? ` (${fifo}-i nömrəsiz, köhnə qaimələrdən başlayaraq)` : ''}, ${emel.length} bank əməliyyatı${tekrar ? `, ${tekrar} təkrar buraxıldı` : ''}.${yoxla}`;
     },
   });
 }
@@ -1765,7 +1842,7 @@ function mUstPanel(active) {
       <label class="mtop-sirket"><span>Şirkət</span><select id="msirket">${(S.firmalar.length ? S.firmalar : [{ id: S.magaza.id, ad: S.magaza.ad }]).map(x => `<option value="${x.id}" ${x.id === S.magaza.id ? 'selected' : ''}>${esc(x.ad)}</option>`).join('')}</select></label>
       <button class="btn sm" id="mkart">Kart</button>
       <span class="mpill ${S.aktiv ? 'ok' : 'xeta'}">${S.magaza.dayandirilib ? 'Dayandırılıb' : S.aktiv ? `Abunə: ${S.qalan} gün` : 'Abunə bitib'}</span>
-      <span class="mpill">${sonYuk ? 'Son yükləmə: ' + esc(sonYuk) : 'Hələ qaimə yüklənməyib'}</span>
+      ${sonYuk ? `<span class="mpill">Son yükləmə: ${esc(sonYuk)}</span>` : ''}
       <span style="flex:1"></span>
       ${canWrite() ? `<button class="btn sm" id="mq-yuk">${ico('up')}Qaimə yüklə</button><button class="btn sm" id="mb-yuk">${ico('up')}Bank çıxarışı</button><button class="btn sm" id="mg-yen">${ico('plus')}Gömrük bəyanı</button>` : ''}
     </div>
@@ -1778,7 +1855,7 @@ function mUstBagla() {
   $('#mkart').onclick = () => sirketKarti().catch(fail);
   $$('[data-tx]').forEach(i => i.onclick = e => { e.preventDefault(); e.stopPropagation(); mTabBag(i.dataset.tx); });
   if ($('#mq-yuk')) $('#mq-yuk').onclick = () => qaimeIdxal('gelen');
-  if ($('#mb-yuk')) $('#mb-yuk').onclick = async () => { const bh = await bankHesablari(); bh.length ? bankIdxal(bh[0].id, bh) : toast('Əvvəlcə "Bank hesabları" bölməsində hesab əlavə edin'); };
+  if ($('#mb-yuk')) $('#mb-yuk').onclick = async () => { const bh = await bankHesablari(); bankIdxal(bh[0] && bh[0].id, bh); };
   if ($('#mg-yen')) $('#mg-yen').onclick = () => gomrukForm('idxal', null);
 }
 const REKVIZIT = [['firma_adi', 'Hüquqi ad'], ['firma_voen', 'VÖEN'], ['firma_unvan', 'Hüquqi ünvan'], ['firma_telefon', 'Telefon'], ['direktor', 'Direktor'],
@@ -4093,7 +4170,7 @@ function idxalTarix(v) {
   return 'X';
 }
 // sahələr: [{ k, ad, lazim, tip: 'metn'|'eded'|'tarix', ox: ['başlıq adları'] }]
-function idxalPencere({ basliq, izah, saheler, numune, yaz }) {
+function idxalPencere({ basliq, izah, saheler, numune, yaz, ust }) {
   const m = modal(basliq, `<div id="ix1">
       <p class="muted" style="margin-top:0;font-size:13.5px">${izah}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -4115,6 +4192,7 @@ function idxalPencere({ basliq, izah, saheler, numune, yaz }) {
       const adlar = saheler.flatMap(sh => [sh.ad, ...(sh.ox || [])].map(normBas)).filter(x => x.length > 1);
       let en = 0, enI = 0;
       rows.slice(0, 20).forEach((r, i) => { const n = r.filter(c => { const b = normBas(c); return b && adlar.some(a => b === a || (b.length > 2 && a.length > 2 && (b.startsWith(a) || a.startsWith(b)))); }).length; if (n > en) { en = n; enI = i; } });
+      if (ust) ust(rows.slice(0, enI));
       if (enI > 0) rows = rows.slice(enI);
     }
     if (rows.length < 2) { toast('Faylda başlıq sətri və ən azı bir məlumat sətri olmalıdır'); return; }
