@@ -505,3 +505,12 @@ select.qsel{display:block;margin-top:4px;padding:3px 6px;font-size:12px;height:a
 .mq-sec{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#faf4ea;border-radius:10px;padding:9px 12px;margin-bottom:14px;font-size:14px}
 .mq-sec small{color:var(--muted)}
 .mq-sec a{font-size:13px;white-space:nowrap}
+
+/* Mühasibat: bank kartları */
+.bank-kartlar{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.bank-kart{display:flex;flex-direction:column;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;text-decoration:none;color:var(--ink);box-shadow:var(--shadow)}
+.bank-kart.on{border-color:var(--oak);box-shadow:0 0 0 2px rgba(160,105,60,.18),var(--shadow)}
+.bank-kart small{color:var(--muted);font-size:12.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.bank-kart b{font-family:var(--serif);font-size:22px}
+.bank-kart span{font-size:12.5px}
+.info small{display:block;font-size:12px;margin-top:2px}
