@@ -281,7 +281,7 @@ async function start() {
   const get = h => { if (location.hash !== h) history.replaceState(null, '', h); };
   if (!S.magaza) get(S.admin && !S.muhasibHesab ? '#/admin' : '#/firmalar');
   else if (S.rol === 'kuryer') get('#/yigim');
-  else if (!location.hash || /access_token|type=/.test(location.hash)) get(window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/mpanel' : '#/panel'));
+  else if (!location.hash || /access_token|type=/.test(location.hash)) get(window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/bugun' : '#/panel'));
   route();
   if (S.profil && !S.profil.meqsed && (S.rol === 'muhasib' || (!S.magaza && !S.admin))) setTimeout(meqsedModal, 600);
 }
@@ -327,17 +327,19 @@ function shell(active, title, sub, tools, body) {
   const navA = (S.rol === 'kuryer' ? NAV.filter(n => n[0] === 'yigim') : NAV).map(([k, t, i]) => `<a href="#/${k}" class="${active === k ? 'active' : ''}">${ico(i)}${t}</a>`).join('');
   app.innerHTML = `<div class="shell">
    <aside class="side"><div class="logo">${LOGO}<div><span>${esc(CFG.FIRMA_ADI)}</span><small>${S.magaza ? esc(S.magaza.ad) : S.admin ? 'Admin' : ''}</small></div></div>
-    ${S.coxFirma && S.firmalar.length > 1 ? `<div class="firma-sec"><select id="fsec" title="Firmanı dəyiş">${S.firmalar.map(x => `<option value="${x.id}" ${S.magaza && x.id === S.magaza.id ? 'selected' : ''}>${esc(x.ad)}</option>`).join('')}</select></div>` : ''}
+    ${S.coxFirma && S.firmalar.length > 1 && !muhFirma() ? `<div class="firma-sec"><select id="fsec" title="Firmanı dəyiş">${S.firmalar.map(x => `<option value="${x.id}" ${S.magaza && x.id === S.magaza.id ? 'selected' : ''}>${esc(x.ad)}</option>`).join('')}</select></div>` : ''}
     <nav>${S.coxFirma || (!S.magaza && !S.admin) ? `<a href="#/firmalar" class="${active === 'firmalar' ? 'active' : ''}">${ico('bina')}${S.muhasibHesab ? 'Firmalarım' : 'Dükanlarım'}</a>` : ''}${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? `<div class="sec">${muhFirma() ? 'Firma' : 'Dükan'}</div>` : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? navBolmeler(active) : ''}</nav>
     <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'sahibkar' ? 'Yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
    <div class="mobile-bar"><button id="geri" class="mb-geri" ${active === 'menyu' || (S.rol === 'kuryer' && active === 'yigim') ? 'style="visibility:hidden"' : ''}>‹ Geri</button><b ${S.coxFirma ? 'id="mbfirma" style="cursor:pointer"' : ''}>${LOGO}${esc(firmaAdi())}${S.coxFirma ? ' ▾' : ''}</b><button id="out2">Çıxış</button></div>
-   <main class="main">${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
+   <main class="main">${S.magaza && muhFirma() && S.rol !== 'kuryer' ? mUstPanel(active) : ''}${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
    <div id="page">${body || '<div class="empty"><div class="spinner" style="margin:auto"></div></div>'}</div></main>
    <nav class="bottom-nav" ${S.magaza && S.rol !== 'kuryer' ? '' : 'style="display:none"'}><a href="#/menyu" class="${active === 'menyu' ? 'active' : ''}">${ico('grid')}Menyu</a></nav>
   </div>`;
   const out = async () => { await sb.auth.signOut(); S.user = null; S.magaza = null; S.cache = {}; YOL.length = 0; history.replaceState(null, '', SAYT()); loginView(); };
   $('#out').onclick = out; $('#out2').onclick = out;
   $('#geri').onclick = geri;
+  document.body.classList.toggle('muh', muhFirma());
+  mUstBagla();
   if ($('#fsec')) $('#fsec').onchange = e => firmaSec(+e.target.value);
   if ($('#mbfirma')) $('#mbfirma').onclick = () => { location.hash = '#/firmalar'; };
 }
@@ -353,7 +355,8 @@ function route() {
   const [path, qs] = h.split('?');
   const params = new URLSearchParams(qs || '');
   const [p, id] = path.split('/');
-  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), sat: () => pageSat(params), mpanel: () => pageMPanel(), gelen: () => pageQaimeler('gelen', params), geden: () => pageQaimeler('geden', params),
+  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), sat: () => pageSat(params), mpanel: () => { location.replace('#/bugun'); }, gelen: () => { location.replace('#/qaime?ist=gelen'); }, geden: () => { location.replace('#/qaime?ist=geden'); },
+    bugun: () => pageBugun(), qaime: () => pageQaime(params), akt: () => pageAkt(params), odenis: () => pageOdenis(params), edv: () => pageEdv(params), depozit: () => pageDepozit(params), hesab: () => pageMHesabat(params), xeber: () => pageXeber(),
     gomruk: () => pageGomruk(params), bank: () => pageBank(params), evez: () => pageEvez(params), emek: () => pageEmek(params), mz: () => pageMZ(params), kontragent: () => pageKontragent(), firmalar: () => pageFirmalar(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id), etiket: () => pageEtiket(),
     rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
     kassa: () => pageKassa(), sifarisler: () => pageSifarisler(params), hesabat: () => pageHesabat(params),
@@ -361,7 +364,8 @@ function route() {
     qebz: () => pageQebz(id), muqavile: () => pageMuqavile(id), admin: () => pageAdmin() }[p] || pagePanel;
   if (!S.magaza && !['admin', 'firmalar'].includes(p)) { location.hash = S.admin && !S.muhasibHesab ? '#/admin' : '#/firmalar'; return; }
   if (S.rol === 'kuryer' && !['yigim', 'qebz', 'menyu', 'firmalar'].includes(p)) { location.hash = '#/yigim'; return; }
-  if (S.magaza && muhFirma() && !MUH_SEHIFE.includes(p) && !['jurnal', 'ayarlar', 'menyu', 'firmalar', 'admin'].includes(p)) { location.hash = '#/mpanel'; return; }
+  if (S.magaza && muhFirma() && !MUH_SEHIFE.includes(p) && !['jurnal', 'ayarlar', 'menyu', 'firmalar', 'admin'].includes(p)) { location.hash = '#/bugun'; return; }
+  if (S.magaza && muhFirma()) mTabQeyd(p, location.hash || '#/bugun');
   if (S.magaza && !muhFirma() && MUH_SEHIFE.includes(p)) { location.hash = '#/panel'; return; }
   if (p === 'admin' && !S.admin) { location.hash = '#/panel'; return; }
   Promise.resolve(run()).catch(fail);
@@ -372,7 +376,7 @@ window.addEventListener('hashchange', route);
    FİRMALARIM — bir hesabda bir neçə dükan (mühasib rejimi)
    ===================================================================== */
 async function firmaSec(id) {
-  if (S.magaza && S.magaza.id === id) { location.hash = window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/mpanel' : '#/panel'); return; }
+  if (S.magaza && S.magaza.id === id) { location.hash = window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/bugun' : '#/panel'); return; }
   if (S.deyisir) return; S.deyisir = true;
   const ad = (S.firmalar.find(x => x.id === id) || {}).ad || '';
   const ov = document.createElement('div'); ov.className = 'firma-ov'; ov.innerHTML = `<div><div class="spinner"></div>${esc(ad)} açılır…</div>`; document.body.appendChild(ov);
@@ -1166,11 +1170,12 @@ async function pageSat(params) {
    əmək haqqı, mənfəət/zərər, kontragentlər (sahe = 'muhasibat')
    ===================================================================== */
 const muhFirma = () => !!(S.magaza && S.magaza.sahe === 'muhasibat');
-const NAV_M = [['mpanel', 'Panel', 'panel'], ['gelen', 'Gələn qaimələr', 'down'], ['geden', 'Gedən qaimələr', 'up'], ['gomruk', 'İdxal / İxrac', 'box'],
-  ['bank', 'Bank hesabları', 'kassaI'], ['evez', 'Əvəzləşmə (ƏDV)', 'doc'], ['emek', 'Əmək haqqı', 'worker'], ['mz', 'Mənfəət / Zərər', 'trend'],
-  ['kontragent', 'Kontragentlər', 'users'], ['jurnal', 'Jurnal', 'hist'], ['ayarlar', 'Ayarlar', 'gear']];
-const NAVBOLME_M = [['Qaimələr', ['mpanel', 'gelen', 'geden', 'gomruk']], ['Pul və vergi', ['bank', 'evez', 'emek', 'mz']], ['İdarəetmə', ['kontragent', 'jurnal', 'ayarlar']]];
-const MUH_SEHIFE = ['mpanel', 'gelen', 'geden', 'gomruk', 'bank', 'evez', 'emek', 'mz', 'kontragent'];
+const NAV_M = [['bugun', 'Bu gün', 'panel'], ['qaime', 'Qaimələr', 'doc'], ['akt', 'Alış aktları', 'clip'],
+  ['odenis', 'Ödənişlər', 'exp'], ['bank', 'Bank hesabları', 'kassaI'], ['kontragent', 'Kontragentlər', 'users'],
+  ['gomruk', 'Gömrük bəyanı', 'box'], ['edv', 'ƏDV hesabatı', 'chart'], ['depozit', 'ƏDV depozit', 'wallet'], ['emek', 'Əmək haqqı', 'worker'], ['hesab', 'Hesabatlar', 'trend'], ['xeber', 'Xəbərdarlıqlar', 'hist'],
+  ['jurnal', 'Jurnal', 'hist'], ['ayarlar', 'Ayarlar', 'gear'], ['evez', 'Əvəzləşmə', 'doc'], ['mz', 'Mənfəət / Zərər', 'trend']];
+const NAVBOLME_M = [['Sənədlər', ['bugun', 'qaime', 'akt']], ['Bank və borclar', ['odenis', 'bank', 'kontragent']], ['Uçot və hesabat', ['gomruk', 'edv', 'depozit', 'emek', 'hesab', 'xeber']], ['Sistem', ['jurnal', 'ayarlar']]];
+const MUH_SEHIFE = ['bugun', 'qaime', 'akt', 'odenis', 'bank', 'kontragent', 'gomruk', 'edv', 'depozit', 'emek', 'hesab', 'xeber', 'evez', 'mz', 'mpanel', 'gelen', 'geden'];
 const r2 = v => Math.round((num(v) + Number.EPSILON) * 100) / 100;
 const aylarSiyahi = (n = 24) => { const d = new Date(); d.setDate(1); const o = [];
   for (let i = 0; i < n; i++) { o.push(iso(d).slice(0, 7) + '-01'); d.setMonth(d.getMonth() - 1); } return o; };
@@ -1184,7 +1189,7 @@ async function bankHesablari() { return S.cache.bh || (S.cache.bh = await q(sb.f
 
 /* ---------- Panel ---------- */
 async function pageMPanel() {
-  shell('mpanel', 'Panel', ayAdi(today()), '');
+  shell('bugun', 'Bu gün', ayAdi(today()), '');
   const ay = ayBasi(today()), son = ayinSonu(ay);
   const [qm, od, bh, be, qo, gm, eh] = await Promise.all([
     all(() => sb.from('v_qaimeler').select('id,istiqamet,tarix,esas,edv,edvsiz,cem,odenilib,qaliq,kontragent,voen').order('id')),
@@ -1365,6 +1370,7 @@ function qaimeIdxal(ist) {
       for (const h of hisse(yeni, 500)) { await q(sb.from('qaimeler').insert(h)); i += h.length; ir(i, n); }
       for (const [id, v] of yen) { await q(sb.from('qaimeler').update({ esas: v.esas, edv: v.edv, edvsiz: v.edvsiz, status: v.status, kontragent: v.kontragent, tarix: v.tarix }).eq('id', id)); i++; if (i % 10 === 0) ir(i, n); }
       const k = await kontragentSaxla(rows.map(r => ({ voen: String(r.voen).replace(/\D/g, '') || r.voen, ad: r.kontragent })));
+      try { localStorage.setItem('son_yukleme_' + S.magaza.id, new Date().toLocaleString('az-AZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })); } catch (_) {}
       return `${yeni.length} qaimə əlavə olundu${yen.length ? `, ${yen.length} qaimə yeniləndi` : ''}${k ? `, ${k} yeni kontragent` : ''}`;
     },
   });
@@ -1422,8 +1428,8 @@ function gomrukForm(nov, r) {
 /* ---------- Bank hesabları ---------- */
 const BANK_KAT = ['Alıcıdan daxilolma', 'Təchizatçıya ödəniş', 'Vergi ödənişi', 'Əmək haqqı', 'DSMF / sığorta', 'Kredit / borc', 'Təsisçi', 'Bank xərci', 'Hesablar arası', 'Digər xərc', 'Digər gəlir'];
 async function pageBank(params) {
-  const w = canWrite();
-  shell('bank', 'Bank hesabları', '', `${w ? `<button class="btn" id="bidx">${ico('up')}Çıxarışı Excel-dən yüklə</button><button class="btn" id="bhyeni">${ico('plus')}Yeni hesab</button><button class="btn primary" id="byeni">${ico('plus')}Əməliyyat</button>` : ''}`);
+  const w = canWrite(), dep = params.get('dep') === '1';
+  shell(dep ? 'depozit' : 'bank', dep ? 'ƏDV depozit' : 'Bank hesabları', '', `${w ? `<button class="btn" id="bidx">${ico('up')}Çıxarışı Excel-dən yüklə</button><button class="btn" id="bhyeni">${ico('plus')}Yeni hesab</button><button class="btn primary" id="byeni">${ico('plus')}Əməliyyat</button>` : ''}`);
   const [bh, be, qo] = await Promise.all([bankHesablari(), all(() => sb.from('bank_emeliyyatlari').select('*').order('tarix').order('id')),
     all(() => sb.from('v_qaime_odenisleri').select('*').order('tarix').order('id')).then(l => l.filter(x => x.hesab_id != null))]);
   const sec = +(params.get('h') || (bh[0] && bh[0].id) || 0);
@@ -1439,16 +1445,16 @@ async function pageBank(params) {
     return { l, qaliq: s };
   };
   if (!bh.length) { $('#page').innerHTML = `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Bank hesabı yoxdur</div><div class="muted">Firmanın cari hesabını və ƏDV depozit hesabını əlavə edin.</div></div>`; return; }
-  const H = bh.map(h => ({ h, ...hereket(h) })), cari = H.find(x => x.h.id === sec) || H[0];
+  const H = bh.filter(h => !dep || h.edv_depozit).map(h => ({ h, ...hereket(h) })), cari = H.find(x => x.h.id === sec) || H[0];
   $('.topbar .sub').textContent = `Cəmi qalıq: ${man(H.reduce((a, x) => a + (x.h.valyuta === 'AZN' ? x.qaliq : 0), 0))}`;
-  $('#page').innerHTML = `<div class="bank-kartlar">${H.map(x => `<a class="bank-kart ${x === cari ? 'on' : ''}" href="#/bank?h=${x.h.id}"><small>${esc(x.h.bank)}${x.h.edv_depozit ? ' · ƏDV depozit' : ''}</small>
+  $('#page').innerHTML = `<div class="bank-kartlar">${H.map(x => `<a class="bank-kart ${x === cari ? 'on' : ''}" href="#/${dep ? 'depozit' : 'bank'}?h=${x.h.id}"><small>${esc(x.h.bank)}${x.h.edv_depozit ? ' · ƏDV depozit' : ''}</small>
       <b>${fmt(x.qaliq, 2)} ${esc(x.h.valyuta)}</b><span class="muted">${esc(x.h.hesab_no || '')}</span></a>`).join('')}</div>
     <div class="card" style="padding:0;margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px 0"><h3 style="margin:0">${esc(cari.h.bank)} — çıxarış</h3>${w ? '<button class="btn sm" id="bhed">Hesabı düzəlt</button>' : ''}</div>
     ${cari.l.length ? `<table class="t"><thead><tr><th>Tarix</th><th>Kateqoriya</th><th>Kontragent</th><th>Təyinat</th><th class="n">Mədaxil</th><th class="n">Məxaric</th><th class="n">Qalıq</th></tr></thead><tbody>
       <tr><td></td><td colspan="5" class="muted">İlkin qalıq${cari.h.ilkin_tarix ? ' — ' + fd(cari.h.ilkin_tarix) : ''}</td><td class="n">${fmt(cari.h.ilkin_qaliq, 2)}</td></tr>
       ${cari.l.map((x, i) => `<tr class="${x.em && w ? 'click' : ''}" data-bi="${i}"><td>${fd(x.t)}</td><td>${esc(x.kat || '')}</td><td>${esc(x.kontr || '')}</td><td>${esc(x.tey || '')}</td>
         <td class="n">${x.nov === 'Mədaxil' ? fmt(x.m, 2) : ''}</td><td class="n">${x.nov === 'Məxaric' ? fmt(x.m, 2) : ''}</td><td class="n"><b>${fmt(x.q, 2)}</b></td></tr>`).join('')}</tbody>
-      <tfoot><tr><td>${cari.l.length} əməliyyat</td><td></td><td></td><td></td><td class="n">${fmt(cari.l.filter(x => x.nov === 'Mədaxil').reduce((a, x) => a + x.m, 0), 2)}</td><td class="n">${fmt(cari.l.filter(x => x.nov === 'Məxaric').reduce((a, x) => a + x.m, 0), 2)}</td><td class="n">${fmt(cari.qaliq, 2)}</td></tr></tfoot></table>`
+      <tfoot><tr><td>${cari.l.length} əməliyyat</td><td></td><td></td><td></td><td class="n">${fmt(cari.l.filter(x => x.nov === 'Mədaxil').reduce((a, x) => a + x.m, 0), 2)}</td><td class="n">${fmt(cari.l.filter(x => x.nov === 'Məxaric').reduce((a, x) => a + x.m, 0), 2)}</td><td class="n sabit">${fmt(cari.qaliq, 2)}</td></tr></tfoot></table>`
       : '<div class="empty muted" style="padding:24px">Əməliyyat yoxdur</div>'}</div>
     <p class="muted" style="font-size:12.5px">Qaimə ödənişlərində bank hesabı seçilibsə, onlar da çıxarışda avtomatik görünür.</p>`;
   if ($('#bhed')) $('#bhed').onclick = () => bankHesabForm(cari.h);
@@ -1719,6 +1725,402 @@ function kontragentForm(x) {
   };
   if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!confirm('Kontragent silinsin? (qaimələrə toxunulmur)')) return;
     try { await q(sb.from('kontragentler').delete().eq('id', x.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); } };
+}
+
+/* =====================================================================
+   MÜHASİBAT — iş masası: üst panel, açıq səhifə tabları, hesabatlar,
+   ödənişlər, ƏDV, depozit, alış aktları, xəbərdarlıqlar
+   ===================================================================== */
+const MUH_BASLIQ = Object.fromEntries(NAV_M.map(n => [n[0], n[1]]));
+function mTablar() {
+  const k = 'mtab_' + (S.magaza && S.magaza.id);
+  if (!S.mtab || S.mtab.k !== k) { let l = []; try { l = JSON.parse(localStorage.getItem(k) || '[]'); } catch (_) {} S.mtab = { k, l: Array.isArray(l) ? l : [] }; }
+  return S.mtab;
+}
+function mTabQeyd(p, h) {
+  if (!MUH_BASLIQ[p]) return;
+  const T = mTablar(), v = T.l.find(x => x.p === p);
+  if (v) v.h = h; else T.l.push({ p, h });
+  if (T.l.length > 14) T.l.shift();
+  try { localStorage.setItem(T.k, JSON.stringify(T.l)); } catch (_) {}
+}
+function mTabBag(p) {
+  const T = mTablar(), i = T.l.findIndex(x => x.p === p); if (i < 0) return;
+  T.l.splice(i, 1); try { localStorage.setItem(T.k, JSON.stringify(T.l)); } catch (_) {}
+  if (location.hash.replace(/^#\/?/, '').split(/[/?]/)[0] === p) { const n = T.l[Math.min(i, T.l.length - 1)]; location.hash = n ? n.h : '#/bugun'; } else route();
+}
+function mUstPanel(active) {
+  const T = mTablar(), sonYuk = (() => { try { return localStorage.getItem('son_yukleme_' + S.magaza.id); } catch (_) { return null; } })();
+  return `<div class="mtop">
+      <label class="mtop-sirket"><span>Şirkət</span><select id="msirket">${(S.firmalar.length ? S.firmalar : [{ id: S.magaza.id, ad: S.magaza.ad }]).map(x => `<option value="${x.id}" ${x.id === S.magaza.id ? 'selected' : ''}>${esc(x.ad)}</option>`).join('')}</select></label>
+      <button class="btn sm" id="mkart">Kart</button>
+      <span class="mpill ${S.aktiv ? 'ok' : 'xeta'}">${S.magaza.dayandirilib ? 'Dayandırılıb' : S.aktiv ? `Abunə: ${S.qalan} gün` : 'Abunə bitib'}</span>
+      <span class="mpill">${sonYuk ? 'Son yükləmə: ' + esc(sonYuk) : 'Hələ qaimə yüklənməyib'}</span>
+      <span style="flex:1"></span>
+      ${canWrite() ? `<button class="btn sm" id="mq-yuk">${ico('up')}Qaimə yüklə</button><button class="btn sm" id="mb-yuk">${ico('up')}Bank çıxarışı</button><button class="btn sm" id="mg-yen">${ico('plus')}Gömrük bəyanı</button>` : ''}
+    </div>
+    <div class="mtabs">${T.l.map(x => `<a href="${esc(x.h)}" class="${x.p === active ? 'on' : ''}">${esc(MUH_BASLIQ[x.p] || x.p)}<i data-tx="${x.p}" title="Bağla">×</i></a>`).join('')}</div>`;
+}
+function mUstBagla() {
+  if (!$('.mtop')) return;
+  $('#msirket').onchange = e => firmaSec(+e.target.value);
+  const on = $('.mtabs a.on'); if (on) { const t = $('.mtabs'); t.scrollLeft = on.offsetLeft - t.clientWidth / 2 + on.clientWidth / 2; }
+  $('#mkart').onclick = () => sirketKarti().catch(fail);
+  $$('[data-tx]').forEach(i => i.onclick = e => { e.preventDefault(); e.stopPropagation(); mTabBag(i.dataset.tx); });
+  if ($('#mq-yuk')) $('#mq-yuk').onclick = () => qaimeIdxal('gelen');
+  if ($('#mb-yuk')) $('#mb-yuk').onclick = async () => { const bh = await bankHesablari(); bh.length ? bankIdxal(bh[0].id, bh) : toast('Əvvəlcə "Bank hesabları" bölməsində hesab əlavə edin'); };
+  if ($('#mg-yen')) $('#mg-yen').onclick = () => gomrukForm('idxal', null);
+}
+const REKVIZIT = [['firma_adi', 'Hüquqi ad'], ['firma_voen', 'VÖEN'], ['firma_unvan', 'Hüquqi ünvan'], ['firma_telefon', 'Telefon'], ['direktor', 'Direktor'],
+  ['bas_muhasib', 'Baş mühasib'], ['bank_adi', 'Bank'], ['bank_kod', 'Bank kodu / SWIFT'], ['iban', 'Hesab (IBAN)'], ['edv_payer', 'ƏDV ödəyicisi'], ['vergi_rejimi', 'Vergi rejimi']];
+async function sirketKarti() {
+  const A = await ayarlar();
+  const m = modal('Şirkət kartı', `<table class="t"><tbody>${REKVIZIT.map(([k, t]) => `<tr><td class="muted" style="width:170px">${t}</td><td><b>${esc(A[k] || (k === 'firma_adi' ? S.magaza.ad : '') || '—')}</b></td></tr>`).join('')}</tbody></table>`,
+    `<button class="btn" id="kkop">Kopyala</button>${canWrite() ? '<a class="btn primary" href="#/ayarlar" data-close>Düzəlt</a>' : ''}`);
+  $('#kkop', m).onclick = () => { const t = REKVIZIT.map(([k, n]) => `${n}: ${A[k] || (k === 'firma_adi' ? S.magaza.ad : '') || ''}`).join('\n'); navigator.clipboard && navigator.clipboard.writeText(t); toast('Rekvizitlər kopyalandı'); };
+}
+async function ayarYaz(A, k, v) {
+  if ((A[k] || '') === v) return;
+  if (k in A) await q(sb.from('ayarlar').update({ deyer: v }).eq('acar', k)); else await q(sb.from('ayarlar').insert({ acar: k, deyer: v }));
+}
+
+/* ---------- Dövr seçimi (hesabatlar üçün) ---------- */
+function dovrHesabla(n) {
+  const d = new Date(), y = d.getFullYear(), m = d.getMonth();
+  const f = (a, b) => [iso(a), iso(b)];
+  if (n === 'buay') return f(new Date(y, m, 1), new Date(y, m + 1, 0));
+  if (n === 'kecenay') return f(new Date(y, m - 1, 1), new Date(y, m, 0));
+  if (n === 'burub') { const r = Math.floor(m / 3) * 3; return f(new Date(y, r, 1), new Date(y, r + 3, 0)); }
+  if (n === 'kecenrub') { const r = Math.floor(m / 3) * 3 - 3; return f(new Date(y, r, 1), new Date(y, r + 3, 0)); }
+  if (n === 'kecenil') return f(new Date(y - 1, 0, 1), new Date(y - 1, 11, 31));
+  return f(new Date(y, 0, 1), new Date(y, 11, 31));
+}
+const DOVRLER = [['buay', 'Bu ay'], ['kecenay', 'Keçən ay'], ['burub', 'Bu rüb'], ['kecenrub', 'Keçən rüb'], ['buil', 'Bu il'], ['kecenil', 'Keçən il']];
+function dovrPanel(params, yol) {
+  const [a0, b0] = dovrHesabla('buil'); const a = params.get('a') || a0, b = params.get('b') || b0;
+  return { a, b, html: `<div class="dovr"><span class="muted">Dövr:</span><input class="in" type="date" id="da" value="${a}"><span>—</span><input class="in" type="date" id="db" value="${b}">
+    ${DOVRLER.map(([k, t]) => `<button class="btn sm" data-dv="${k}">${t}</button>`).join('')}</div>`,
+    bagla: () => { const go = (x, y) => { const p = new URLSearchParams(params); p.set('a', x); p.set('b', y); location.hash = `${yol}?${p}`; };
+      $('#da').onchange = () => go($('#da').value, $('#db').value); $('#db').onchange = () => go($('#da').value, $('#db').value);
+      $$('[data-dv]').forEach(x => x.onclick = () => go(...dovrHesabla(x.dataset.dv))); } };
+}
+
+/* ---------- Bu gün ---------- */
+async function pageBugun() {
+  await pageMPanel();
+  const X = await xeberdarliqlar().catch(() => []);
+  if (!location.hash.startsWith('#/bugun')) return;
+  const box = document.createElement('div'); box.className = 'card'; box.style.marginTop = '16px'; box.style.padding = '0';
+  box.innerHTML = `<h3 style="padding:18px 20px 0">Xəbərdarlıqlar</h3>${xeberSiyahi(X.slice(0, 6))}${X.length > 6 ? `<div style="padding:0 20px 14px"><a href="#/xeber">Hamısı (${X.length}) →</a></div>` : ''}`;
+  $('#page').appendChild(box);
+}
+
+/* ---------- Qaimələr (gələn + gedən bir yerdə) ---------- */
+async function pageQaime(params) {
+  const ist = params.get('ist') || '', w = canWrite();
+  const D = dovrPanel(params, '#/qaime');
+  shell('qaime', 'Qaimələr', 'Elektron qaimə-fakturalar', `<div class="seg" id="qist">${[['', 'Hamısı'], ['gelen', 'Gələn'], ['geden', 'Gedən']].map(([k, t]) => `<button data-i="${k}" class="${ist === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+    ${w ? `<button class="btn" id="qy1">${ico('up')}Gələnləri yüklə</button><button class="btn" id="qy2">${ico('up')}Gedənləri yüklə</button><button class="btn primary" id="qyeni">${ico('plus')}Yeni qaimə</button>` : ''}`);
+  $$('#qist button').forEach(b => b.onclick = () => { const p = new URLSearchParams(params); if (b.dataset.i) p.set('ist', b.dataset.i); else p.delete('ist'); location.hash = '#/qaime?' + p; });
+  if ($('#qy1')) { $('#qy1').onclick = () => qaimeIdxal('gelen'); $('#qy2').onclick = () => qaimeIdxal('geden'); $('#qyeni').onclick = () => qaimeForm(ist || 'gelen', null); }
+  const rows = await all(() => { let s = sb.from('v_qaimeler').select('*').gte('tarix', D.a).lte('tarix', D.b); if (ist) s = s.eq('istiqamet', ist); return s.order('tarix', { ascending: false }).order('id', { ascending: false }); });
+  const sum = (l, k) => l.reduce((a, r) => a + num(r[k]), 0), g = rows.filter(r => r.istiqamet === 'gelen'), d = rows.filter(r => r.istiqamet === 'geden');
+  $('.topbar .sub').textContent = `${rows.length} qaimə · gələn ${man(sum(g, 'cem'))} · gedən ${man(sum(d, 'cem'))}`;
+  $('#page').innerHTML = `${D.html}<div class="hes-link"><span class="muted">Hesabatlar:</span>${[['dinamika', 'Aylıq dinamika'], ['kxulase', 'Kontragent xülasəsi'], ['quzles', 'Qaimələr üzrə üzləşmə'], ['yaslanma', 'Borcların yaşlanması']].map(([k, t]) => `<a class="chip" href="#/hesab?r=${k}">${t}</a>`).join('')}</div>
+    ${rows.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>İstiqamət</th><th>Tarix</th><th>Seriya / №</th><th>VÖEN</th><th>Kontragent</th><th class="n">Əsas</th><th class="n">ƏDV</th><th class="n">Cəm</th><th class="n">Ödənilib</th><th class="n">Qalıq</th><th>Vəziyyət</th><th class="hide-m">e-taxes</th></tr></thead>
+      <tbody>${rows.map(r => `<tr class="click" data-q="${r.id}"><td><span class="badge ${r.istiqamet === 'gelen' ? 'b-blue' : 'b-amber'}">${r.istiqamet === 'gelen' ? 'Gələn' : 'Gedən'}</span></td><td>${fd(r.tarix)}</td><td>${esc(qaimeNo(r))}</td><td class="muted">${esc(r.voen || '')}</td><td>${esc(r.kontragent || '')}</td>
+        <td class="n">${fmt(r.esas, 2)}</td><td class="n">${fmt(r.edv, 2)}</td><td class="n"><b>${fmt(r.cem, 2)}</b></td><td class="n">${fmt(r.odenilib, 2)}</td><td class="n"><b class="${num(r.qaliq) > 0.005 ? 'neg' : ''}">${fmt(r.qaliq, 2)}</b></td><td>${odenisBadge(r)}</td><td class="hide-m muted">${esc(r.status || '')}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>${rows.length}</td><td></td><td></td><td></td><td></td><td class="n">${fmt(sum(rows, 'esas'), 2)}</td><td class="n">${fmt(sum(rows, 'edv'), 2)}</td><td class="n">${fmt(sum(rows, 'cem'), 2)}</td><td class="n">${fmt(sum(rows, 'odenilib'), 2)}</td><td class="n">${fmt(sum(rows, 'qaliq'), 2)}</td><td></td><td class="hide-m"></td></tr></tfoot></table></div>`
+      : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Bu dövrdə qaimə yoxdur</div><div class="muted">e-taxes.gov.az-dan qaimələrin siyahısını Excel kimi yükləyib "Gələnləri yüklə" / "Gedənləri yüklə" ilə köçürün.</div></div>`}`;
+  D.bagla();
+  $$('[data-q]').forEach(tr => tr.onclick = () => qaimeKart(rows.find(r => r.id === +tr.dataset.q)));
+}
+
+/* ---------- Alış aktları ---------- */
+async function pageAkt(params) {
+  const w = canWrite(), D = dovrPanel(params, '#/akt');
+  shell('akt', 'Alış aktları', 'Fiziki şəxslərdən alışın elektron aktları', w ? `<button class="btn" id="aidx">${ico('up')}Excel-dən yüklə</button><button class="btn primary" id="ayeni">${ico('plus')}Yeni akt</button>` : '');
+  const rows = await all(() => sb.from('alis_aktlari').select('*').gte('tarix', D.a).lte('tarix', D.b).order('tarix', { ascending: false }));
+  if ($('#ayeni')) { $('#ayeni').onclick = () => aktForm(null); $('#aidx').onclick = aktIdxal; }
+  const sum = k => rows.reduce((a, r) => a + num(r[k]), 0);
+  $('.topbar .sub').textContent = `${rows.length} akt · cəmi ${man(sum('mebleg'))} · ödənilməmiş ${man(sum('mebleg') - sum('odenilib'))}`;
+  $('#page').innerHTML = `${D.html}<p class="muted" style="font-size:13px">Akt fiziki şəxsin kreditor borcudur (aktın tam məbləği, ƏDV-yə düşmür); ödəniş qeyd olunana qədər açıq qalır.</p>
+    ${rows.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Tarix</th><th>Seriya / №</th><th>Satıcı</th><th>FİN</th><th>Mal / xidmət</th><th class="n">Məbləğ</th><th class="n">Ödənilib</th><th class="n">Qalıq</th><th>Vəziyyət</th></tr></thead>
+      <tbody>${rows.map(r => { const q_ = r2(num(r.mebleg) - num(r.odenilib)); return `<tr class="${w ? 'click' : ''}" data-a="${r.id}"><td>${fd(r.tarix)}</td><td>${esc([r.seriya, r.nomre].filter(Boolean).join(' '))}</td><td>${esc(r.satici)}</td><td class="muted">${esc(r.fin || '')}</td><td>${esc(r.mal || '')}</td>
+        <td class="n"><b>${fmt(r.mebleg, 2)}</b></td><td class="n">${fmt(r.odenilib, 2)}</td><td class="n"><b class="${q_ > 0 ? 'neg' : ''}">${fmt(q_, 2)}</b></td><td>${q_ <= 0.005 ? '<span class="badge b-green">Ödənilib</span>' : num(r.odenilib) > 0 ? '<span class="badge b-amber">Qismən</span>' : '<span class="badge b-gray">Açıq</span>'}</td></tr>`; }).join('')}</tbody>
+      <tfoot><tr><td>${rows.length}</td><td></td><td></td><td></td><td></td><td class="n">${fmt(sum('mebleg'), 2)}</td><td class="n">${fmt(sum('odenilib'), 2)}</td><td class="n">${fmt(sum('mebleg') - sum('odenilib'), 2)}</td><td></td></tr></tfoot></table></div>`
+      : '<div class="card empty">Bu dövrdə alış aktı yoxdur</div>'}`;
+  D.bagla();
+  $$('[data-a]').forEach(tr => tr.onclick = () => w && aktForm(rows.find(r => r.id === +tr.dataset.a)));
+}
+function aktForm(r) {
+  const m = modal(r ? 'Alış aktını düzəlt' : 'Yeni alış aktı', `<form id="af">
+    <div class="row3"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${r ? r.tarix : today()}" required></div>
+      <div class="field"><label class="f">Seriya</label><input class="in" name="s" value="${esc(r && r.seriya || '')}"></div><div class="field"><label class="f">Nömrə</label><input class="in" name="n" value="${esc(r && r.nomre || '')}"></div></div>
+    <div class="row2"><div class="field"><label class="f">Satıcı (fiziki şəxs)</label><input class="in" name="sa" value="${esc(r && r.satici || '')}" required></div>
+      <div class="field"><label class="f">FİN</label><input class="in" name="fin" value="${esc(r && r.fin || '')}" maxlength="7" style="text-transform:uppercase"></div></div>
+    <div class="field"><label class="f">Mal / xidmət</label><input class="in" name="mal" value="${esc(r && r.mal || '')}"></div>
+    <div class="row3"><div class="field"><label class="f">Məbləğ</label><input class="in" type="number" step="0.01" min="0" name="m" value="${r ? r.mebleg : ''}" required></div>
+      <div class="field"><label class="f">Ödənilib</label><input class="in" type="number" step="0.01" min="0" name="o" value="${r ? r.odenilib : 0}"></div>
+      <div class="field"><label class="f">Ödəniş tarixi</label><input class="in" type="date" name="ot" value="${r && r.odenis_tarix || ''}"></div></div>
+    <div class="field"><label class="f">Qeyd</label><input class="in" name="q" value="${esc(r && r.qeyd || '')}"></div></form>`,
+    `${r ? '<button class="btn danger" id="sil" style="margin-right:auto">Sil</button>' : ''}<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
+  const f = $('#af', m);
+  $('#ok', m).onclick = async () => {
+    if (!f.reportValidity()) return;
+    if (num(f.o.value) > num(f.m.value)) return toast('Ödənilən məbləğ aktdan çox ola bilməz');
+    const v = { tarix: f.t.value, seriya: f.s.value.trim() || null, nomre: f.n.value.trim() || null, satici: f.sa.value.trim(), fin: f.fin.value.trim().toUpperCase() || null, mal: f.mal.value.trim() || null,
+      mebleg: r2(f.m.value), odenilib: r2(f.o.value), odenis_tarix: f.ot.value || (num(f.o.value) > 0 ? today() : null), qeyd: f.q.value.trim() || null };
+    try { if (r) await q(sb.from('alis_aktlari').update(v).eq('id', r.id)); else await q(sb.from('alis_aktlari').insert(v)); closeModal(); toast('Yadda saxlanıldı'); refresh(); } catch (er) { fail(er); }
+  };
+  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!confirm('Akt silinsin?')) return; try { await q(sb.from('alis_aktlari').delete().eq('id', r.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); } };
+}
+function aktIdxal() {
+  idxalPencere({
+    basliq: 'Alış aktlarını yüklə', izah: 'e-taxes.gov.az-dan elektron alış aktlarının siyahısını Excel kimi yükləyib seçin.',
+    saheler: [{ k: 'tarix', ad: 'Tarix', lazim: true, tip: 'tarix', ox: ['tarix', 'aktıntarixi', 'date'] }, { k: 'seriya', ad: 'Seriya', ox: ['seriya'] }, { k: 'nomre', ad: 'Nömrə', ox: ['nömrə', 'nomre', 'aktınnömrəsi'] },
+      { k: 'satici', ad: 'Satıcı', lazim: true, ox: ['satıcı', 'satıcınınadı', 'fizikişəxs', 'adsoyad', 'ad'] }, { k: 'fin', ad: 'FİN', ox: ['fin', 'satıcınınfini', 'fərdiidentifikasiyanömrəsi'] },
+      { k: 'mal', ad: 'Mal / xidmət', ox: ['mal', 'malınadı', 'xidmət', 'məhsul'] }, { k: 'mebleg', ad: 'Məbləğ', lazim: true, tip: 'eded', ox: ['məbləğ', 'mebleg', 'cəmi', 'dəyər'] }],
+    numune: [['10.11.2026', 'AA', '000123', 'Əli Məmmədov', '5ABCDE1', 'Kartof 500 kq', 250]],
+    yaz: async (rows, ir) => { const v = rows.map(r => ({ tarix: r.tarix, seriya: r.seriya, nomre: r.nomre, satici: r.satici, fin: r.fin ? String(r.fin).toUpperCase() : null, mal: r.mal, mebleg: r2(r.mebleg) }));
+      let i = 0; for (const h of hisse(v, 500)) { await q(sb.from('alis_aktlari').insert(h)); i += h.length; ir(i, v.length); } return `${v.length} akt yükləndi`; },
+  });
+}
+
+/* ---------- Ödənişlər ---------- */
+async function pageOdenis(params) {
+  const tab = params.get('t') || 'qaime', w = canWrite(), D = dovrPanel(params, '#/odenis');
+  shell('odenis', 'Ödənişlər', 'Qaimə ödənişləri və bağlanmamış bank əməliyyatları', `<div class="seg" id="ot">${[['qaime', 'Qaimə ödənişləri'], ['bag', 'Bağlanmamış ödənişlər']].map(([k, t]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>`);
+  $$('#ot button').forEach(b => b.onclick = () => { const p = new URLSearchParams(params); p.set('t', b.dataset.t); location.hash = '#/odenis?' + p; });
+  const bh = await bankHesablari(), hAd = id => { const h = bh.find(x => x.id === id); return h ? h.bank : 'nağd'; };
+  if (tab === 'qaime') {
+    const rows = await all(() => sb.from('v_qaime_odenisleri').select('*').gte('tarix', D.a).lte('tarix', D.b).order('tarix', { ascending: false }).order('id', { ascending: false }));
+    const sum = (l, k) => l.reduce((a, r) => a + num(r[k]), 0);
+    $('.topbar .sub').textContent = `${rows.length} ödəniş · ödənilən ${man(sum(rows.filter(r => r.istiqamet === 'gelen'), 'mebleg'))} · alınan ${man(sum(rows.filter(r => r.istiqamet === 'geden'), 'mebleg'))}`;
+    $('#page').innerHTML = `${D.html}${rows.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Tarix</th><th>Növ</th><th>Kontragent</th><th>VÖEN</th><th>Qaimə</th><th class="n">Məbləğ</th><th class="n">o cümlədən ƏDV</th><th>Hesab</th><th>Qeyd</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td>${fd(r.tarix)}</td><td><span class="badge ${r.istiqamet === 'gelen' ? 'b-red' : 'b-green'}">${r.istiqamet === 'gelen' ? 'Ödənilib' : 'Alınıb'}</span></td><td>${esc(r.kontragent || '')}</td><td class="muted">${esc(r.voen || '')}</td><td>${esc(qaimeNo(r))}</td>
+        <td class="n"><b>${fmt(r.mebleg, 2)}</b></td><td class="n">${fmt(r.edv, 2)}</td><td>${esc(hAd(r.hesab_id))}</td><td>${esc(r.qeyd || '')}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>${rows.length}</td><td></td><td></td><td></td><td></td><td class="n">${fmt(sum(rows, 'mebleg'), 2)}</td><td class="n">${fmt(sum(rows, 'edv'), 2)}</td><td></td><td></td></tr></tfoot></table></div>` : '<div class="card empty">Bu dövrdə ödəniş yoxdur</div>'}`;
+    D.bagla(); return;
+  }
+  // bağlanmamış: qaiməyə bağlanmayan təchizatçı/alıcı bank əməliyyatları
+  const [be, qm] = await Promise.all([all(() => sb.from('bank_emeliyyatlari').select('*').gte('tarix', D.a).lte('tarix', D.b).order('tarix', { ascending: false })),
+    all(() => sb.from('v_qaimeler').select('id,istiqamet,voen,kontragent,seriya,nomre,tarix,cem,edv,qaliq').order('tarix'))]);
+  const l = be.filter(x => ['Təchizatçıya ödəniş', 'Alıcıdan daxilolma', 'Digər xərc', 'Digər gəlir'].includes(x.kateqoriya) && x.voen);
+  $('.topbar .sub').textContent = `${l.length} bağlanmamış əməliyyat`;
+  $('#page').innerHTML = `${D.html}<p class="muted" style="font-size:13px">VÖEN-i olan, amma heç bir qaiməyə bağlanmamış bank əməliyyatları. "Bağla" basanda əməliyyat seçdiyiniz qaimənin ödənişinə çevrilir (bank qalığı dəyişmir).</p>
+    ${l.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Tarix</th><th>Növ</th><th>Kontragent</th><th>VÖEN</th><th>Təyinat</th><th class="n">Məbləğ</th><th>Hesab</th><th>Açıq qaimə</th>${w ? '<th></th>' : ''}</tr></thead>
+      <tbody>${l.map(x => { const ac = qm.filter(y => y.voen === x.voen && num(y.qaliq) > 0.005 && y.istiqamet === (x.nov === 'Məxaric' ? 'gelen' : 'geden'));
+        return `<tr><td>${fd(x.tarix)}</td><td>${x.nov}</td><td>${esc(x.kontragent || '')}</td><td class="muted">${esc(x.voen)}</td><td>${esc(x.teyinat || '')}</td><td class="n"><b>${fmt(x.mebleg, 2)}</b></td><td>${esc(hAd(x.hesab_id))}</td>
+          <td>${ac.length ? `<select class="in" data-bq="${x.id}" style="min-width:200px">${ac.map(y => `<option value="${y.id}">${esc(qaimeNo(y))} · ${fd(y.tarix)} · qalıq ${fmt(y.qaliq, 2)}</option>`).join('')}</select>` : '<span class="muted">açıq qaimə yoxdur</span>'}</td>
+          ${w ? `<td>${ac.length ? `<button class="btn sm primary" data-bg="${x.id}">Bağla</button>` : ''}</td>` : ''}</tr>`; }).join('')}</tbody></table></div>` : '<div class="card empty">Bağlanmamış əməliyyat yoxdur</div>'}`;
+  D.bagla();
+  $$('[data-bg]').forEach(b => b.onclick = async () => {
+    const x = be.find(z => z.id === +b.dataset.bg), y = qm.find(z => z.id === +$(`[data-bq="${x.id}"]`).value);
+    const mb = Math.min(num(x.mebleg), num(y.qaliq)), edv = r2(num(y.cem) ? mb * num(y.edv) / num(y.cem) : 0);
+    if (num(x.mebleg) > num(y.qaliq) + 0.005 && !confirm(`Əməliyyat (${fmt(x.mebleg, 2)}) qaimənin qalığından (${fmt(y.qaliq, 2)}) çoxdur. Yalnız ${fmt(mb, 2)} bağlansın, qalanı bank əməliyyatı kimi qalsın?`)) return;
+    try {
+      await q(sb.from('qaime_odenisleri').insert({ qaime_id: y.id, tarix: x.tarix, mebleg: r2(mb), edv, hesab_id: x.hesab_id, qeyd: x.teyinat }));
+      const art = r2(num(x.mebleg) - mb);
+      if (art > 0.005) await q(sb.from('bank_emeliyyatlari').update({ mebleg: art }).eq('id', x.id)); else await q(sb.from('bank_emeliyyatlari').delete().eq('id', x.id));
+      toast('Qaiməyə bağlandı'); refresh();
+    } catch (er) { fail(er); }
+  });
+}
+
+/* ---------- ƏDV hesabatı ---------- */
+async function pageEdv(params) {
+  const r = params.get('r');
+  if (!r) {
+    shell('edv', 'ƏDV hesabatı', 'ƏDV üzrə bütün hesabatlar — karta basın', '');
+    $('#page').innerHTML = `<div class="hes-kartlar">${[['#/evez', 'Əvəzləşdiriləcək qaimələr', 'Ay üzrə ödənilmiş gələn qaimələr, idxal ƏDV-si, büdcəyə ödəniləcək məbləğ və Excel faylı'],
+      ['#/edv?r=dovr', 'ƏDV dövriyyəsi', 'İl üzrə ay-ay: satış və alış dövriyyəsi, hesablanmış və əvəzləşən ƏDV'],
+      ['#/edv?r=uzles', 'ƏDV üzləşməsi (ay-ay)', 'Hesablanmış / əvəzləşən ƏDV və ƏDV depozit hesabının hərəkəti'],
+      ['#/depozit', 'ƏDV depozit hesabı', 'Depozit hesabının çıxarışı və qalığı']].map(([h, t, a]) => `<a class="hes-kart" href="${h}"><b>${t}</b><span>${a}</span></a>`).join('')}</div>`;
+    return;
+  }
+  const il = +(params.get('il') || new Date().getFullYear()), a = `${il}-01-01`, b = `${il}-12-31`;
+  shell('edv', r === 'dovr' ? 'ƏDV dövriyyəsi' : 'ƏDV üzləşməsi (ay-ay)', String(il), `<a class="btn" href="#/edv">← ƏDV hesabatları</a><select class="in" id="eil" style="width:auto">${[0, 1, 2].map(i => new Date().getFullYear() - i).map(y => `<option ${y === il ? 'selected' : ''}>${y}</option>`).join('')}</select>`);
+  $('#eil').onchange = e => { location.hash = `#/edv?r=${r}&il=${e.target.value}`; };
+  const [qm, od, gm, be, bh] = await Promise.all([all(() => sb.from('qaimeler').select('istiqamet,tarix,esas,edv,edvsiz').gte('tarix', a).lte('tarix', b).order('id')),
+    all(() => sb.from('v_qaime_odenisleri').select('istiqamet,tarix,mebleg,edv,hesab_id').gte('tarix', a).lte('tarix', b).order('id')),
+    all(() => sb.from('gomruk').select('nov,tarix,edv').gte('tarix', a).lte('tarix', b).order('id')),
+    all(() => sb.from('bank_emeliyyatlari').select('hesab_id,tarix,nov,mebleg').lte('tarix', b).order('id')), bankHesablari()]);
+  const aylar = Array.from({ length: 12 }, (_, i) => `${il}-${String(i + 1).padStart(2, '0')}`);
+  const ay = (l, f) => l.filter(x => String(x.tarix).slice(0, 7) === f), S_ = (l, k) => l.reduce((s, x) => s + num(x[k]), 0);
+  const dep = new Set(bh.filter(h => h.edv_depozit).map(h => h.id));
+  const rows = aylar.map(f => {
+    const g = ay(qm, f).filter(x => x.istiqamet === 'geden'), q_ = ay(qm, f).filter(x => x.istiqamet === 'gelen'), o = ay(od, f).filter(x => x.istiqamet === 'gelen');
+    const hes = S_(g, 'edv'), ev = S_(o, 'edv') + S_(ay(gm, f).filter(x => x.nov === 'idxal'), 'edv');
+    const dm = ay(be, f).filter(x => dep.has(x.hesab_id)), dOd = ay(od, f).filter(x => dep.has(x.hesab_id));
+    const depGir = S_(dm.filter(x => x.nov === 'Mədaxil'), 'mebleg') + S_(dOd.filter(x => x.istiqamet === 'geden'), 'mebleg');
+    const depCix = S_(dm.filter(x => x.nov === 'Məxaric'), 'mebleg') + S_(dOd.filter(x => x.istiqamet === 'gelen'), 'mebleg');
+    return { f, satis: S_(g, 'esas'), alis: S_(q_, 'esas'), alisEdv: S_(q_, 'edv'), hes, ev, net: hes - ev, depGir, depCix };
+  });
+  const C = k => rows.reduce((s, x) => s + x[k], 0);
+  const th = r === 'dovr' ? ['Ay', 'Satış dövriyyəsi', 'Hesablanmış ƏDV', 'Alış dövriyyəsi', 'Alış qaimələrində ƏDV', 'Əvəzləşən ƏDV', 'Büdcəyə (+) / artıq (−)']
+    : ['Ay', 'Hesablanmış ƏDV', 'Əvəzləşən ƏDV', 'Fərq', 'Depozitə daxil olan', 'Depozitdən çıxan'];
+  const sat = x => r === 'dovr' ? [x.satis, x.hes, x.alis, x.alisEdv, x.ev, x.net] : [x.hes, x.ev, x.net, x.depGir, x.depCix];
+  $('#page').innerHTML = `<div class="tbl-wrap"><table class="t"><thead><tr>${th.map((t, i) => `<th class="${i ? 'n' : ''}">${t}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(x => `<tr><td>${ayAdi(x.f + '-01')}</td>${sat(x).map((v, i, arr) => `<td class="n">${i === arr.length - 1 && r === 'dovr' ? `<b class="${v > 0 ? 'neg' : v < 0 ? 'pos' : ''}">${fmt(v, 2)}</b>` : fmt(v, 2)}</td>`).join('')}</tr>`).join('')}</tbody>
+    <tfoot><tr><td>Cəmi ${il}</td>${(r === 'dovr' ? ['satis', 'hes', 'alis', 'alisEdv', 'ev', 'net'] : ['hes', 'ev', 'net', 'depGir', 'depCix']).map(k => `<td class="n">${fmt(C(k), 2)}</td>`).join('')}</tr></tfoot></table></div>
+    ${r === 'uzles' && !dep.size ? '<p class="muted" style="font-size:13px">ƏDV depozit hesabı qeyd olunmayıb: "Bank hesabları"nda hesabı açıb "ƏDV depozit hesabıdır" işarəsini qoyun.</p>' : ''}`;
+}
+async function pageDepozit(params) {
+  const bh = await bankHesablari(), d = bh.find(h => h.edv_depozit);
+  if (!d) { shell('depozit', 'ƏDV depozit', '', canWrite() ? `<button class="btn primary" id="dyeni">${ico('plus')}Depozit hesabı əlavə et</button>` : '');
+    $('#page').innerHTML = '<div class="card empty" style="padding:36px 20px"><div style="font-size:16px;font-weight:600;margin-bottom:6px">ƏDV depozit hesabı qeyd olunmayıb</div><div class="muted">Hesabı əlavə edib "ƏDV depozit hesabıdır" işarəsini qoyun — burada onun çıxarışı və qalığı görünəcək.</div></div>';
+    if ($('#dyeni')) $('#dyeni').onclick = () => bankHesabForm(null); return; }
+  const p = new URLSearchParams(params); p.set('h', String(d.id)); p.set('dep', '1');
+  return pageBank(p);
+}
+
+/* ---------- Hesabatlar ---------- */
+const HESABATLAR = [
+  ['Kontragentlər və üzləşmə', [['uzles', 'Kontragentlərlə üzləşmə (VÖEN üzrə)'], ['akt', 'Kontragentlə üzləşmə aktı'], ['quzles', 'Qaimələr üzrə üzləşmə'], ['debkred', 'Debitor / kreditor borcları'], ['yaslanma', 'Borcların yaşlanması']]],
+  ['Satış və alış', [['dinamika', 'Aylıq dinamika'], ['kxulase', 'Kontragent xülasəsi']]],
+  ['ƏDV', [['#/evez', 'Əvəzləşdiriləcək qaimələr'], ['#/edv?r=dovr', 'ƏDV dövriyyəsi'], ['#/edv?r=uzles', 'ƏDV üzləşməsi (ay-ay)']]],
+  ['Bank, əmək haqqı, nəticə', [['#/bank', 'Bank hərəkəti'], ['#/emek', 'Əmək haqqı cədvəli'], ['#/mz', 'Mənfəət / Zərər']]]];
+async function pageMHesabat(params) {
+  const r = params.get('r') || '';
+  const ad = (HESABATLAR.flatMap(x => x[1]).find(x => x[0] === r) || [])[1];
+  shell('hesab', ad || 'Hesabatlar', ad ? 'Hesabatlar' : 'Bölməyə və ya hesabata basın', '');
+  const sol = `<aside class="hes-sol"><input class="in" id="hax" placeholder="Hesabat axtar…">${HESABATLAR.map(([b, l]) => `<div class="hes-bas">${b}</div>${l.map(([k, t]) => `<a href="${k.startsWith('#') ? k : '#/hesab?r=' + k}" class="${k === r ? 'on' : ''}">${t}</a>`).join('')}`).join('')}</aside>`;
+  if (!r) {
+    $('#page').innerHTML = `<div class="hes-lay">${sol}<div><div class="hes-kartlar">${HESABATLAR.map(([b, l]) => `<div class="hes-kart"><b>${b}</b><span>${l.map(([k, t]) => `<a href="${k.startsWith('#') ? k : '#/hesab?r=' + k}">${t}</a>`).join(' · ')}</span></div>`).join('')}</div></div></div>`;
+    hesAxtar(); return;
+  }
+  const D = dovrPanel(params, '#/hesab');
+  $('#page').innerHTML = `<div class="hes-lay">${sol}<div id="hesic">${D.html}<div class="empty"><div class="spinner" style="margin:auto"></div></div></div></div>`;
+  hesAxtar(); D.bagla();
+  const qm = await all(() => sb.from('v_qaimeler').select('*').order('tarix').order('id'));
+  const icBox = $('#hesic'); if (!icBox) return;
+  const out = html => { icBox.innerHTML = D.html + html; D.bagla(); };
+  const dovrde = x => x.tarix >= D.a && x.tarix <= D.b;
+  const kontr = new Map(); qm.forEach(x => { const k = x.voen || x.kontragent || '—'; if (!kontr.has(k)) kontr.set(k, { voen: x.voen, ad: x.kontragent || x.voen }); });
+  if (r === 'uzles' || r === 'debkred') {
+    const m = new Map();
+    qm.filter(x => x.tarix <= D.b).forEach(x => { const k = x.voen || x.kontragent; const o = m.get(k) || { ...kontr.get(k), gc: 0, go: 0, dc: 0, do_: 0 };
+      if (x.istiqamet === 'gelen') { o.gc += num(x.cem); o.go += num(x.odenilib); } else { o.dc += num(x.cem); o.do_ += num(x.odenilib); } m.set(k, o); });
+    const l = [...m.values()].map(o => ({ ...o, kred: o.gc - o.go, deb: o.dc - o.do_ }));
+    if (r === 'uzles') {
+      const S_ = k => l.reduce((s, x) => s + x[k], 0);
+      return out(`<div class="tbl-wrap"><table class="t"><thead><tr><th>VÖEN</th><th>Kontragent</th><th class="n">Alış (gələn)</th><th class="n">Ödənilib</th><th class="n">Kreditor qalığı</th><th class="n">Satış (gedən)</th><th class="n">Alınıb</th><th class="n">Debitor qalığı</th><th class="n">Saldo</th></tr></thead>
+        <tbody>${l.sort((a, b) => Math.abs(b.deb - b.kred) - Math.abs(a.deb - a.kred)).map(o => `<tr class="click" data-k="${esc(o.voen || o.ad)}"><td class="muted">${esc(o.voen || '')}</td><td>${esc(o.ad || '')}</td><td class="n">${fmt(o.gc, 2)}</td><td class="n">${fmt(o.go, 2)}</td><td class="n"><b class="${o.kred > 0.005 ? 'neg' : ''}">${fmt(o.kred, 2)}</b></td>
+          <td class="n">${fmt(o.dc, 2)}</td><td class="n">${fmt(o.do_, 2)}</td><td class="n"><b>${fmt(o.deb, 2)}</b></td><td class="n">${fmt(o.deb - o.kred, 2)}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td></td><td>${l.length} kontragent</td>${['gc', 'go', 'kred', 'dc', 'do_', 'deb'].map(k => `<td class="n">${fmt(S_(k), 2)}</td>`).join('')}<td class="n">${fmt(S_('deb') - S_('kred'), 2)}</td></tr></tfoot></table></div>
+        <p class="muted" style="font-size:12.5px">${fd(D.b)} tarixinə qalıqlar. Sətrə basanda həmin kontragentlə üzləşmə aktı açılır.</p>`), $$('[data-k]').forEach(tr => tr.onclick = () => { location.hash = `#/hesab?r=akt&k=${encodeURIComponent(tr.dataset.k)}&a=${D.a}&b=${D.b}`; });
+    }
+    const kr = l.filter(o => o.kred > 0.005).sort((a, b) => b.kred - a.kred), db = l.filter(o => o.deb > 0.005).sort((a, b) => b.deb - a.deb);
+    const tb = (t, ll, k) => `<div class="card" style="padding:0"><h3 style="padding:16px 20px 0">${t} — ${man(ll.reduce((s, x) => s + x[k], 0))}</h3><table class="t"><tbody>${ll.map(o => `<tr><td><div class="cell-main">${esc(o.ad || '')}</div><div class="cell-sub">${esc(o.voen || '')}</div></td><td class="n"><b>${fmt(o[k], 2)}</b></td></tr>`).join('') || '<tr><td class="muted">Yoxdur</td></tr>'}</tbody></table></div>`;
+    return out(`<div class="grid two">${tb('Kreditorlar (biz borcluyuq)', kr, 'kred')}${tb('Debitorlar (bizə borcludurlar)', db, 'deb')}</div>`);
+  }
+  if (r === 'akt') {
+    const k = params.get('k') || '';
+    const sec = `<div class="dovr"><span class="muted">Kontragent:</span><select class="in" id="hk" style="min-width:280px"><option value="">— seçin —</option>${[...kontr.entries()].sort((a, b) => String(a[1].ad).localeCompare(String(b[1].ad), 'az')).map(([kk, o]) => `<option value="${esc(kk)}" ${kk === k ? 'selected' : ''}>${esc(o.ad || '')} ${o.voen ? '· ' + esc(o.voen) : ''}</option>`).join('')}</select></div>`;
+    if (!k) { out(sec + '<div class="card empty">Kontragenti seçin</div>'); }
+    else {
+      const ql = qm.filter(x => (x.voen || x.kontragent) === k), ids = new Set(ql.map(x => x.id));
+      const od = (await all(() => sb.from('qaime_odenisleri').select('*').order('tarix'))).filter(x => ids.has(x.qaime_id));
+      const qIst = new Map(ql.map(x => [x.id, x]));
+      // biz baxımından: gələn qaimə = kreditimiz artır (kredit), ona ödəniş = debet; gedən qaimə = debet, alınan ödəniş = kredit
+      const hrk = [...ql.map(x => ({ t: x.tarix, ad: `${x.istiqamet === 'gelen' ? 'Alış qaiməsi' : 'Satış qaiməsi'} ${qaimeNo(x)}`, d: x.istiqamet === 'geden' ? num(x.cem) : 0, c: x.istiqamet === 'gelen' ? num(x.cem) : 0 })),
+        ...od.map(o => { const x = qIst.get(o.qaime_id); return { t: o.tarix, ad: `${x.istiqamet === 'gelen' ? 'Ödəniş' : 'Daxilolma'} (qaimə ${qaimeNo(x)})`, d: x.istiqamet === 'gelen' ? num(o.mebleg) : 0, c: x.istiqamet === 'geden' ? num(o.mebleg) : 0 }; })]
+        .sort((a, b) => a.t < b.t ? -1 : a.t > b.t ? 1 : 0);
+      const ilk = hrk.filter(x => x.t < D.a).reduce((s, x) => s + x.d - x.c, 0), dv = hrk.filter(x => x.t >= D.a && x.t <= D.b);
+      let s = ilk; const A = await ayarlar(), o = kontr.get(k);
+      out(sec + `<div class="card akt-cap"><h3 style="text-align:center;margin:0 0 4px">Qarşılıqlı hesablaşmaların üzləşmə aktı</h3>
+        <div style="text-align:center" class="muted">${fd(D.a)} — ${fd(D.b)}</div>
+        <div class="row2" style="margin:12px 0;font-size:13.5px"><div><b>${esc(A.firma_adi || S.magaza.ad)}</b><br>VÖEN: ${esc(A.firma_voen || '—')}</div><div style="text-align:right"><b>${esc(o.ad || '')}</b><br>VÖEN: ${esc(o.voen || '—')}</div></div>
+        <table class="t"><thead><tr><th>Tarix</th><th>Sənəd</th><th class="n">Debet</th><th class="n">Kredit</th><th class="n">Saldo</th></tr></thead><tbody>
+          <tr><td></td><td><b>Dövrün əvvəlinə saldo</b></td><td class="n"></td><td class="n"></td><td class="n"><b>${fmt(ilk, 2)}</b></td></tr>
+          ${dv.map(x => { s += x.d - x.c; return `<tr><td>${fd(x.t)}</td><td>${esc(x.ad)}</td><td class="n">${x.d ? fmt(x.d, 2) : ''}</td><td class="n">${x.c ? fmt(x.c, 2) : ''}</td><td class="n">${fmt(s, 2)}</td></tr>`; }).join('')}</tbody>
+          <tfoot><tr><td></td><td>Dövr üzrə dövriyyə / son saldo</td><td class="n">${fmt(dv.reduce((a, x) => a + x.d, 0), 2)}</td><td class="n">${fmt(dv.reduce((a, x) => a + x.c, 0), 2)}</td><td class="n sabit">${fmt(s, 2)}</td></tr></tfoot></table>
+        <p style="font-size:13.5px;margin-top:12px">${fd(D.b)} tarixinə ${s > 0.005 ? `<b>${esc(o.ad || '')}</b> tərəfindən <b>${esc(A.firma_adi || S.magaza.ad)}</b>-ə borc: <b>${man(s)}</b>` : s < -0.005 ? `<b>${esc(A.firma_adi || S.magaza.ad)}</b> tərəfindən <b>${esc(o.ad || '')}</b>-ə borc: <b>${man(-s)}</b>` : 'borc yoxdur'}.</p>
+        <div class="row2" style="margin-top:30px;font-size:13px"><div>________________ ${esc(A.direktor || '')}<br><span class="muted">imza, möhür</span></div><div style="text-align:right">________________<br><span class="muted">imza, möhür</span></div></div></div>
+        <div style="margin-top:10px"><button class="btn" onclick="window.print()">${ico('print')}Çap / PDF</button></div>`);
+    }
+    if ($('#hk')) $('#hk').onchange = e => { location.hash = `#/hesab?r=akt&k=${encodeURIComponent(e.target.value)}&a=${D.a}&b=${D.b}`; };
+    return;
+  }
+  if (r === 'quzles') {
+    const l = qm.filter(dovrde);
+    return out(`<div class="tbl-wrap"><table class="t"><thead><tr><th>İstiqamət</th><th>Tarix</th><th>Qaimə</th><th>Kontragent</th><th class="n">Cəm</th><th class="n">Ödənilib</th><th class="n">Qalıq</th><th>Son ödəniş</th><th>Vəziyyət</th><th>e-taxes</th></tr></thead>
+      <tbody>${l.map(x => `<tr><td>${x.istiqamet === 'gelen' ? 'Gələn' : 'Gedən'}</td><td>${fd(x.tarix)}</td><td>${esc(qaimeNo(x))}</td><td>${esc(x.kontragent || '')}</td><td class="n">${fmt(x.cem, 2)}</td><td class="n">${fmt(x.odenilib, 2)}</td><td class="n"><b>${fmt(x.qaliq, 2)}</b></td><td>${fd(x.son_odenis)}</td><td>${odenisBadge(x)}</td><td class="muted">${esc(x.status || '')}</td></tr>`).join('')}</tbody></table></div>`);
+  }
+  if (r === 'yaslanma') {
+    const bu = D.b, gun = t => Math.round((new Date(bu + 'T00:00:00') - new Date(t + 'T00:00:00')) / 864e5);
+    const qr = [[0, 30, '0–30 gün'], [31, 60, '31–60'], [61, 90, '61–90'], [91, 99999, '90+']];
+    const blok = ist => { const m = new Map(); qm.filter(x => x.istiqamet === ist && num(x.qaliq) > 0.005 && x.tarix <= bu).forEach(x => { const k = x.voen || x.kontragent; const o = m.get(k) || { ...kontr.get(k), b: [0, 0, 0, 0], c: 0 };
+        const g = gun(x.tarix), i = qr.findIndex(([a, b]) => g >= a && g <= b); o.b[i] += num(x.qaliq); o.c += num(x.qaliq); m.set(k, o); });
+      const l = [...m.values()].sort((a, b) => b.c - a.c);
+      return `<div class="tbl-wrap" style="margin-bottom:16px"><table class="t"><thead><tr><th>${ist === 'gelen' ? 'Kreditor (təchizatçı)' : 'Debitor (alıcı)'}</th>${qr.map(x => `<th class="n">${x[2]}</th>`).join('')}<th class="n">Cəmi</th></tr></thead>
+        <tbody>${l.map(o => `<tr><td><div class="cell-main">${esc(o.ad || '')}</div><div class="cell-sub">${esc(o.voen || '')}</div></td>${o.b.map((v, i) => `<td class="n ${i === 3 && v > 0 ? 'neg' : ''}">${v ? fmt(v, 2) : ''}</td>`).join('')}<td class="n"><b>${fmt(o.c, 2)}</b></td></tr>`).join('') || '<tr><td class="muted">Yoxdur</td></tr>'}</tbody>
+        <tfoot><tr><td>Cəmi</td>${[0, 1, 2, 3].map(i => `<td class="n">${fmt(l.reduce((s, o) => s + o.b[i], 0), 2)}</td>`).join('')}<td class="n">${fmt(l.reduce((s, o) => s + o.c, 0), 2)}</td></tr></tfoot></table></div>`; };
+    return out(`<h3>Kreditor borcları</h3>${blok('gelen')}<h3>Debitor borcları</h3>${blok('geden')}<p class="muted" style="font-size:12.5px">Gün qaimənin tarixindən ${fd(bu)}-ə qədər hesablanır.</p>`);
+  }
+  if (r === 'dinamika') {
+    const l = qm.filter(dovrde), m = new Map();
+    l.forEach(x => { const f = String(x.tarix).slice(0, 7); const o = m.get(f) || { gn: 0, gc: 0, ge: 0, dn: 0, dc: 0, de: 0 };
+      if (x.istiqamet === 'gelen') { o.gn++; o.gc += num(x.cem); o.ge += num(x.edv); } else { o.dn++; o.dc += num(x.cem); o.de += num(x.edv); } m.set(f, o); });
+    const ay_ = [...m.keys()].sort();
+    return out(`<div class="tbl-wrap"><table class="t"><thead><tr><th>Ay</th><th class="n">Gələn say</th><th class="n">Gələn cəm</th><th class="n">Gələn ƏDV</th><th class="n">Gedən say</th><th class="n">Gedən cəm</th><th class="n">Gedən ƏDV</th><th class="n">Fərq (gedən − gələn)</th></tr></thead>
+      <tbody>${ay_.map(f => { const o = m.get(f); return `<tr><td>${ayAdi(f + '-01')}</td><td class="n">${o.gn}</td><td class="n">${fmt(o.gc, 2)}</td><td class="n">${fmt(o.ge, 2)}</td><td class="n">${o.dn}</td><td class="n">${fmt(o.dc, 2)}</td><td class="n">${fmt(o.de, 2)}</td><td class="n"><b>${fmt(o.dc - o.gc, 2)}</b></td></tr>`; }).join('') || '<tr><td class="muted">Bu dövrdə qaimə yoxdur</td></tr>'}</tbody></table></div>`);
+  }
+  if (r === 'kxulase') {
+    const l = qm.filter(dovrde), m = new Map();
+    l.forEach(x => { const k = x.voen || x.kontragent; const o = m.get(k) || { ...kontr.get(k), gn: 0, gc: 0, dn: 0, dc: 0 }; if (x.istiqamet === 'gelen') { o.gn++; o.gc += num(x.cem); } else { o.dn++; o.dc += num(x.cem); } m.set(k, o); });
+    const ll = [...m.values()].sort((a, b) => (b.gc + b.dc) - (a.gc + a.dc)), cem = ll.reduce((s, o) => s + o.gc + o.dc, 0) || 1;
+    return out(`<div class="tbl-wrap"><table class="t"><thead><tr><th>VÖEN</th><th>Kontragent</th><th class="n">Alış qaiməsi</th><th class="n">Alış cəmi</th><th class="n">Satış qaiməsi</th><th class="n">Satış cəmi</th><th class="n">Payı</th></tr></thead>
+      <tbody>${ll.map(o => `<tr><td class="muted">${esc(o.voen || '')}</td><td>${esc(o.ad || '')}</td><td class="n">${o.gn}</td><td class="n">${fmt(o.gc, 2)}</td><td class="n">${o.dn}</td><td class="n">${fmt(o.dc, 2)}</td><td class="n">${fmt((o.gc + o.dc) / cem * 100, 1)}%</td></tr>`).join('')}</tbody></table></div>`);
+  }
+  out('<div class="card empty">Hesabat tapılmadı</div>');
+}
+function hesAxtar() { const i = $('#hax'); if (i) i.oninput = () => { const t = azLow(i.value); $$('.hes-sol a').forEach(a => { a.style.display = !t || azLow(a.textContent).includes(t) ? '' : 'none'; }); }; }
+
+/* ---------- Xəbərdarlıqlar ---------- */
+async function xeberdarliqlar() {
+  const [qm, akt, isci, eh, bh, A] = await Promise.all([all(() => sb.from('v_qaimeler').select('istiqamet,tarix,qaliq,voen,kontragent').order('id')),
+    all(() => sb.from('alis_aktlari').select('mebleg,odenilib,tarix').order('id')), all(() => sb.from('emekdaslar').select('id,cixis').order('id')),
+    all(() => sb.from('emek_haqqi').select('ay').eq('ay', ayBasi(today())).order('id')), bankHesablari(), ayarlar()]);
+  const X = [], gun = t => Math.round((new Date(today() + 'T00:00:00') - new Date(t + 'T00:00:00')) / 864e5), sum = l => l.reduce((s, x) => s + num(x.qaliq), 0);
+  const k30 = qm.filter(x => x.istiqamet === 'gelen' && num(x.qaliq) > 0.005 && gun(x.tarix) > 30), d30 = qm.filter(x => x.istiqamet === 'geden' && num(x.qaliq) > 0.005 && gun(x.tarix) > 30);
+  if (k30.length) X.push(['xeta', `${k30.length} gələn qaimə 30 gündən çoxdur ödənilməyib`, man(sum(k30)), '#/qaime?ist=gelen']);
+  if (d30.length) X.push(['diqqet', `${d30.length} gedən qaimə üzrə alıcılar 30 gündən çoxdur ödəməyib`, man(sum(d30)), '#/hesab?r=yaslanma']);
+  const vs = qm.filter(x => !x.voen); if (vs.length) X.push(['diqqet', `${vs.length} qaimədə VÖEN yoxdur`, '', '#/qaime']);
+  const aa = akt.filter(x => num(x.mebleg) - num(x.odenilib) > 0.005); if (aa.length) X.push(['diqqet', `${aa.length} alış aktı ödənilməyib`, man(aa.reduce((s, x) => s + num(x.mebleg) - num(x.odenilib), 0)), '#/akt']);
+  const aktivIsci = isci.filter(x => !x.cixis || x.cixis >= ayBasi(today()));
+  if (aktivIsci.length && !eh.length) X.push(['diqqet', `${ayAdi(today())} üçün əmək haqqı hesablanmayıb`, `${aktivIsci.length} əməkdaş`, '#/emek']);
+  const gnu = new Date().getDate(); if (gnu <= 20) X.push(['melumat', `${ayAdi(kecenAy())} üçün ƏDV bəyannaməsi və əvəzləşmə faylı — son gün ayın 20-si`, `${20 - gnu} gün qalıb`, '#/evez']);
+  if (!bh.some(h => h.edv_depozit)) X.push(['melumat', 'ƏDV depozit hesabı qeyd olunmayıb', '', '#/depozit']);
+  if (!bh.length) X.push(['melumat', 'Bank hesabı əlavə olunmayıb', '', '#/bank']);
+  if (!A.firma_voen) X.push(['diqqet', 'Şirkətin VÖEN-i və rekvizitləri doldurulmayıb', '', '#/ayarlar']);
+  if (S.qalan <= 7) X.push([S.qalan < 0 ? 'xeta' : 'diqqet', S.qalan < 0 ? 'Abunə müddəti bitib' : `Abunənin bitməsinə ${S.qalan} gün qalıb`, fd(S.magaza.abune_bitir), '#/ayarlar']);
+  return X;
+}
+const xeberSiyahi = X => X.length ? `<div class="xeber">${X.map(([n, t, v, h]) => `<a href="${h}" class="xb ${n}"><i></i><span>${esc(t)}</span><b>${esc(v)}</b></a>`).join('')}</div>` : '<div class="empty muted" style="padding:20px">Xəbərdarlıq yoxdur 👍</div>';
+async function pageXeber() {
+  shell('xeber', 'Xəbərdarlıqlar', '', '');
+  const X = await xeberdarliqlar();
+  $('.topbar .sub').textContent = X.length ? `${X.length} xəbərdarlıq` : '';
+  $('#page').innerHTML = `<div class="card" style="padding:0">${xeberSiyahi(X)}</div>`;
+}
+
+/* ---------- Mühasibat firmasının Excel ehtiyat nüsxəsi ---------- */
+async function muhExcel() {
+  const [qm, od, gm, bh, be, ek, eh, ak, ko] = await Promise.all(['v_qaimeler', 'v_qaime_odenisleri', 'gomruk', 'bank_hesablari', 'bank_emeliyyatlari', 'emekdaslar', 'emek_haqqi', 'alis_aktlari', 'kontragentler']
+    .map(t => all(() => sb.from(t).select('*').order('id'))));
+  const sh = (ad, l, cols) => ({ ad, rows: [cols.map(c => c[1]), ...l.map(x => cols.map(c => x[c[0]] == null ? '' : x[c[0]]))] });
+  xlsxEndir(`${firmaAdi()} ${today()}`, [
+    sh('Qaimələr', qm, [['istiqamet', 'İstiqamət'], ['tarix', 'Tarix'], ['seriya', 'Seriya'], ['nomre', 'Nömrə'], ['voen', 'VÖEN'], ['kontragent', 'Kontragent'], ['esas', 'Əsas'], ['edv', 'ƏDV'], ['edvsiz', 'ƏDV-siz'], ['cem', 'Cəm'], ['odenilib', 'Ödənilib'], ['qaliq', 'Qalıq'], ['status', 'Status']]),
+    sh('Ödənişlər', od, [['tarix', 'Tarix'], ['istiqamet', 'İstiqamət'], ['voen', 'VÖEN'], ['kontragent', 'Kontragent'], ['seriya', 'Seriya'], ['nomre', 'Nömrə'], ['mebleg', 'Məbləğ'], ['edv', 'ƏDV'], ['qeyd', 'Qeyd']]),
+    sh('Gömrük', gm, [['nov', 'Növ'], ['tarix', 'Tarix'], ['beyanname', 'Bəyannamə'], ['terefdas', 'Tərəfdaş'], ['olke', 'Ölkə'], ['valyuta', 'Valyuta'], ['mebleg_valyuta', 'Valyuta ilə'], ['mezenne', 'Məzənnə'], ['gomruk_deyeri', 'Gömrük dəyəri'], ['rusum', 'Rüsum'], ['edv', 'ƏDV'], ['diger', 'Digər']]),
+    sh('Bank hesabları', bh, [['bank', 'Bank'], ['hesab_no', 'Hesab'], ['valyuta', 'Valyuta'], ['ilkin_qaliq', 'İlkin qalıq'], ['edv_depozit', 'ƏDV depozit']]),
+    sh('Bank əməliyyatları', be, [['tarix', 'Tarix'], ['nov', 'Növ'], ['mebleg', 'Məbləğ'], ['kateqoriya', 'Kateqoriya'], ['voen', 'VÖEN'], ['kontragent', 'Kontragent'], ['teyinat', 'Təyinat']]),
+    sh('Əməkdaşlar', ek, [['ad', 'Ad'], ['fin', 'FİN'], ['vezife', 'Vəzifə'], ['maas', 'Maaş'], ['ise_qebul', 'İşə qəbul'], ['cixis', 'Çıxış']]),
+    sh('Əmək haqqı', eh, [['ay', 'Ay'], ['emekdas_id', 'Əməkdaş №'], ['hesablanan', 'Hesablanan'], ['gelir_vergisi', 'Gəlir vergisi'], ['dsmf_isci', 'DSMF işçi'], ['issizlik_isci', 'İşsizlik işçi'], ['tibbi_isci', 'Tibbi işçi'], ['dsmf_isveren', 'DSMF işəgötürən'], ['issizlik_isveren', 'İşsizlik işəgötürən'], ['tibbi_isveren', 'Tibbi işəgötürən']]),
+    sh('Alış aktları', ak, [['tarix', 'Tarix'], ['seriya', 'Seriya'], ['nomre', 'Nömrə'], ['satici', 'Satıcı'], ['fin', 'FİN'], ['mal', 'Mal'], ['mebleg', 'Məbləğ'], ['odenilib', 'Ödənilib']]),
+    sh('Kontragentlər', ko, [['voen', 'VÖEN'], ['ad', 'Ad'], ['unvan', 'Ünvan'], ['telefon', 'Telefon'], ['hesab', 'Hesab']])]);
 }
 
 /* =====================================================================
@@ -3264,17 +3666,20 @@ async function pageAyarlar() {
   const yaz = S.rol === 'muhasib';
   const rolAd = { muhasib: 'Mühasib (yazır)', sahibkar: 'Sahibkar (yalnız baxır)', kuryer: 'Kuryer (yalnız pul yığır)', bloklu: 'Bloklanıb' };
   $('#page').innerHTML = `
-    <div class="card" style="margin-bottom:16px"><h3>Dükan və abunə</h3>
+    <div class="card" style="margin-bottom:16px"><h3>${muhFirma() ? 'Firma və abunə' : 'Dükan və abunə'}</h3>
       <div class="grid two" style="gap:16px;align-items:end">
-        <form id="mgf" class="row3" style="margin:0"><div class="field" style="margin:0"><label class="f">Dükanın adı</label><input class="in" name="ad" value="${esc(S.magaza.ad)}" ${yaz ? '' : 'disabled'} required></div>
+        <form id="mgf" class="row3" style="margin:0"><div class="field" style="margin:0"><label class="f">${muhFirma() ? 'Firmanın adı' : 'Dükanın adı'}</label><input class="in" name="ad" value="${esc(S.magaza.ad)}" ${yaz ? '' : 'disabled'} required></div>
           <div class="field" style="margin:0"><label class="f">Sahə</label><select class="in" name="sahe" ${yaz ? '' : 'disabled'}>${saheOpt(S.magaza.sahe || 'mebel')}</select></div>
           <div class="field" style="margin:0"><label class="f">Telefon</label><div style="display:flex;gap:8px"><input class="in" name="tel" value="${esc(S.magaza.telefon || '')}" ${yaz ? '' : 'disabled'}>${yaz ? '<button class="btn">Saxla</button>' : ''}</div></div></form>
         <div class="info" style="margin:0"><div><span>Abunə bitir</span><b class="${S.aktiv ? '' : 'neg'}">${fd(S.magaza.abune_bitir)}</b></div>
           <div><span>Vəziyyət</span><b>${S.magaza.dayandirilib ? '<span class="neg">Dayandırılıb</span>' : S.aktiv ? `<span class="pos">Aktiv</span> · ${S.qalan} gün` : '<span class="neg">Bitib</span>'}</b></div></div></div>
       ${S.sistem.elaqe_telefon || S.sistem.elaqe_whatsapp ? `<p class="muted" style="font-size:13px;margin:12px 0 0">Abunəni uzatmaq üçün: ${esc(S.sistem.elaqe_telefon || '')}${S.sistem.elaqe_whatsapp ? ` · <a href="https://wa.me/${S.sistem.elaqe_whatsapp.replace(/\D/g, '')}" target="_blank">WhatsApp</a>` : ''}${S.sistem.qiymet ? ' · ' + esc(S.sistem.qiymet) : ''}</p>` : ''}</div>
     <div class="grid two">
-      <div class="card"><h3>Firma məlumatları</h3><p class="muted" style="margin-top:-6px;font-size:13px">Müqavilə və qəbzlərdə çıxır.</p>
-        <form id="ff">
+      <div class="card"><h3>${muhFirma() ? 'Rekvizitlər' : 'Firma məlumatları'}</h3><p class="muted" style="margin-top:-6px;font-size:13px">${muhFirma() ? 'Şirkət kartında və üzləşmə aktlarında çıxır.' : 'Müqavilə və qəbzlərdə çıxır.'}</p>
+        ${muhFirma() ? `<form id="rf">${REKVIZIT.map(([k, t]) => `<div class="field"><label class="f">${t}</label>${k === 'edv_payer' ? `<select class="in" name="${k}" ${w ? '' : 'disabled'}>${['', 'Bəli', 'Xeyr'].map(o => `<option ${(A[k] || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`
+          : k === 'vergi_rejimi' ? `<select class="in" name="${k}" ${w ? '' : 'disabled'}>${['', 'Mənfəət vergisi + ƏDV', 'Mənfəət vergisi', 'Sadələşdirilmiş vergi', 'Fərdi sahibkar (gəlir vergisi)'].map(o => `<option ${(A[k] || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`
+          : `<input class="in" name="${k}" value="${esc(A[k] || (k === 'firma_adi' ? S.magaza.ad : ''))}" ${w ? '' : 'disabled'}>`}</div>`).join('')}${w ? '<button class="btn primary">Yadda saxla</button>' : ''}</form></div>` : ''}
+        <form id="ff" ${muhFirma() ? 'style="display:none"' : ''}>
           <div class="field"><label class="f">Firmanın adı</label><input class="in" name="firma_adi" value="${esc(A.firma_adi || firmaAdi())}" ${w ? '' : 'disabled'}></div>
           <div class="field"><label class="f">Ünvan</label><input class="in" name="firma_unvan" value="${esc(A.firma_unvan || '')}" ${w ? '' : 'disabled'}></div>
           <div class="row2"><div class="field"><label class="f">Telefon</label><input class="in" name="firma_telefon" value="${esc(A.firma_telefon || '')}" ${w ? '' : 'disabled'}></div>
@@ -3288,9 +3693,9 @@ async function pageAyarlar() {
           <div class="field"><label class="f">Müqavilənin şərtləri</label><textarea class="in" name="muqavile_sertleri" rows="4" ${w ? '' : 'disabled'}>${esc(A.muqavile_sertleri || '')}</textarea></div>
           ${w ? '<button class="btn primary">Yadda saxla</button>' : ''}</form></div>
       <div>
-        <div class="card"><h3>Ehtiyat nüsxə</h3><p class="muted" style="margin-top:-6px;font-size:13px">Bütün məlumatları (müştərilər, satışlar, ödənişlər, xərclər, işçilər, kassa, sifarişlər) bir Excel faylına yükləyir.</p>
+        <div class="card"><h3>Ehtiyat nüsxə</h3><p class="muted" style="margin-top:-6px;font-size:13px">${muhFirma() ? 'Bütün məlumatları (qaimələr, ödənişlər, gömrük, bank, əmək haqqı, aktlar, kontragentlər) bir Excel faylına yükləyir.' : 'Bütün məlumatları (müştərilər, satışlar, ödənişlər, xərclər, işçilər, kassa, sifarişlər) bir Excel faylına yükləyir.'}</p>
           <button class="btn green" id="xls">Excel-ə yüklə</button> <span class="muted" id="xlsinfo"></span></div>
-        ${yaz ? '<div class="card" style="margin-top:16px" id="tg"><h3>Telegram xülasəsi</h3><div class="muted">Yüklənir…</div></div>' : ''}
+        ${yaz && !muhFirma() ? '<div class="card" style="margin-top:16px" id="tg"><h3>Telegram xülasəsi</h3><div class="muted">Yüklənir…</div></div>' : ''}
         <div class="card" style="margin-top:16px;padding:0"><h3 style="padding:18px 20px 0">İstifadəçilər</h3>
           <table class="t"><tbody>${ist.map(i => `<tr><td><div class="cell-main">${esc(i.ad || i.email || '')}</div><div class="cell-sub">${esc(i.email || '')}${i.user_id === S.user.id ? ' · siz' : ''}</div></td>
             <td style="width:200px">${yaz && i.user_id !== S.user.id ? `<select class="in" data-u="${i.user_id}">${Object.entries(rolAd).map(([k, v]) => `<option value="${k}" ${i.rol === k ? 'selected' : ''}>${v}</option>`).join('')}</select>` : `<span class="badge ${i.rol === 'muhasib' ? 'b-blue' : i.rol === 'bloklu' ? 'b-red' : 'b-gray'}">${rolAd[i.rol] || i.rol}</span>`}</td></tr>`).join('')}</tbody></table>
@@ -3316,7 +3721,11 @@ async function pageAyarlar() {
   $$('[data-u]').forEach(sel => sel.onchange = async () => {
     try { await q(sb.from('uzvler').update({ rol: sel.value }).eq('user_id', sel.dataset.u).eq('magaza_id', S.magaza.id)); toast('Hüquq dəyişdirildi'); } catch (er) { fail(er); }
   });
-  $('#xls').onclick = () => excelIxrac().catch(fail);
+  $('#xls').onclick = () => (muhFirma() ? muhExcel() : excelIxrac()).catch(fail);
+  if ($('#rf')) $('#rf').onsubmit = async e => {
+    e.preventDefault(); const f = e.target;
+    try { for (const [k] of REKVIZIT) await ayarYaz(A, k, f[k].value.trim()); S.cache = {}; toast('Rekvizitlər yadda saxlanıldı'); } catch (er) { fail(er); }
+  };
   if ($('#kodkop')) $('#kodkop').onclick = () => { navigator.clipboard && navigator.clipboard.writeText($('#kod').textContent); toast('Kod kopyalandı'); };
   if ($('#kodyen')) $('#kodyen').onclick = async () => {
     if (!confirm('Köhnə kod işləməyəcək. Yeni kod yaradılsın?')) return;
@@ -3332,7 +3741,7 @@ async function pageAyarlar() {
     try { await q(sb.from('magazalar').update({ ad: f.ad.value.trim(), telefon: f.tel.value.trim() || null, sahe: f.sahe.value }).eq('id', S.magaza.id));
       S.magaza.ad = f.ad.value.trim(); S.magaza.sahe = f.sahe.value; S.firmalar.forEach(x => { if (x.id === S.magaza.id) x.ad = S.magaza.ad; }); S.magaza.telefon = f.tel.value.trim(); toast('Yadda saxlanıldı'); route(); } catch (er) { fail(er); }
   };
-  if (yaz) telegramKart().catch(er => { $('#tg').innerHTML = '<h3>Telegram xülasəsi</h3><div class="muted">Hələ qurulmayıb (bazada 6_telegram.sql işlədilməlidir).</div>'; console.warn(er); });
+  if (yaz && !muhFirma()) telegramKart().catch(er => { $('#tg').innerHTML = '<h3>Telegram xülasəsi</h3><div class="muted">Hələ qurulmayıb (bazada 6_telegram.sql işlədilməlidir).</div>'; console.warn(er); });
 }
 
 /* ---------- Telegram gündəlik xülasə ---------- */
@@ -4091,7 +4500,7 @@ function tabloFiltr(tb) {
   const foot = tb.tFoot && tb.tFoot.rows[0] ? tb.tFoot.rows[0] : null;
   const fCell = [];
   if (foot) { let k = 0; Array.from(foot.cells).forEach(c => { if (c.colSpan === 1) fCell[k] = c; k += c.colSpan; }); }
-  const cemSut = foot ? ths.map((th, i) => !!fCell[i] && i > 0 && fCell[i].classList.contains('n') && ededle(xanaMetni(fCell[i])) != null
+  const cemSut = foot ? ths.map((th, i) => !!fCell[i] && i > 0 && fCell[i].classList.contains('n') && !fCell[i].classList.contains('sabit') && ededle(xanaMetni(fCell[i])) != null
     && rows().every(r => !xanaMetni(r.cells[i]) || ededle(xanaMetni(r.cells[i])) != null)) : [];
   const ilkFoot = foot ? foot.cells[0].innerHTML : '';
   let host = tb.closest('.tbl-wrap') || tb;

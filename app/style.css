@@ -517,3 +517,76 @@ select.qsel{display:block;margin-top:4px;padding:3px 6px;font-size:12px;height:a
 .firma-ov{position:fixed;inset:0;z-index:90;background:rgba(40,28,20,.35);display:flex;align-items:center;justify-content:center}
 .firma-ov>div{background:#fffdf9;border-radius:14px;padding:18px 24px;display:flex;align-items:center;gap:12px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.2)}
 .firma-ov .spinner{width:22px;height:22px;margin:0}
+
+/* =================== MÜHASİBAT REJİMİ (göy tema) =================== */
+body.muh{--ink:#14233a;--ink2:#3e4f66;--muted:#6f7f95;--line:#dde4ee;--bg:#eef2f7;--card:#fff;--brand:#0f2c56;--brand2:#163d73;--oak:#1660d6;--oak2:#0f4fb8;--sand:#e6ecf5;
+  --blue:#1660d6;--green:#1f8a5a;--red:#c43c3c;--amber:#b7791f;--serif:"Inter","Segoe UI",sans-serif;--shadow:0 1px 2px rgba(15,44,86,.06),0 2px 8px rgba(15,44,86,.05)}
+body.muh a{color:#1660d6}
+body.muh .side{background:#0f2c56;background-image:none}
+body.muh .side .logo span{color:#fff}
+body.muh .side .logo small{color:#9fb6d8}
+body.muh .logo-ico{color:#5aa2ff}
+body.muh .side nav a{color:#d7e3f4}
+body.muh .side nav a:hover{background:rgba(255,255,255,.07)}
+body.muh .side nav a.active{background:#173f78;color:#fff;box-shadow:inset 3px 0 0 #5aa2ff}
+body.muh .side nav .sec{color:#8fa8cc}
+body.muh .side .who{color:#b9cbe4}body.muh .side .who b{color:#fff}
+body.muh .side .who button{border-color:rgba(255,255,255,.3);color:#e3ecf8}
+body.muh .btn.primary{background:#1660d6;border-color:#1660d6;box-shadow:none}
+body.muh .btn.primary:hover{background:#0f4fb8}
+body.muh .btn:hover{border-color:#b9c8dc}
+body.muh input.in,body.muh select.in,body.muh textarea.in{border-color:#cfd9e6;background:#fff}
+body.muh input.in:focus,body.muh select.in:focus{border-color:#1660d6;box-shadow:0 0 0 3px rgba(22,96,214,.15)}
+body.muh table.t th{background:#f3f6fb}
+body.muh table.t tfoot td{background:#f3f6fb}
+body.muh table.t tr.click:hover td{background:#f2f7ff}
+body.muh .kpi::before{background:linear-gradient(180deg,#1660d6,#5aa2ff)}
+body.muh .kpi .val{font-weight:700}
+body.muh .chip{background:#e8f0fd;color:#0f4fb8}
+body.muh .info div{background:#f3f6fb}
+body.muh .b-gray{background:#edf1f6;color:#55657c}body.muh .b-blue{background:#e3eefd;color:#1b55b3}
+body.muh .overlay{background:rgba(15,30,55,.45)}
+body.muh .modal{background:#fff}
+body.muh #toast{background:#0f2c56}
+body.muh .mobile-bar{background:#0f2c56}
+body.muh .spinner{border-top-color:#1660d6}
+body.muh .seg button.on{color:#0f2c56}
+body.muh .topbar h2{font-weight:700}
+.mtop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin:-8px 0 10px}
+.mtop-sirket{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.mtop-sirket select{font:inherit;font-size:14.5px;font-weight:600;color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:6px 10px;background:#fff;max-width:280px}
+.mpill{font-size:12.5px;padding:4px 10px;border-radius:999px;background:#f0f3f8;color:var(--ink2);white-space:nowrap}
+.mpill.ok{background:#e5f4ec;color:#1f7a4f;font-weight:600}.mpill.xeta{background:#fbe7e7;color:#a83232;font-weight:600}
+.mtabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:14px;padding-bottom:0}
+.mtabs a{display:flex;align-items:center;gap:8px;white-space:nowrap;padding:8px 12px;border:1px solid transparent;border-bottom:0;border-radius:10px 10px 0 0;color:var(--ink2);text-decoration:none;font-size:13.5px;font-weight:500}
+.mtabs a:hover{background:#fff}
+.mtabs a.on{background:#fff;border-color:var(--line);color:var(--ink);font-weight:600;box-shadow:inset 0 2px 0 #1660d6;margin-bottom:-1px}
+.mtabs a i{font-style:normal;color:var(--muted);font-size:15px;line-height:1;padding:0 2px;border-radius:4px}
+.mtabs a i:hover{background:#e6ecf5;color:var(--red)}
+.dovr{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.dovr .in{width:auto;padding:6px 9px}
+.hes-link{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:12px;font-size:13px}
+.hes-link .chip{text-decoration:none;font-size:12.5px}
+.hes-kartlar{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.hes-kart{display:flex;flex-direction:column;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;text-decoration:none;color:var(--ink);box-shadow:var(--shadow)}
+a.hes-kart:hover{border-color:#1660d6}
+.hes-kart b{font-size:15px}.hes-kart span{font-size:13px;color:var(--muted);line-height:1.5}
+.hes-kart span a{text-decoration:none}
+.hes-lay{display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start}
+.hes-sol{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;position:sticky;top:12px;max-height:calc(100vh - 40px);overflow:auto}
+.hes-sol .in{margin-bottom:8px}
+.hes-bas{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin:12px 6px 4px}
+.hes-sol a{display:block;padding:7px 8px;border-radius:8px;text-decoration:none;color:var(--ink);font-size:13.5px}
+.hes-sol a:hover{background:#f2f6fc}.hes-sol a.on{background:#e8f0fd;color:#0f4fb8;font-weight:600}
+@media (max-width:900px){.hes-lay{grid-template-columns:1fr}.hes-sol{position:static;max-height:none}}
+.xeber{display:flex;flex-direction:column}
+.xb{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
+.xb:last-child{border-bottom:0}.xb:hover{background:#f6f9fd}
+.xb i{width:10px;height:10px;border-radius:50%;background:#6f7f95;flex-shrink:0}
+.xb.xeta i{background:#c43c3c}.xb.diqqet i{background:#d9a21b}.xb.melumat i{background:#1660d6}
+.xb span{flex:1}.xb b{white-space:nowrap}
+.akt-cap{max-width:900px}
+@media print{ .mtop,.mtabs,.dovr,.hes-sol,.hes-link{display:none!important} .hes-lay{display:block} }
+#rf{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+#rf>button{grid-column:1/-1;justify-self:start}
+@media (max-width:760px){#rf{grid-template-columns:1fr}}
