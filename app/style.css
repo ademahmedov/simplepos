@@ -514,3 +514,6 @@ select.qsel{display:block;margin-top:4px;padding:3px 6px;font-size:12px;height:a
 .bank-kart b{font-family:var(--serif);font-size:22px}
 .bank-kart span{font-size:12.5px}
 .info small{display:block;font-size:12px;margin-top:2px}
+.firma-ov{position:fixed;inset:0;z-index:90;background:rgba(40,28,20,.35);display:flex;align-items:center;justify-content:center}
+.firma-ov>div{background:#fffdf9;border-radius:14px;padding:18px 24px;display:flex;align-items:center;gap:12px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.firma-ov .spinner{width:22px;height:22px;margin:0}

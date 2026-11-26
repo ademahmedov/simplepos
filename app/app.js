@@ -248,35 +248,40 @@ function loginView(msg, rejim) {
 }
 
 async function start() {
-  await sistemOxu();
+  if (!S.sistem || !Object.keys(S.sistem).length) await sistemOxu();
   const { data } = await sb.auth.getSession();
   const ses = data && data.session;
   if (!ses) return loginView('', /^#(qeyd|muhasib)$/.test(location.hash) ? 'qeyd' : 'giris');
   S.user = ses.user; S.cache = {};
   if (/^#(qeyd|muhasib)$/.test(location.hash)) location.hash = '';
   try {
-    const [uz, adm, pr] = await Promise.all([
+    // hamısı paralel: açıq dükanı RLS özü verir (magazalar yalnız açıq dükanı göstərir)
+    const [uz, adm, pr, fl, mg] = await Promise.all([
       q(sb.from('uzvler').select('rol,ad,magaza_id,secili,yaradildi').eq('user_id', S.user.id)),
       q(sb.from('adminler').select('user_id').eq('user_id', S.user.id).maybeSingle()),
       q(sb.from('profiller').select('*').eq('user_id', S.user.id).maybeSingle()).catch(() => null),
+      q(sb.rpc('uzvluklerim')).catch(() => []),
+      q(sb.from('magazalar').select('*')).catch(() => []),
     ]);
     S.admin = !!adm; S.profil = pr; S.muhasibHesab = !!(pr && pr.nov === 'muhasib');
     const aktivUz = uz.filter(x => x.rol !== 'bloklu').sort((a, b) => (b.secili - a.secili) || String(a.yaradildi).localeCompare(String(b.yaradildi)) || a.magaza_id - b.magaza_id);
     if (!aktivUz.length && uz.length && !S.admin && !S.muhasibHesab) { await sb.auth.signOut(); return loginView('Bu hesab bloklanıb. Dükanınızın mühasibinə müraciət edin.'); }
     S.coxFirma = S.muhasibHesab || aktivUz.length > 1;
-    S.firmalar = S.coxFirma ? await q(sb.rpc('uzvluklerim')).catch(() => []) : [];
+    S.firmalar = S.coxFirma ? fl : [];
     const me = aktivUz[0];
     if (me) {
       S.rol = me.rol; S.ad = me.ad || S.user.email;
-      S.magaza = await q(sb.from('magazalar').select('*').eq('id', me.magaza_id).single());
+      S.magaza = mg.find(x => x.id === me.magaza_id) || await q(sb.from('magazalar').select('*').eq('id', me.magaza_id).single());
       S.qalan = gunFerqi(S.magaza.abune_bitir);
       S.aktiv = !S.magaza.dayandirilib && S.qalan >= 0;
     } else { S.rol = null; S.magaza = null; S.aktiv = false; S.ad = (pr && pr.ad) || S.user.email; }
   } catch (e) { return loginView('Baza ilə əlaqə alınmadı: ' + e.message); }
   document.title = firmaAdi() + ' · ' + CFG.FIRMA_ADI;
-  if (!S.magaza) location.hash = S.admin && !S.muhasibHesab ? '#/admin' : '#/firmalar';
-  else if (S.rol === 'kuryer') location.hash = '#/yigim';
-  else if (!location.hash || /access_token|type=/.test(location.hash)) location.hash = window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/mpanel' : '#/panel');
+  // ünvanı hashchange-siz dəyiş, səhifə yalnız bir dəfə çəkilsin (iki dəfə çəkiləndə xəta çıxırdı)
+  const get = h => { if (location.hash !== h) history.replaceState(null, '', h); };
+  if (!S.magaza) get(S.admin && !S.muhasibHesab ? '#/admin' : '#/firmalar');
+  else if (S.rol === 'kuryer') get('#/yigim');
+  else if (!location.hash || /access_token|type=/.test(location.hash)) get(window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/mpanel' : '#/panel'));
   route();
   if (S.profil && !S.profil.meqsed && (S.rol === 'muhasib' || (!S.magaza && !S.admin))) setTimeout(meqsedModal, 600);
 }
@@ -368,8 +373,12 @@ window.addEventListener('hashchange', route);
    ===================================================================== */
 async function firmaSec(id) {
   if (S.magaza && S.magaza.id === id) { location.hash = window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/mpanel' : '#/panel'); return; }
-  try { await q(sb.rpc('magaza_sec', { m: id })); } catch (er) { return fail(er); }
-  S.cache = {}; YOL.length = 0; history.replaceState(null, '', SAYT()); await start();
+  if (S.deyisir) return; S.deyisir = true;
+  const ad = (S.firmalar.find(x => x.id === id) || {}).ad || '';
+  const ov = document.createElement('div'); ov.className = 'firma-ov'; ov.innerHTML = `<div><div class="spinner"></div>${esc(ad)} açılır…</div>`; document.body.appendChild(ov);
+  try { await q(sb.rpc('magaza_sec', { m: id })); S.cache = {}; S.pos = null; YOL.length = 0; history.replaceState(null, '', SAYT()); await start(); }
+  catch (er) { fail(er); }
+  finally { S.deyisir = false; ov.remove(); }
 }
 async function pageFirmalar() {
   const bas = S.muhasibHesab ? 'Firmalarım' : 'Dükanlarım';
