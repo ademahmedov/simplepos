@@ -3322,6 +3322,11 @@ async function pageAyarlar() {
     if (!confirm('Köhnə kod işləməyəcək. Yeni kod yaradılsın?')) return;
     try { const k = await q(sb.rpc('devet_yenile')); S.magaza.devet_kodu = k; $('#kod').textContent = k; toast('Yeni kod: ' + k); } catch (er) { fail(er); }
   };
+  if ($('#mgf') && $('#mgf').sahe) $('#mgf').sahe.onchange = e => {
+    const ad = saheAd(e.target.value);
+    if (confirm(`Sahə "${ad}" olaraq dəyişdirilsin?${e.target.value === 'muhasibat' ? ' Menyuda qaimə, ƏDV və əmək haqqı bölmələri açılacaq.' : ''}`)) $('#mgf').requestSubmit();
+    else e.target.value = S.magaza.sahe || 'mebel';
+  };
   if ($('#mgf')) $('#mgf').onsubmit = async e => {
     e.preventDefault(); const f = e.target;
     try { await q(sb.from('magazalar').update({ ad: f.ad.value.trim(), telefon: f.tel.value.trim() || null, sahe: f.sahe.value }).eq('id', S.magaza.id));
