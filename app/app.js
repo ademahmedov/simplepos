@@ -86,6 +86,10 @@ const LOGO = `<svg class="logo-ico" viewBox="0 0 48 48" fill="none" stroke="curr
 // Dükanın sahəsi: nümunə yazılar ona uyğun dəyişir
 const SAHELER = [['mebel', 'Mebel'], ['elektronika', 'Elektronika və məişət texnikası'], ['telefon', 'Telefon və aksesuar'], ['geyim', 'Geyim və ayaqqabı'],
   ['tikinti', 'Tikinti materialları'], ['xalca', 'Xalça və ev tekstili'], ['zinet', 'Zərgərlik'], ['market', 'Market və ərzaq'], ['diger', 'Digər']];
+const MEQSEDLER = [['muhasib', 'Mühasibatlıq', 'Bir neçə firmanın uçotu', '📒'], ['mebel', 'Mebel', 'Mebel satışı', '🛋️'], ['elektronika', 'Elektronika', 'Məişət texnikası', '📺'],
+  ['telefon', 'Telefon', 'Telefon və aksesuar', '📱'], ['geyim', 'Geyim', 'Geyim və ayaqqabı', '👕'], ['tikinti', 'Tikinti', 'Tikinti materialları', '🧱'],
+  ['xalca', 'Xalça', 'Xalça və ev tekstili', '🧶'], ['zinet', 'Zərgərlik', 'Qızıl və zinət', '💍'], ['market', 'Market', 'Market və ərzaq', '🛒'], ['diger', 'Digər', 'Başqa satış sahəsi', '🏪']];
+const meqsedKafel = () => `<div class="mqs">${MEQSEDLER.map(([k, t, a, e]) => `<button type="button" class="mq" data-mq="${k}"><span class="mq-e">${e}</span><b>${t}</b><small>${a}</small></button>`).join('')}</div>`;
 const saheAd = k => (SAHELER.find(x => x[0] === k) || SAHELER[SAHELER.length - 1])[1];
 const saheOpt = sec => SAHELER.map(([k, t]) => `<option value="${k}" ${k === sec ? 'selected' : ''}>${t}</option>`).join('');
 const NUMUNE = {
@@ -149,11 +153,13 @@ function loginView(msg, rejim) {
     <div class="field"><label class="f">Təkrar</label><input class="in" type="password" name="p2" minlength="6" autocomplete="new-password" required></div>
     <button class="btn primary" style="width:100%;justify-content:center;padding:11px">Şifrəni yadda saxla</button>`;
   else form = `
-    <div class="seg" style="display:flex;margin-bottom:12px" id="nv">
-      <button type="button" data-nv="yeni" class="on" style="flex:1">Dükanım var</button><button type="button" data-nv="muh" style="flex:1">Mühasibəm</button><button type="button" data-nv="kod" style="flex:1">Dəvət kodu</button></div>
+    <div id="addim1"><div class="mq-bas">Proqramdan nə üçün istifadə edəcəksiniz?</div>${meqsedKafel()}
+      <div style="text-align:center;margin-top:12px"><a href="#" id="kodlink" style="font-size:13px">Dükanda işləyirəm, dəvət kodum var →</a></div></div>
+    <div id="addim2" style="display:none">
+    <div class="mq-sec" id="mqsec"></div>
+    <input type="hidden" name="sahe" value="mebel">
     <div id="yenidukan">
-      <div class="field"><label class="f">Dükanın adı</label><input class="in" name="mg" placeholder="məs. Ulduz Mebel"></div>
-      <div class="field"><label class="f">Sahə</label><select class="in" name="sahe">${saheOpt('mebel')}</select></div></div>
+      <div class="field"><label class="f">Dükanın adı</label><input class="in" name="mg" placeholder="məs. Ulduz Mebel"></div></div>
     <div id="muhinfo" class="muted" style="display:none;font-size:13px;background:#faf4ea;border-radius:10px;padding:10px 12px;margin-bottom:12px">Bir hesabla bir neçə firmanın uçotunu aparacaqsınız. Qeydiyyatdan sonra firmalarınızı əlavə edin — hər yeni firma ${esc(sinaq)} gün pulsuz işləyir.</div>
     <div class="field" id="telsah"><label class="f">Telefon</label><input class="in" name="tel" type="tel" placeholder="050 000 00 00"></div>
     <div id="kodlu" style="display:none">
@@ -163,7 +169,7 @@ function loginView(msg, rejim) {
     <div class="field"><label class="f">E-poçt</label><input class="in" type="email" name="e" autocomplete="username" required></div>
     <div class="field"><label class="f">Şifrə (ən azı 6 simvol)</label><input class="in" type="password" name="p" minlength="6" autocomplete="new-password" required></div>
     <button class="btn primary" style="width:100%;justify-content:center;padding:11px">Qeydiyyatdan keç</button>
-    <p class="muted" style="font-size:12.5px;text-align:center;margin:10px 0 0" id="sinaqinfo">Yeni dükan ${esc(sinaq)} gün pulsuz işləyir.${S.sistem.qiymet ? ' Sonra: ' + esc(S.sistem.qiymet) + '.' : ''}</p>`;
+    <p class="muted" style="font-size:12.5px;text-align:center;margin:10px 0 0" id="sinaqinfo">Yeni dükan ${esc(sinaq)} gün pulsuz işləyir.${S.sistem.qiymet ? ' Sonra: ' + esc(S.sistem.qiymet) + '.' : ''}</p></div>`;
   app.innerHTML = `<div class="login-wrap"><form class="login-card" id="lf">
     <div class="login-logo">${LOGO}</div><h1>${esc(CFG.FIRMA_ADI)}</h1><p>Nisyə və kredit satışının uçotu</p>
     ${rejim === 'yeni' ? '' : tabs}${form}
@@ -175,13 +181,21 @@ function loginView(msg, rejim) {
   const btn = () => $('button.primary', f);
   if (rejim === 'qeyd') {
     let nv = 'yeni';
-    $$('[data-nv]', f).forEach(b => b.onclick = () => {
-      nv = b.dataset.nv; $$('[data-nv]', f).forEach(x => x.classList.toggle('on', x === b));
+    const addim = (yeniNv, sahe) => {
+      nv = yeniNv; if (sahe) f.sahe.value = sahe;
+      $('#addim1').style.display = 'none'; $('#addim2').style.display = '';
+      const M = MEQSEDLER.find(x => x[0] === (nv === 'muh' ? 'muhasib' : f.sahe.value));
+      $('#mqsec').innerHTML = `<span>${nv === 'kod' ? '🔑 <b>Dəvət kodu ilə qoşulma</b>' : `${M[3]} <b>${esc(M[1])}</b> <small>${esc(M[2])}</small>`}</span><a href="#" id="mqdeyis">dəyiş</a>`;
+      $('#mqdeyis').onclick = e => { e.preventDefault(); $('#addim2').style.display = 'none'; $('#addim1').style.display = ''; };
       $('#yenidukan').style.display = nv === 'yeni' ? '' : 'none'; $('#kodlu').style.display = nv === 'kod' ? '' : 'none';
       $('#muhinfo').style.display = nv === 'muh' ? '' : 'none'; $('#telsah').style.display = nv === 'kod' ? 'none' : '';
       $('#sinaqinfo').style.display = nv === 'yeni' ? '' : 'none';
-    });
-    if (location.hash === '#muhasib') $('[data-nv="muh"]', f).click();
+      if (nv === 'yeni') f.mg.placeholder = 'məs. ' + ({ mebel: 'Ulduz Mebel', elektronika: 'Kamran Elektronika', telefon: 'Nur Telefon', geyim: 'Moda Geyim', tikinti: 'Usta Tikinti', xalca: 'Şirvan Xalça', zinet: 'Qızıl Dünyası', market: 'Bərəkət Market' }[f.sahe.value] || 'Dükanın adı');
+      setTimeout(() => (nv === 'yeni' ? f.mg : nv === 'kod' ? f.kod : f.ad).focus(), 30);
+    };
+    $$('[data-mq]', f).forEach(b => b.onclick = () => b.dataset.mq === 'muhasib' ? addim('muh') : addim('yeni', b.dataset.mq));
+    $('#kodlink').onclick = e => { e.preventDefault(); addim('kod'); };
+    if (location.hash === '#muhasib') addim('muh');
     let kodAd = null;
     f.kod.oninput = async () => {
       const k = f.kod.value.trim().toUpperCase(); kodAd = null;
@@ -191,6 +205,7 @@ function loginView(msg, rejim) {
     };
     f.onsubmit = async e => {
       e.preventDefault();
+      if ($('#addim2').style.display === 'none') return err('Əvvəlcə sahəni seçin.');
       const data = { ad: f.ad.value.trim() };
       if (nv === 'yeni') { if (!f.mg.value.trim()) return err('Dükanın adını yazın.'); data.magaza_adi = f.mg.value.trim(); data.telefon = f.tel.value.trim(); data.sahe = f.sahe.value; }
       else if (nv === 'muh') { data.hesab = 'muhasib'; data.telefon = f.tel.value.trim(); }
@@ -263,6 +278,18 @@ async function start() {
   else if (S.rol === 'kuryer') location.hash = '#/yigim';
   else if (!location.hash || /access_token|type=/.test(location.hash)) location.hash = window.innerWidth <= 760 ? '#/menyu' : '#/panel';
   route();
+  if (S.profil && !S.profil.meqsed && (S.rol === 'muhasib' || (!S.magaza && !S.admin))) setTimeout(meqsedModal, 600);
+}
+function meqsedModal() {
+  const m = modal('Proqramdan nə üçün istifadə edirsiniz?', `<p class="muted" style="margin-top:0;font-size:13.5px">Seçiminizə görə nümunələr və bölmələr uyğunlaşdırılacaq. Sonra Ayarlardan dəyişə bilərsiniz.</p>${meqsedKafel()}`,
+    `<button class="btn" data-close>Sonra</button>`, true);
+  $$('[data-mq]', m).forEach(b => b.onclick = async () => {
+    const k = b.dataset.mq;
+    try { await q(sb.rpc('meqsed_sec', { m: k })); S.profil.meqsed = k; closeModal();
+      if (k === 'muhasib') { toast('Mühasib rejimi açıldı — firmalarınızı "Firmalarım" bölməsindən əlavə edin', 4500); await start(); location.hash = '#/firmalar'; }
+      else { if (S.magaza && S.rol === 'muhasib') S.magaza.sahe = k; toast('Yadda saxlanıldı'); route(); }
+    } catch (er) { fail(er); }
+  });
 }
 
 function abuneBanner() {
