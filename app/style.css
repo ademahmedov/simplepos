@@ -590,3 +590,18 @@ a.hes-kart:hover{border-color:#1660d6}
 #rf{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 #rf>button{grid-column:1/-1;justify-self:start}
 @media (max-width:760px){#rf{grid-template-columns:1fr}}
+
+/* Ayarlar: solda bölmələr, sağda bir bölmə */
+.ay-lay{display:grid;grid-template-columns:220px minmax(0,820px);gap:18px;align-items:start}
+.ay-nav{display:flex;flex-direction:column;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;position:sticky;top:12px}
+.ay-nav a{padding:9px 12px;border-radius:8px;text-decoration:none;color:var(--ink);font-size:14px}
+.ay-nav a:hover{background:rgba(0,0,0,.03)}
+.ay-nav a.on{background:var(--sand);color:var(--brand);font-weight:600}
+body.muh .ay-nav a.on{background:#e8f0fd;color:#0f4fb8}
+.ay-t td{padding:9px 4px;border-bottom:1px solid var(--line)}
+.ay-t tr:last-child td{border-bottom:0}
+#rf{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+#rf>button{grid-column:1/-1;justify-self:start}
+.dkod{font-size:22px;font-weight:700;letter-spacing:4px;background:var(--sand);border:1px dashed var(--oak);border-radius:10px;padding:6px 14px}
+@media (max-width:760px){.ay-lay{grid-template-columns:1fr}.ay-nav{position:static;flex-direction:row;overflow-x:auto}.ay-nav a{white-space:nowrap}#rf{grid-template-columns:1fr}}
+.ay-t{width:100%;border-collapse:collapse;font-size:14px}

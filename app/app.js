@@ -360,7 +360,7 @@ function route() {
     gomruk: () => pageGomruk(params), bank: () => pageBank(params), evez: () => pageEvez(params), emek: () => pageEmek(params), mz: () => pageMZ(params), kontragent: () => pageKontragent(), firmalar: () => pageFirmalar(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id), etiket: () => pageEtiket(),
     rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
     kassa: () => pageKassa(), sifarisler: () => pageSifarisler(params), hesabat: () => pageHesabat(params),
-    teqvim: () => pageTeqvim(params), menfeet: () => pageMenfeet(), jurnal: () => pageJurnal(params), ayarlar: () => pageAyarlar(),
+    teqvim: () => pageTeqvim(params), menfeet: () => pageMenfeet(), jurnal: () => pageJurnal(params), ayarlar: () => pageAyarlar(params),
     qebz: () => pageQebz(id), muqavile: () => pageMuqavile(id), admin: () => pageAdmin() }[p] || pagePanel;
   if (!S.magaza && !['admin', 'firmalar'].includes(p)) { location.hash = S.admin && !S.muhasibHesab ? '#/admin' : '#/firmalar'; return; }
   if (S.rol === 'kuryer' && !['yigim', 'qebz', 'menyu', 'firmalar'].includes(p)) { location.hash = '#/yigim'; return; }
@@ -3659,89 +3659,83 @@ async function pageJurnal(params) {
 /* =====================================================================
    AYARLAR: firma, istifadəçilər, Excel-ə ixrac
    ===================================================================== */
-async function pageAyarlar() {
-  const w = canWrite();
+async function pageAyarlar(params) {
+  params = params || new URLSearchParams();
+  const w = canWrite(), yaz = S.rol === 'muhasib', muh = muhFirma();
+  const BOL = [['umumi', 'Abunə və firma'], ['rekv', 'Rekvizitlər'], ...(muh ? [] : [['satis', 'Satış ayarları']]), ['ist', 'İstifadəçilər'], ...(yaz && !muh ? [['bild', 'Telegram']] : []), ['ehtiyat', 'Ehtiyat nüsxə']];
+  const t = BOL.some(x => x[0] === params.get('t')) ? params.get('t') : 'umumi';
   shell('ayarlar', 'Ayarlar', '', '');
   const [A, ist] = await Promise.all([ayarlar(), q(sb.from('uzvler').select('*').eq('magaza_id', S.magaza.id).order('yaradildi'))]);
-  const yaz = S.rol === 'muhasib';
-  const rolAd = { muhasib: 'Mühasib (yazır)', sahibkar: 'Sahibkar (yalnız baxır)', kuryer: 'Kuryer (yalnız pul yığır)', bloklu: 'Bloklanıb' };
-  $('#page').innerHTML = `
-    <div class="card" style="margin-bottom:16px"><h3>${muhFirma() ? 'Firma və abunə' : 'Dükan və abunə'}</h3>
-      <div class="grid two" style="gap:16px;align-items:end">
-        <form id="mgf" class="row3" style="margin:0"><div class="field" style="margin:0"><label class="f">${muhFirma() ? 'Firmanın adı' : 'Dükanın adı'}</label><input class="in" name="ad" value="${esc(S.magaza.ad)}" ${yaz ? '' : 'disabled'} required></div>
-          <div class="field" style="margin:0"><label class="f">Sahə</label><select class="in" name="sahe" ${yaz ? '' : 'disabled'}>${saheOpt(S.magaza.sahe || 'mebel')}</select></div>
-          <div class="field" style="margin:0"><label class="f">Telefon</label><div style="display:flex;gap:8px"><input class="in" name="tel" value="${esc(S.magaza.telefon || '')}" ${yaz ? '' : 'disabled'}>${yaz ? '<button class="btn">Saxla</button>' : ''}</div></div></form>
-        <div class="info" style="margin:0"><div><span>Abunə bitir</span><b class="${S.aktiv ? '' : 'neg'}">${fd(S.magaza.abune_bitir)}</b></div>
-          <div><span>Vəziyyət</span><b>${S.magaza.dayandirilib ? '<span class="neg">Dayandırılıb</span>' : S.aktiv ? `<span class="pos">Aktiv</span> · ${S.qalan} gün` : '<span class="neg">Bitib</span>'}</b></div></div></div>
-      ${S.sistem.elaqe_telefon || S.sistem.elaqe_whatsapp ? `<p class="muted" style="font-size:13px;margin:12px 0 0">Abunəni uzatmaq üçün: ${esc(S.sistem.elaqe_telefon || '')}${S.sistem.elaqe_whatsapp ? ` · <a href="https://wa.me/${S.sistem.elaqe_whatsapp.replace(/\D/g, '')}" target="_blank">WhatsApp</a>` : ''}${S.sistem.qiymet ? ' · ' + esc(S.sistem.qiymet) : ''}</p>` : ''}</div>
-    <div class="grid two">
-      <div class="card"><h3>${muhFirma() ? 'Rekvizitlər' : 'Firma məlumatları'}</h3><p class="muted" style="margin-top:-6px;font-size:13px">${muhFirma() ? 'Şirkət kartında və üzləşmə aktlarında çıxır.' : 'Müqavilə və qəbzlərdə çıxır.'}</p>
-        ${muhFirma() ? `<form id="rf">${REKVIZIT.map(([k, t]) => `<div class="field"><label class="f">${t}</label>${k === 'edv_payer' ? `<select class="in" name="${k}" ${w ? '' : 'disabled'}>${['', 'Bəli', 'Xeyr'].map(o => `<option ${(A[k] || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`
-          : k === 'vergi_rejimi' ? `<select class="in" name="${k}" ${w ? '' : 'disabled'}>${['', 'Mənfəət vergisi + ƏDV', 'Mənfəət vergisi', 'Sadələşdirilmiş vergi', 'Fərdi sahibkar (gəlir vergisi)'].map(o => `<option ${(A[k] || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`
-          : `<input class="in" name="${k}" value="${esc(A[k] || (k === 'firma_adi' ? S.magaza.ad : ''))}" ${w ? '' : 'disabled'}>`}</div>`).join('')}${w ? '<button class="btn primary">Yadda saxla</button>' : ''}</form></div>` : ''}
-        <form id="ff" ${muhFirma() ? 'style="display:none"' : ''}>
-          <div class="field"><label class="f">Firmanın adı</label><input class="in" name="firma_adi" value="${esc(A.firma_adi || firmaAdi())}" ${w ? '' : 'disabled'}></div>
-          <div class="field"><label class="f">Ünvan</label><input class="in" name="firma_unvan" value="${esc(A.firma_unvan || '')}" ${w ? '' : 'disabled'}></div>
-          <div class="row2"><div class="field"><label class="f">Telefon</label><input class="in" name="firma_telefon" value="${esc(A.firma_telefon || '')}" ${w ? '' : 'disabled'}></div>
-          <div class="field"><label class="f">VÖEN</label><input class="in" name="firma_voen" value="${esc(A.firma_voen || '')}" ${w ? '' : 'disabled'}></div></div>
-          <div class="row2"><div class="field"><label class="f">Gecikmə cəriməsi, gündəlik %</label><input class="in" type="number" step="0.01" min="0" name="cerime_gunluk" value="${esc(A.cerime_gunluk || '0')}" ${w ? '' : 'disabled'} title="0 = cərimə yoxdur"></div>
-          <div class="field"><label class="f">Güzəşt (gün) / maksimum %</label><div style="display:flex;gap:6px"><input class="in" type="number" min="0" name="cerime_guzest" value="${esc(A.cerime_guzest || '3')}" ${w ? '' : 'disabled'}><input class="in" type="number" min="0" name="cerime_max" value="${esc(A.cerime_max || '20')}" ${w ? '' : 'disabled'}></div></div></div>
-          <div class="muted" style="font-size:12.5px;margin:-6px 0 12px">Məs. 0,1% gündəlik: 300 ₼ gecikən ödəniş 10 gün gecikəndə 3 ₼. 0 yazsanız cərimə hesablanmır. Cərimə borca yalnız siz "Borca əlavə et" basanda yazılır.</div>
-          <div class="field"><label class="f">Qiymət növlərinin adları <span class="muted" style="font-weight:400">(məhsulda 4 qiymət)</span></label>
-            <div class="row2" style="gap:6px">${QNOV_DEF.map((d, i) => `<input class="in" name="qiymet_ad_${i + 1}" value="${esc(A['qiymet_ad_' + (i + 1)] || '')}" placeholder="${esc(d)}" ${w ? '' : 'disabled'} style="margin-bottom:6px">`).join('')}</div></div>
-          <div class="field"><label class="f">Çekin altındakı yazı</label><input class="in" name="cek_altyazi" value="${esc(A.cek_altyazi || '')}" ${w ? '' : 'disabled'}></div>
-          <div class="field"><label class="f">Müqavilənin şərtləri</label><textarea class="in" name="muqavile_sertleri" rows="4" ${w ? '' : 'disabled'}>${esc(A.muqavile_sertleri || '')}</textarea></div>
-          ${w ? '<button class="btn primary">Yadda saxla</button>' : ''}</form></div>
-      <div>
-        <div class="card"><h3>Ehtiyat nüsxə</h3><p class="muted" style="margin-top:-6px;font-size:13px">${muhFirma() ? 'Bütün məlumatları (qaimələr, ödənişlər, gömrük, bank, əmək haqqı, aktlar, kontragentlər) bir Excel faylına yükləyir.' : 'Bütün məlumatları (müştərilər, satışlar, ödənişlər, xərclər, işçilər, kassa, sifarişlər) bir Excel faylına yükləyir.'}</p>
-          <button class="btn green" id="xls">Excel-ə yüklə</button> <span class="muted" id="xlsinfo"></span></div>
-        ${yaz && !muhFirma() ? '<div class="card" style="margin-top:16px" id="tg"><h3>Telegram xülasəsi</h3><div class="muted">Yüklənir…</div></div>' : ''}
-        <div class="card" style="margin-top:16px;padding:0"><h3 style="padding:18px 20px 0">İstifadəçilər</h3>
-          <table class="t"><tbody>${ist.map(i => `<tr><td><div class="cell-main">${esc(i.ad || i.email || '')}</div><div class="cell-sub">${esc(i.email || '')}${i.user_id === S.user.id ? ' · siz' : ''}</div></td>
-            <td style="width:200px">${yaz && i.user_id !== S.user.id ? `<select class="in" data-u="${i.user_id}">${Object.entries(rolAd).map(([k, v]) => `<option value="${k}" ${i.rol === k ? 'selected' : ''}>${v}</option>`).join('')}</select>` : `<span class="badge ${i.rol === 'muhasib' ? 'b-blue' : i.rol === 'bloklu' ? 'b-red' : 'b-gray'}">${rolAd[i.rol] || i.rol}</span>`}</td></tr>`).join('')}</tbody></table>
-          ${yaz ? `<div style="padding:4px 20px 16px"><div class="muted" style="font-size:13px;margin-bottom:8px">İşçi və ya sahibkar əlavə etmək üçün: o, girişdə <b>Qeydiyyat → "Dəvət kodum var"</b> seçib bu kodu yazsın. Yeni üzv yalnız baxır, hüququnu buradan dəyişin.</div>
-            <div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px;font-weight:700;letter-spacing:4px;background:#faf4ea;border:1px dashed var(--oak);border-radius:10px;padding:6px 14px" id="kod">${esc(S.magaza.devet_kodu)}</span>
-            <button class="btn sm" id="kodkop">Kopyala</button><button class="btn sm" id="kodyen">Yeni kod</button></div></div>` : ''}</div>
-      </div>
-    </div>`;
-  const ff = $('#ff');
-  if (w) ff.onsubmit = async e => {
-    e.preventDefault();
-    try {
-      for (const k of ['firma_adi', 'firma_unvan', 'firma_telefon', 'firma_voen', 'cerime_gunluk', 'cerime_guzest', 'cerime_max', 'cek_altyazi', 'muqavile_sertleri']) {
-        if ((A[k] || '') !== ff[k].value) await q(sb.from('ayarlar').update({ deyer: ff[k].value.trim() }).eq('acar', k));
-      }
-      for (let i = 1; i <= 4; i++) { const k = 'qiymet_ad_' + i, v = ff[k].value.trim();
-        if ((A[k] || '') === v) continue;
-        if (k in A) await q(sb.from('ayarlar').update({ deyer: v }).eq('acar', k)); else await q(sb.from('ayarlar').insert({ acar: k, deyer: v }));
-      }
-      toast('Yadda saxlanıldı'); S.cache = {};
-    } catch (er) { fail(er); }
+  const rolAd = { muhasib: 'Mühasib (yazır)', sahibkar: 'Yalnız baxır', kuryer: 'Kuryer (yalnız pul yığır)', bloklu: 'Bloklanıb' };
+  const dis = w ? '' : 'disabled';
+  const sat = (l, v) => `<tr><td class="muted" style="width:200px">${l}</td><td>${v}</td></tr>`;
+  const el = [S.sistem.elaqe_telefon && esc(S.sistem.elaqe_telefon), S.sistem.elaqe_whatsapp && `<a href="https://wa.me/${S.sistem.elaqe_whatsapp.replace(/\D/g, '')}" target="_blank">WhatsApp</a>`].filter(Boolean).join(' · ');
+  const icerik = {
+    umumi: `<div class="card"><h3>Abunə ${S.magaza.dayandirilib ? '<span class="badge b-red">dayandırılıb</span>' : S.aktiv ? '<span class="badge b-green">qüvvədə</span>' : '<span class="badge b-red">bitib</span>'}</h3>
+        <table class="ay-t"><tbody>
+          ${sat('Vəziyyət', S.magaza.dayandirilib ? 'Hesab dayandırılıb — məlumatlara baxmaq və Excel-ə yükləmək olar' : S.aktiv ? 'Abunə qüvvədədir' : 'Abunə bitib — yeni yazı üçün uzadın')}
+          ${sat('Bitmə', `<b>${fd(S.magaza.abune_bitir)}</b>${S.aktiv ? ` — ${S.qalan} gün qalıb` : ''}`)}
+          ${sat('Qeydiyyat', fd(String(S.magaza.qeydiyyat || '').slice(0, 10)))}
+          ${sat('Firma ID', `<code>${S.magaza.id}</code>`)}
+          ${sat('İstifadəçilər', String(ist.length))}
+          ${S.sistem.qiymet ? sat('Qiymət', esc(S.sistem.qiymet)) : ''}
+          ${el ? sat('Uzatmaq üçün', el) : ''}</tbody></table></div>
+      <div class="card" style="margin-top:16px"><h3>Firma</h3>
+        <form id="mgf" class="row3" style="margin:0"><div class="field"><label class="f">${muh ? 'Firmanın adı' : 'Dükanın adı'}</label><input class="in" name="ad" value="${esc(S.magaza.ad)}" ${yaz ? '' : 'disabled'} required></div>
+          <div class="field"><label class="f">Sahə</label><select class="in" name="sahe" ${yaz ? '' : 'disabled'}>${saheOpt(S.magaza.sahe || 'mebel')}</select></div>
+          <div class="field"><label class="f">Telefon</label><input class="in" name="tel" value="${esc(S.magaza.telefon || '')}" ${yaz ? '' : 'disabled'}></div>
+          ${yaz ? '<div><button class="btn primary">Yadda saxla</button></div>' : ''}</form></div>`,
+    rekv: `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">Rekvizitlər</h3><a href="#" id="kartac">Şirkət kartı →</a></div>
+        <p class="muted" style="font-size:13px">${muh ? 'Şirkət kartında və üzləşmə aktlarında çıxır.' : 'Müqavilə, çek və qəbzlərdə çıxır.'}</p>
+        <form id="rf">${(muh ? REKVIZIT : REKVIZIT.filter(([k]) => ['firma_adi', 'firma_voen', 'firma_unvan', 'firma_telefon', 'bank_adi', 'iban'].includes(k))).map(([k, n]) => `<div class="field"><label class="f">${n}</label>${k === 'edv_payer' ? `<select class="in" name="${k}" ${dis}>${['', 'Bəli', 'Xeyr'].map(o => `<option ${(A[k] || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`
+          : k === 'vergi_rejimi' ? `<select class="in" name="${k}" ${dis}>${['', 'Mənfəət vergisi + ƏDV', 'Mənfəət vergisi', 'Sadələşdirilmiş vergi', 'Fərdi sahibkar (gəlir vergisi)'].map(o => `<option ${(A[k] || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`
+          : `<input class="in" name="${k}" value="${esc(A[k] || (k === 'firma_adi' ? S.magaza.ad : ''))}" ${dis}>`}</div>`).join('')}${w ? '<button class="btn primary">Yadda saxla</button>' : ''}</form></div>`,
+    satis: `<div class="card"><h3>Satış ayarları</h3><form id="sf2">
+        <div class="row3"><div class="field"><label class="f">Gecikmə cəriməsi, gündəlik %</label><input class="in" type="number" step="0.01" min="0" name="cerime_gunluk" value="${esc(A.cerime_gunluk || '0')}" ${dis}></div>
+          <div class="field"><label class="f">Güzəşt (gün)</label><input class="in" type="number" min="0" name="cerime_guzest" value="${esc(A.cerime_guzest || '3')}" ${dis}></div>
+          <div class="field"><label class="f">Maksimum %</label><input class="in" type="number" min="0" name="cerime_max" value="${esc(A.cerime_max || '20')}" ${dis}></div></div>
+        <div class="muted" style="font-size:12.5px;margin:-6px 0 14px">0 yazsanız cərimə hesablanmır. Məs. 0,1% gündəlik: 300 ₼ gecikən ödəniş 10 gün gecikəndə 3 ₼.</div>
+        <div class="field"><label class="f">Qiymət növlərinin adları</label><div class="row2" style="gap:6px">${QNOV_DEF.map((d, i) => `<input class="in" name="qiymet_ad_${i + 1}" value="${esc(A['qiymet_ad_' + (i + 1)] || '')}" placeholder="${esc(d)}" ${dis} style="margin-bottom:6px">`).join('')}</div></div>
+        <div class="field"><label class="f">Çekin altındakı yazı</label><input class="in" name="cek_altyazi" value="${esc(A.cek_altyazi || '')}" ${dis}></div>
+        <div class="field"><label class="f">Müqavilənin şərtləri</label><textarea class="in" name="muqavile_sertleri" rows="4" ${dis}>${esc(A.muqavile_sertleri || '')}</textarea></div>
+        ${w ? '<button class="btn primary">Yadda saxla</button>' : ''}</form></div>`,
+    ist: `<div class="card" style="padding:0"><h3 style="padding:18px 20px 0">İstifadəçilər</h3>
+        <table class="t" data-flt="0"><tbody>${ist.map(i => `<tr><td><div class="cell-main">${esc(i.ad || i.email || '')}</div><div class="cell-sub">${esc(i.email || '')}${i.user_id === S.user.id ? ' · siz' : ''}</div></td>
+          <td style="width:220px">${yaz && i.user_id !== S.user.id ? `<select class="in" data-u="${i.user_id}">${Object.entries(rolAd).map(([k, v]) => `<option value="${k}" ${i.rol === k ? 'selected' : ''}>${v}</option>`).join('')}</select>` : `<span class="badge ${i.rol === 'muhasib' ? 'b-blue' : i.rol === 'bloklu' ? 'b-red' : 'b-gray'}">${rolAd[i.rol] || i.rol}</span>`}</td></tr>`).join('')}</tbody></table>
+        ${yaz ? `<div style="padding:12px 20px 18px"><b style="font-size:14px">Dəvət kodu</b><div class="muted" style="font-size:13px;margin:4px 0 8px">Yeni istifadəçi girişdə <b>Qeydiyyat → "Dəvət kodu"</b> seçib bu kodu yazır, mühasib isə "Firmalarım → Kodla qoşul" ilə qoşulur. Yeni üzv əvvəlcə yalnız baxır — hüququnu yuxarıdan dəyişin.</div>
+          <div style="display:flex;align-items:center;gap:10px"><span class="dkod" id="kod">${esc(S.magaza.devet_kodu)}</span><button class="btn sm" id="kodkop">Kopyala</button><button class="btn sm" id="kodyen">Yeni kod</button></div></div>` : ''}</div>`,
+    bild: '<div class="card" id="tg"><h3>Telegram xülasəsi</h3><div class="muted">Yüklənir…</div></div>',
+    ehtiyat: `<div class="card"><h3>Ehtiyat nüsxə</h3><p class="muted" style="font-size:13px">${muh ? 'Bütün məlumatlar (qaimələr, ödənişlər, gömrük, bank, əmək haqqı, aktlar, kontragentlər) bir Excel faylına yüklənir.' : 'Bütün məlumatlar (müştərilər, satışlar, ödənişlər, xərclər, işçilər, kassa, sifarişlər) bir Excel faylına yüklənir.'}</p>
+        <button class="btn primary" id="xls">${ico('down')}Excel-ə yüklə</button> <span class="muted" id="xlsinfo"></span></div>`,
   };
+  $('#page').innerHTML = `<div class="ay-lay"><nav class="ay-nav">${BOL.map(([k, n]) => `<a href="#/ayarlar?t=${k}" class="${k === t ? 'on' : ''}">${n}</a>`).join('')}</nav><div class="ay-ic">${icerik[t]}</div></div>`;
+  // --- hadisələr
+  if ($('#mgf')) {
+    $('#mgf').sahe.onchange = e => {
+      if (confirm(`Sahə "${saheAd(e.target.value)}" olaraq dəyişdirilsin?${e.target.value === 'muhasibat' ? ' Menyuda qaimə, ƏDV və əmək haqqı bölmələri açılacaq.' : ''}`)) $('#mgf').requestSubmit();
+      else e.target.value = S.magaza.sahe || 'mebel';
+    };
+    $('#mgf').onsubmit = async e => {
+      e.preventDefault(); const f = e.target;
+      try { await q(sb.from('magazalar').update({ ad: f.ad.value.trim(), telefon: f.tel.value.trim() || null, sahe: f.sahe.value }).eq('id', S.magaza.id));
+        S.magaza.ad = f.ad.value.trim(); S.magaza.sahe = f.sahe.value; S.magaza.telefon = f.tel.value.trim(); S.firmalar.forEach(x => { if (x.id === S.magaza.id) x.ad = S.magaza.ad; }); toast('Yadda saxlanıldı'); route(); } catch (er) { fail(er); }
+    };
+  }
+  if ($('#rf') && w) $('#rf').onsubmit = async e => { e.preventDefault(); const f = e.target;
+    try { for (const el of f.elements) if (el.name) await ayarYaz(A, el.name, el.value.trim()); S.cache = {}; toast('Rekvizitlər yadda saxlanıldı'); } catch (er) { fail(er); } };
+  if ($('#kartac')) $('#kartac').onclick = e => { e.preventDefault(); sirketKarti().catch(fail); };
+  if ($('#sf2') && w) $('#sf2').onsubmit = async e => { e.preventDefault(); const f = e.target;
+    try { for (const el of f.elements) if (el.name) await ayarYaz(A, el.name, el.value.trim()); S.cache = {}; toast('Yadda saxlanıldı'); } catch (er) { fail(er); } };
   $$('[data-u]').forEach(sel => sel.onchange = async () => {
     try { await q(sb.from('uzvler').update({ rol: sel.value }).eq('user_id', sel.dataset.u).eq('magaza_id', S.magaza.id)); toast('Hüquq dəyişdirildi'); } catch (er) { fail(er); }
   });
-  $('#xls').onclick = () => (muhFirma() ? muhExcel() : excelIxrac()).catch(fail);
-  if ($('#rf')) $('#rf').onsubmit = async e => {
-    e.preventDefault(); const f = e.target;
-    try { for (const [k] of REKVIZIT) await ayarYaz(A, k, f[k].value.trim()); S.cache = {}; toast('Rekvizitlər yadda saxlanıldı'); } catch (er) { fail(er); }
-  };
   if ($('#kodkop')) $('#kodkop').onclick = () => { navigator.clipboard && navigator.clipboard.writeText($('#kod').textContent); toast('Kod kopyalandı'); };
   if ($('#kodyen')) $('#kodyen').onclick = async () => {
     if (!confirm('Köhnə kod işləməyəcək. Yeni kod yaradılsın?')) return;
     try { const k = await q(sb.rpc('devet_yenile')); S.magaza.devet_kodu = k; $('#kod').textContent = k; toast('Yeni kod: ' + k); } catch (er) { fail(er); }
   };
-  if ($('#mgf') && $('#mgf').sahe) $('#mgf').sahe.onchange = e => {
-    const ad = saheAd(e.target.value);
-    if (confirm(`Sahə "${ad}" olaraq dəyişdirilsin?${e.target.value === 'muhasibat' ? ' Menyuda qaimə, ƏDV və əmək haqqı bölmələri açılacaq.' : ''}`)) $('#mgf').requestSubmit();
-    else e.target.value = S.magaza.sahe || 'mebel';
-  };
-  if ($('#mgf')) $('#mgf').onsubmit = async e => {
-    e.preventDefault(); const f = e.target;
-    try { await q(sb.from('magazalar').update({ ad: f.ad.value.trim(), telefon: f.tel.value.trim() || null, sahe: f.sahe.value }).eq('id', S.magaza.id));
-      S.magaza.ad = f.ad.value.trim(); S.magaza.sahe = f.sahe.value; S.firmalar.forEach(x => { if (x.id === S.magaza.id) x.ad = S.magaza.ad; }); S.magaza.telefon = f.tel.value.trim(); toast('Yadda saxlanıldı'); route(); } catch (er) { fail(er); }
-  };
-  if (yaz && !muhFirma()) telegramKart().catch(er => { $('#tg').innerHTML = '<h3>Telegram xülasəsi</h3><div class="muted">Hələ qurulmayıb (bazada 6_telegram.sql işlədilməlidir).</div>'; console.warn(er); });
+  if ($('#xls')) $('#xls').onclick = () => (muh ? muhExcel() : excelIxrac()).catch(fail);
+  if ($('#tg')) telegramKart().catch(er => { $('#tg').innerHTML = '<h3>Telegram xülasəsi</h3><div class="muted">Hələ qurulmayıb.</div>'; console.warn(er); });
 }
 
 /* ---------- Telegram gündəlik xülasə ---------- */
