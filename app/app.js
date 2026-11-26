@@ -1663,9 +1663,57 @@ function emekHesabla(g, il, esas) {
   R.net = r2(g - R.gv - R.dsmf_i - R.iss_i - R.tib_i); R.xerc = r2(g + R.dsmf_v + R.iss_v + R.tib_v);
   return R;
 }
+// Fərdi sahibkarın öz sahibkarlıq fəaliyyəti üzrə MDSS (2026-dan): aylıq gəlirin (xərc çıxılmadan) 2%-i, min. əməkhaqqının 15%-dən az, 100%-dən çox olmamaqla
+const MIN_EMEK = { 2025: 400, 2026: 400 };
+function sahibkarMdss(gelir, il) {
+  const me = MIN_EMEK[il] || MIN_EMEK[2026];
+  if (il < 2026) return null;
+  return r2(Math.min(Math.max(num(gelir) * 0.02, me * 0.15), me));
+}
+async function pageSahibkarMdss(params) {
+  const il = +(params.get('il') || today().slice(0, 4)), w = canWrite(), A = await ayarlar(), fs = fsMi(A);
+  shell('emek', 'Əmək haqqı', `Sahibkarın sosial sığortası · ${il}`, `<div class="seg" id="et">${[['ay', 'Aylıq hesablama'], ['isci', 'Əməkdaşlar'], ['sah', 'Sahibkarın sosial sığortası']].map(([k, t]) => `<button data-t="${k}" class="${k === 'sah' ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <select class="in" id="sil" style="width:auto">${[il + 1, il, il - 1, il - 2].map(y => `<option ${y === il ? 'selected' : ''}>${y}</option>`).join('')}</select>`);
+  $$('#et button').forEach(b => b.onclick = () => { location.hash = `#/emek?t=${b.dataset.t}`; });
+  $('#sil').onchange = e => { location.hash = `#/emek?t=sah&il=${e.target.value}`; };
+  if (!fs) {
+    $('#page').innerHTML = `<div class="card empty" style="text-align:left;line-height:1.6"><b>Bu firma hüquqi şəxsdir</b> — sahibkarın özü üçün sosial sığorta haqqı hesablanmır. Burada yalnız işçilərin əmək haqqından DSMF hesablanır ("Aylıq hesablama").<br>
+      <span class="muted">Firma fərdi sahibkardırsa, <a href="#/ayarlar?t=rekv">Ayarlar → Rekvizitlər</a> bölməsində "Hüquqi forma"nı dəyişin. (Avtomatik olaraq VÖEN-in son rəqəminə baxılır: 1 — hüquqi, 2 — fiziki şəxs.)</span></div>`;
+    return;
+  }
+  if (il < 2026) { $('#page').innerHTML = '<div class="card empty">2026-cı ildən əvvəlki dövr üçün köhnə qayda (fəaliyyət sahəsi və əraziyə görə sabit məbləğ) tətbiq olunurdu — burada hesablanmır.</div>'; return; }
+  const [qm, be] = await Promise.all([
+    all(() => sb.from('qaimeler').select('tarix,esas,edvsiz,status').eq('istiqamet', 'geden').gte('tarix', il + '-01-01').lte('tarix', il + '-12-31').order('id')),
+    all(() => sb.from('bank_emeliyyatlari').select('tarix,mebleg,kateqoriya').eq('nov', 'Mədaxil').in('kateqoriya', ['Kassadan mədaxil', 'Alıcıdan daxilolma', 'Digər gəlir']).gte('tarix', il + '-01-01').lte('tarix', il + '-12-31').order('id'))]);
+  const aylar = Array.from({ length: 12 }, (_, i) => `${il}-${String(i + 1).padStart(2, '0')}-01`).filter(a => a <= today());
+  const me = MIN_EMEK[il] || 400;
+  const setir = aylar.map(a => {
+    const qg = r2(qm.filter(x => x.tarix.slice(0, 7) === a.slice(0, 7)).reduce((s, x) => s + num(x.esas) + num(x.edvsiz), 0));
+    const bk = r2(be.filter(x => x.tarix.slice(0, 7) === a.slice(0, 7)).reduce((s, x) => s + num(x.mebleg), 0));
+    const el = A['mdss_gelir_' + a.slice(0, 7)];
+    const gelir = el != null && el !== '' ? num(el) : qg;
+    return { a, qg, bk, el, gelir, mdss: sahibkarMdss(gelir, il) };
+  });
+  const cem = f => r2(setir.reduce((s, x) => s + num(x[f]), 0));
+  $('#page').innerHTML = `<div class="kpis">
+      <div class="kpi"><div class="l">${il} — hesablanmış MDSS</div><div class="v">${fmt(cem('mdss'), 2)} ₼</div><div class="s">${setir.length} ay</div></div>
+      <div class="kpi"><div class="l">Gəlir (hesablamaya daxil)</div><div class="v">${fmt(cem('gelir'), 2)} ₼</div><div class="s">xərclər çıxılmadan</div></div>
+      <div class="kpi"><div class="l">Aylıq hədd</div><div class="v">${fmt(me * 0.15, 0)} – ${fmt(me, 0)} ₼</div><div class="s">min. əməkhaqqı ${me} ₼-ın 15%–100%-i</div></div></div>
+    <div class="tbl-wrap"><table class="t" data-flt="0"><thead><tr><th>Ay</th><th class="n">Gedən qaimələr (ƏDV-siz)</th><th class="n">Bankda mədaxil (məlumat üçün)</th><th class="n" style="width:190px">Hesablamaya daxil gəlir</th><th class="n">2%</th><th class="n">MDSS</th></tr></thead>
+      <tbody>${setir.map(x => `<tr><td>${ayAdi(x.a)}</td><td class="n">${fmt(x.qg, 2)}</td><td class="n muted">${fmt(x.bk, 2)}</td>
+        <td class="n">${w ? `<input class="in" style="text-align:right;padding:5px 8px" data-ay="${x.a.slice(0, 7)}" value="${x.el != null && x.el !== '' ? esc(x.el) : ''}" placeholder="${fmt(x.qg, 2)}">` : fmt(x.gelir, 2)}</td>
+        <td class="n">${fmt(r2(x.gelir * 0.02), 2)}</td><td class="n"><b>${fmt(x.mdss, 2)}</b>${x.mdss === r2(me * 0.15) && x.gelir * 0.02 < me * 0.15 ? ' <span class="badge b-gray">min.</span>' : x.mdss === me && x.gelir * 0.02 > me ? ' <span class="badge b-gray">maks.</span>' : ''}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>Cəmi</td><td class="n sabit">${fmt(cem('qg'), 2)}</td><td class="n sabit">${fmt(cem('bk'), 2)}</td><td class="n sabit">${fmt(cem('gelir'), 2)}</td><td class="n sabit"></td><td class="n sabit"><b>${fmt(cem('mdss'), 2)}</b></td></tr></tfoot></table></div>
+    <p class="muted" style="font-size:12.5px;line-height:1.6">2026-cı ildən fərdi sahibkarın öz sahibkarlıq fəaliyyəti üzrə məcburi dövlət sosial sığorta haqqı aylıq gəlirin (xərclər çıxılmadan) 2%-i qədərdir, amma minimum aylıq əməkhaqqının 15%-indən (${fmt(me * 0.15, 0)} ₼) az, 100%-indən (${me} ₼) çox olmur. Gəlir avtomatik olaraq gedən qaimələrdən götürülür; nağd satış və ya qaiməsiz gəlir varsa, "Hesablamaya daxil gəlir" xanasına ayın ümumi gəlirini yazın (boş qoysanız qaimələr götürülür). Bu, işçilərin əmək haqqından tutulan DSMF-dən ayrıdır. Hüquqi şəxslərdə (MMC, ASC) hesablanmır.</p>`;
+  $$('[data-ay]').forEach(inp => inp.onchange = async () => {
+    try { const v = inp.value.trim().replace(/\s/g, '').replace(',', '.'); if (v && isNaN(+v)) return toast('Rəqəm yazın');
+      await ayarYaz(A, 'mdss_gelir_' + inp.dataset.ay, v); S.cache.ayar = null; refresh(); } catch (er) { fail(er); }
+  });
+}
 async function pageEmek(params) {
-  const tab = params.get('t') === 'isci' ? 'isci' : 'ay', ay = params.get('ay') || ayBasi(today()), w = canWrite();
-  shell('emek', 'Əmək haqqı', tab === 'ay' ? ayAdi(ay) : 'Əməkdaşlar', `<div class="seg" id="et">${[['ay', 'Aylıq hesablama'], ['isci', 'Əməkdaşlar']].map(([k, t]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+  const tab = ['isci', 'sah'].includes(params.get('t')) ? params.get('t') : 'ay', ay = params.get('ay') || ayBasi(today()), w = canWrite();
+  if (tab === 'sah') return pageSahibkarMdss(params);
+  shell('emek', 'Əmək haqqı', tab === 'ay' ? ayAdi(ay) : 'Əməkdaşlar', `<div class="seg" id="et">${[['ay', 'Aylıq hesablama'], ['isci', 'Əməkdaşlar'], ['sah', 'Sahibkarın sosial sığortası']].map(([k, t]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     ${tab === 'ay' ? `<select class="in" id="eay" style="width:auto">${ayOpt(ay)}</select>${w ? `<button class="btn primary" id="ehes">Hesabla</button>` : ''}` : (w ? `<button class="btn primary" id="eyeni">${ico('plus')}Yeni əməkdaş</button>` : '')}`);
   $$('#et button').forEach(b => b.onclick = () => { location.hash = `#/emek?t=${b.dataset.t}&ay=${ay}`; });
   const isci = await all(() => sb.from('emekdaslar').select('*').order('ad'));
@@ -1859,7 +1907,9 @@ function mUstBagla() {
   if ($('#mg-yen')) $('#mg-yen').onclick = () => gomrukForm('idxal', null);
 }
 const REKVIZIT = [['firma_adi', 'Hüquqi ad'], ['firma_voen', 'VÖEN'], ['firma_unvan', 'Hüquqi ünvan'], ['firma_telefon', 'Telefon'], ['direktor', 'Direktor'],
-  ['bas_muhasib', 'Baş mühasib'], ['bank_adi', 'Bank'], ['bank_kod', 'Bank kodu / SWIFT'], ['iban', 'Hesab (IBAN)'], ['edv_payer', 'ƏDV ödəyicisi'], ['vergi_rejimi', 'Vergi rejimi']];
+  ['bas_muhasib', 'Baş mühasib'], ['bank_adi', 'Bank'], ['bank_kod', 'Bank kodu / SWIFT'], ['iban', 'Hesab (IBAN)'], ['edv_payer', 'ƏDV ödəyicisi'], ['vergi_rejimi', 'Vergi rejimi'], ['huquqi_forma', 'Hüquqi forma']];
+// VÖEN-in son rəqəmi: 1 — hüquqi şəxs, 2 — fiziki şəxs (fərdi sahibkar)
+const fsMi = A => A.huquqi_forma ? A.huquqi_forma === 'Fərdi sahibkar' : String(A.firma_voen || '').replace(/\D/g, '').slice(-1) === '2';
 async function sirketKarti() {
   const A = await ayarlar();
   const m = modal('Şirkət kartı', `<table class="t"><tbody>${REKVIZIT.map(([k, t]) => `<tr><td class="muted" style="width:170px">${t}</td><td><b>${esc(A[k] || (k === 'firma_adi' ? S.magaza.ad : '') || '—')}</b></td></tr>`).join('')}</tbody></table>`,
@@ -3775,6 +3825,7 @@ async function pageAyarlar(params) {
     rekv: `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">Rekvizitlər</h3><a href="#" id="kartac">Şirkət kartı →</a></div>
         <p class="muted" style="font-size:13px">${muh ? 'Şirkət kartında və üzləşmə aktlarında çıxır.' : 'Müqavilə, çek və qəbzlərdə çıxır.'}</p>
         <form id="rf">${(muh ? REKVIZIT : REKVIZIT.filter(([k]) => ['firma_adi', 'firma_voen', 'firma_unvan', 'firma_telefon', 'bank_adi', 'iban'].includes(k))).map(([k, n]) => `<div class="field"><label class="f">${n}</label>${k === 'edv_payer' ? `<select class="in" name="${k}" ${dis}>${['', 'Bəli', 'Xeyr'].map(o => `<option ${(A[k] || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`
+          : k === 'huquqi_forma' ? `<select class="in" name="${k}" ${dis}>${[['', 'VÖEN-ə görə avtomatik (' + (fsMi({ firma_voen: A.firma_voen }) ? 'fərdi sahibkar' : 'hüquqi şəxs') + ')'], ['Hüquqi şəxs', 'Hüquqi şəxs (MMC, ASC…)'], ['Fərdi sahibkar', 'Fərdi sahibkar (fiziki şəxs)']].map(([v, t]) => `<option value="${v}" ${(A[k] || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select>`
           : k === 'vergi_rejimi' ? `<select class="in" name="${k}" ${dis}>${['', 'Mənfəət vergisi + ƏDV', 'Mənfəət vergisi', 'Sadələşdirilmiş vergi', 'Fərdi sahibkar (gəlir vergisi)'].map(o => `<option ${(A[k] || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`
           : `<input class="in" name="${k}" value="${esc(A[k] || (k === 'firma_adi' ? S.magaza.ad : ''))}" ${dis}>`}</div>`).join('')}${w ? '<button class="btn primary">Yadda saxla</button>' : ''}</form></div>`,
     satis: `<div class="card"><h3>Satış ayarları</h3><form id="sf2">
