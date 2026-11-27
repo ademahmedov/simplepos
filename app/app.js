@@ -1736,22 +1736,16 @@ async function pageEmekOdenis(params) {
   const me = MIN_EMEK[il] || 400, gelir = num(A['mdss_gelir_' + ay.slice(0, 7)]);
   const M = {}; ['gelir_vergisi', 'dsmf_isci', 'issizlik_isci', 'tibbi_isci', 'dsmf_isveren', 'issizlik_isveren', 'tibbi_isveren'].forEach(k => M[k] = r2(eh.reduce((s, r) => s + num(r[k]), 0)));
   if (fs) { M.sah_its = r2(me * 0.04); M.sah_mdss = il >= 2026 ? sahibkarMdss(gelir, il) : 0; }
-  const icare = num(A['icare_' + ay.slice(0, 7)]); M.icare_vergi = r2(icare * 0.14);
+  const icare = num(A.icare_aylik); M.icare_vergi = r2(icare * 0.14);
   const K = odenisKodlari(fs, sahe, A), C = q_ => r2(K.filter(x => x.q === q_).reduce((s, x) => s + M[x.k], 0));
   const qrup = { isci: 'İşçinin adından (maaşdan tutulan)', mues: 'Müəssisənin adından (işəgötürən)', sah: 'Sahibkarın adından', icare: 'İcarə vergisi' };
   $('#page').innerHTML = `<div class="kpis">${Object.keys(qrup).filter(q_ => K.some(x => x.q === q_)).map(q_ => `<div class="kpi"><div class="l">${qrup[q_]}</div><div class="v">${fmt(C(q_), 2)} ₼</div></div>`).join('')}
       <div class="kpi"><div class="l">Cəmi ödəniləcək</div><div class="v">${fmt(K.reduce((s, x) => s + M[x.k], 0), 2)} ₼</div><div class="s">${eh.length} işçi${fs ? ' + sahibkar' : ''}</div></div></div>
-    ${fs ? `<div class="card" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:12px 16px;margin-bottom:12px"><span>Sahibkarın fəaliyyət sahəsi:</span>
-      <select class="in" id="osahe" style="width:auto" ${canWrite() ? '' : 'disabled'}>${Object.keys(FS_SAHE_KOD).map(x => `<option ${x === sahe ? 'selected' : ''}>${x}</option>`).join('')}</select>
-      <span class="muted" style="font-size:13px">Ayın satışı: <b>${fmt(gelir, 2)} ₼</b> — <a href="#/emek?t=sah&il=${il}">dəyişmək</a></span></div>` : ''}
+
     <div class="tbl-wrap"><table class="t" data-flt="0"><thead><tr><th>№</th><th>Büdcə səviyyə kodu</th><th>Büdcə təsnifat kodu</th><th>Təyinatı</th><th class="n">Məbləğ</th></tr></thead>
-      <tbody>${K.map((x, i) => `<tr style="${M[x.k] > 0 ? '' : 'opacity:.45'}"><td class="muted">${i + 1}</td><td>${x.sev}</td><td><b>${x.kod}</b></td><td>${esc(x.ad)}${x.icare ? `<div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px">Bu ay fiziki şəxsə hesablanan icarə haqqı: ${canWrite() ? `<input class="in" id="oicare" style="width:120px;padding:4px 6px;text-align:right" value="${icare ? esc(A['icare_' + ay.slice(0, 7)]) : ''}" placeholder="0,00">` : fmt(icare, 2)} ₼ <span class="muted">→ icarəyə verənə ödəniləcək ${fmt(icare - M.icare_vergi, 2)} ₼</span></div>` : ''}</td><td class="n"><b>${fmt(M[x.k], 2)}</b></td></tr>`).join('')}</tbody>
+      <tbody>${K.map((x, i) => `<tr style="${M[x.k] > 0 ? '' : 'opacity:.45'}"><td class="muted">${i + 1}</td><td>${x.sev}</td><td><b>${x.kod}</b></td><td>${esc(x.ad)}${x.icare ? `<div class="muted" style="font-size:12.5px">${icare ? `icarə haqqı ${fmt(icare, 2)} ₼${A.icare_veren ? ' (' + esc(A.icare_veren) + ')' : ''} → icarəyə verənə ${fmt(icare - M.icare_vergi, 2)} ₼` : 'icarə yoxdur'} · <a href="#/ayarlar?t=vergi">Ayarlar</a></div>` : ''}</td><td class="n"><b>${fmt(M[x.k], 2)}</b></td></tr>`).join('')}</tbody>
       <tfoot><tr><td></td><td></td><td></td><td>Cəmi</td><td class="n sabit">${fmt(K.reduce((s, x) => s + M[x.k], 0), 2)}</td></tr></tfoot></table></div>
     <p class="muted" style="font-size:12.5px;line-height:1.6">${avto ? 'İşçilərin məbləğləri "Əməkdaşlar" siyahısındakı maaşlardan avtomatik hesablandı. Bu ay maaşı fərqlidirsə (məzuniyyət, natamam ay), "Aylıq hesablama"da "Hesabla" basıb rəqəmləri düzəldin — onda düzəlişlər buraya düşəcək.' : eh.length ? 'İşçilərin məbləğləri "Aylıq hesablama"dan götürülür.' : 'İşçi yoxdur — "Əməkdaşlar" bölməsində əlavə edin.'} Kodlar ${fs ? 'fərdi sahibkar' : 'hüquqi şəxs'} üçündür (Ayarlar → Rekvizitlər → Hüquqi forma).${fs ? ' Sahibkarın MDSS-i ayın satışının 2%-i (60–400 ₼), İTS-i 16 ₼-dır.' : ''} İcarə: fiziki şəxsə ödənilən icarə haqqından 14% vergi tutulur; hüquqi şəxsə ödənilən icarədən tutulmur. Bu vergi rüb bitdikdən sonrakı ayın 20-dək ödənilir.</p>`;
-  if ($('#oicare')) $('#oicare').onchange = async e => { const v = e.target.value.trim().replace(/\s/g, '').replace(',', '.'); if (v && isNaN(+v)) return toast('Rəqəm yazın');
-    try { await ayarYaz(A, 'icare_' + ay.slice(0, 7), v); S.cache.ayar = null; refresh(); } catch (er) { fail(er); } };
-  if ($('#oikod')) $('#oikod').onchange = async e => { try { await ayarYaz(A, fs ? 'icare_kod_fs' : 'icare_kod_huquqi', e.target.value.trim()); S.cache.ayar = null; toast('Kod yadda saxlanıldı'); } catch (er) { fail(er); } };
-  if ($('#osahe')) $('#osahe').onchange = async e => { try { await ayarYaz(A, 'fs_sahe', e.target.value); S.cache.ayar = null; refresh(); } catch (er) { fail(er); } };
   $('#oxls').onclick = () => xlsxEndir(`${S.magaza.ad} - ödənişlər - ${ayAdi(ay)}`, [{ ad: ayAdi(ay), rows: [['№', 'Büdcə səviyyə kodu', 'Büdcə təsnifat kodu', 'Təyinatı', 'Məbləğ'], ...K.map((x, i) => [i + 1, x.sev, x.kod, x.ad, M[x.k]]), ['', '', '', 'Cəmi', r2(K.reduce((s, x) => s + M[x.k], 0))]] }]);
 }
 const EMEK_TABLAR = [['ay', 'Aylıq hesablama'], ['isci', 'Əməkdaşlar'], ['sah', 'Sahibkarın sığorta haqları'], ['od', 'Ödəniləcək məbləğlər (kodlarla)']];
@@ -4050,7 +4044,7 @@ async function pageJurnal(params) {
 async function pageAyarlar(params) {
   params = params || new URLSearchParams();
   const w = canWrite(), yaz = S.rol === 'muhasib', muh = muhFirma();
-  const BOL = [['umumi', 'Abunə və firma'], ['rekv', 'Rekvizitlər'], ...(muh ? [] : [['satis', 'Satış ayarları']]), ['ist', 'İstifadəçilər'], ...(yaz && !muh ? [['bild', 'Telegram']] : []), ['ehtiyat', 'Ehtiyat nüsxə']];
+  const BOL = [['umumi', 'Abunə və firma'], ['rekv', 'Rekvizitlər'], ...(muh ? [['vergi', 'Vergi və ödənişlər']] : [['satis', 'Satış ayarları']]), ['ist', 'İstifadəçilər'], ...(yaz && !muh ? [['bild', 'Telegram']] : []), ['ehtiyat', 'Ehtiyat nüsxə']];
   const t = BOL.some(x => x[0] === params.get('t')) ? params.get('t') : 'umumi';
   shell('ayarlar', 'Ayarlar', '', '');
   const [A, ist] = await Promise.all([ayarlar(), q(sb.from('uzvler').select('*').eq('magaza_id', S.magaza.id).order('yaradildi'))]);
@@ -4094,6 +4088,15 @@ async function pageAyarlar(params) {
         ${yaz ? `<div style="padding:12px 20px 18px"><b style="font-size:14px">Dəvət kodu</b><div class="muted" style="font-size:13px;margin:4px 0 8px">Yeni istifadəçi girişdə <b>Qeydiyyat → "Dəvət kodu"</b> seçib bu kodu yazır, mühasib isə "Firmalarım → Kodla qoşul" ilə qoşulur. Yeni üzv əvvəlcə yalnız baxır — hüququnu yuxarıdan dəyişin.</div>
           <div style="display:flex;align-items:center;gap:10px"><span class="dkod" id="kod">${esc(S.magaza.devet_kodu)}</span><button class="btn sm" id="kodkop">Kopyala</button><button class="btn sm" id="kodyen">Yeni kod</button></div></div>` : ''}</div>`,
     bild: '<div class="card" id="tg"><h3>Telegram xülasəsi</h3><div class="muted">Yüklənir…</div></div>',
+    vergi: muh ? `<div class="card"><h3>Vergi və ödənişlər</h3><p class="muted" style="font-size:13px">"Əmək haqqı → Ödəniləcək məbləğlər" bölməsi buradakı məlumatlarla hesablanır.</p>
+        <form id="vf">
+          <div class="field"><label class="f">Firmanın növü</label><div style="padding:8px 0"><b>${fsMi(A) ? 'Fərdi sahibkar (fiziki şəxs)' : 'Hüquqi şəxs'}</b> <span class="muted" style="font-size:12.5px">— dəyişmək üçün: Rekvizitlər → Hüquqi forma</span></div></div>
+          ${fsMi(A) ? `<div class="field"><label class="f">Sahibkarın fəaliyyət sahəsi</label><select class="in" name="fs_sahe" ${dis}>${Object.keys(FS_SAHE_KOD).map(x => `<option ${x === (A.fs_sahe || 'Ticarət') ? 'selected' : ''}>${x}</option>`).join('')}</select>
+            <div class="muted" style="font-size:12.5px;margin-top:4px">Sahibkarın MDSS kodu: Ticarət — 121340, Tikinti — 121350</div></div>` : ''}
+          <div class="row2"><div class="field"><label class="f">Fiziki şəxsə aylıq icarə haqqı (₼)</label><input class="in" name="icare_aylik" value="${esc(A.icare_aylik || '')}" placeholder="0,00" ${dis}></div>
+            <div class="field"><label class="f">İcarəyə verən (ad, məlumat üçün)</label><input class="in" name="icare_veren" value="${esc(A.icare_veren || '')}" ${dis}></div></div>
+          <div class="muted" style="font-size:12.5px;margin:-4px 0 14px">Hər ay bu məbləğdən 14% vergi hesablanır (kod: ${fsMi(A) ? '111121' : '111254'}). Hüquqi şəxsə ödənilən icarəni yazmayın — ondan vergi tutulmur. İcarə yoxdursa boş saxlayın.</div>
+          ${w ? '<button class="btn primary">Yadda saxla</button>' : ''}</form></div>` : '',
     ehtiyat: `<div class="card"><h3>Ehtiyat nüsxə</h3><p class="muted" style="font-size:13px">${muh ? 'Bütün məlumatlar (qaimələr, ödənişlər, gömrük, bank, əmək haqqı, aktlar, kontragentlər) bir Excel faylına yüklənir.' : 'Bütün məlumatlar (müştərilər, satışlar, ödənişlər, xərclər, işçilər, kassa, sifarişlər) bir Excel faylına yüklənir.'}</p>
         <button class="btn primary" id="xls">${ico('down')}Excel-ə yüklə</button> <span class="muted" id="xlsinfo"></span></div>`,
   };
@@ -4113,6 +4116,9 @@ async function pageAyarlar(params) {
   if ($('#rf') && w) $('#rf').onsubmit = async e => { e.preventDefault(); const f = e.target;
     try { for (const el of f.elements) if (el.name) await ayarYaz(A, el.name, el.value.trim()); S.cache = {}; toast('Rekvizitlər yadda saxlanıldı'); } catch (er) { fail(er); } };
   if ($('#kartac')) $('#kartac').onclick = e => { e.preventDefault(); sirketKarti().catch(fail); };
+  if ($('#vf') && w) $('#vf').onsubmit = async e => { e.preventDefault(); const f = e.target;
+    try { if (f.icare_aylik.value.trim() && isNaN(+f.icare_aylik.value.trim().replace(/\s/g, '').replace(',', '.'))) return toast('İcarə haqqı rəqəm olmalıdır');
+      for (const el of f.elements) if (el.name) await ayarYaz(A, el.name, el.name === 'icare_aylik' ? el.value.trim().replace(/\s/g, '').replace(',', '.') : el.value.trim()); S.cache = {}; toast('Yadda saxlanıldı'); } catch (er) { fail(er); } };
   if ($('#sf2') && w) $('#sf2').onsubmit = async e => { e.preventDefault(); const f = e.target;
     try { for (const el of f.elements) if (el.name) await ayarYaz(A, el.name, el.value.trim()); S.cache = {}; toast('Yadda saxlanıldı'); } catch (er) { fail(er); } };
   $$('[data-u]').forEach(sel => sel.onchange = async () => {
