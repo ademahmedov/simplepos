@@ -1674,7 +1674,7 @@ function sahibkarMdss(gelir, il) {
 }
 async function pageSahibkarMdss(params) {
   const il = +(params.get('il') || today().slice(0, 4)), w = canWrite(), A = await ayarlar(), fs = fsMi(A);
-  shell('emek', 'Əmək haqqı', `Sahibkarın sığorta haqları (MDSS + İTS) · ${il}`, `<div class="seg" id="et">${[['ay', 'Aylıq hesablama'], ['isci', 'Əməkdaşlar'], ['sah', 'Sahibkarın sığorta haqları']].map(([k, t]) => `<button data-t="${k}" class="${k === 'sah' ? 'on' : ''}">${t}</button>`).join('')}</div>
+  shell('emek', 'Əmək haqqı', `Sahibkarın sığorta haqları (MDSS + İTS) · ${il}`, `<div class="seg" id="et">${EMEK_TABLAR.map(([k, t]) => `<button data-t="${k}" class="${k === 'sah' ? 'on' : ''}">${t}</button>`).join('')}</div>
     <select class="in" id="sil" style="width:auto">${[il + 1, il, il - 1, il - 2].map(y => `<option ${y === il ? 'selected' : ''}>${y}</option>`).join('')}</select>`);
   $$('#et button').forEach(b => b.onclick = () => { location.hash = `#/emek?t=${b.dataset.t}`; });
   $('#sil').onchange = e => { location.hash = `#/emek?t=sah&il=${e.target.value}`; };
@@ -1694,7 +1694,7 @@ async function pageSahibkarMdss(params) {
   $('#page').innerHTML = `<div class="kpis">
       <div class="kpi"><div class="l">${il} — cəmi ödəniləcək</div><div class="v">${fmt(cem('mdss') + cem('its'), 2)} ₼</div><div class="s">MDSS ${fmt(cem('mdss'), 2)} + İTS ${fmt(cem('its'), 2)} · ${setir.length} ay</div></div>
       <div class="kpi"><div class="l">Satış (gəlir)</div><div class="v">${fmt(cem('gelir'), 2)} ₼</div><div class="s">xərclər çıxılmadan</div></div></div>
-    <div class="tbl-wrap"><table class="t" data-flt="0"><thead><tr><th>Ay</th><th class="n" style="width:200px">Aylıq satış</th><th class="n">MDSS (2%)</th><th class="n">İTS</th><th class="n">Cəmi</th></tr></thead>
+    <div class="tbl-wrap"><table class="t" data-flt="0"><thead><tr><th>Ay</th><th class="n" style="width:200px">Aylıq satış</th><th class="n">MDSS (2%)<div class="muted" style="font-weight:400;font-size:11px">kod ${FS_SAHE_KOD[A.fs_sahe || 'Ticarət']} · səviyyə 4</div></th><th class="n">İTS<div class="muted" style="font-weight:400;font-size:11px">kod 124300 · səviyyə 7</div></th><th class="n">Cəmi</th></tr></thead>
       <tbody>${setir.map(x => `<tr><td>${ayAdi(x.a)}</td>
         <td class="n">${w ? `<input class="in" style="text-align:right;padding:5px 8px" data-ay="${x.a.slice(0, 7)}" value="${x.el != null && x.el !== '' ? esc(x.el) : ''}" placeholder="0,00">` : fmt(x.gelir, 2)}</td>
         <td class="n"><b>${fmt(x.mdss, 2)}</b>${x.mdss === r2(me * 0.15) && x.gelir * 0.02 < me * 0.15 ? ' <span class="badge b-gray">min.</span>' : x.mdss === me && x.gelir * 0.02 > me ? ' <span class="badge b-gray">maks.</span>' : ''}</td><td class="n">${fmt(x.its, 2)}</td><td class="n"><b>${fmt(x.mdss + x.its, 2)}</b></td></tr>`).join('')}</tbody>
@@ -1705,10 +1705,50 @@ async function pageSahibkarMdss(params) {
       await ayarYaz(A, 'mdss_gelir_' + inp.dataset.ay, v); S.cache.ayar = null; refresh(); } catch (er) { fail(er); }
   });
 }
+// Ödəniləcək məbləğlər büdcə səviyyə və təsnifat kodları ilə (mühasibin ödəniş cədvəli kimi)
+const FS_SAHE_KOD = { 'Ticarət': 121340, 'Tikinti': 121350 };
+function odenisKodlari(fs, sahe) {
+  return [
+    { q: 'isci', ad: 'Gəlir vergisi (işçidən tutulan)', sev: 1, kod: 111111, k: 'gelir_vergisi' },
+    { q: 'isci', ad: 'Pensiya fondu — MDSS (işçidən tutulan)', sev: 4, kod: fs ? 121212 : 121211, k: 'dsmf_isci' },
+    { q: 'isci', ad: 'İşsizlikdən sığorta (işçidən tutulan)', sev: 4, kod: 123200, k: 'issizlik_isci' },
+    { q: 'isci', ad: 'İcbari tibbi sığorta (işçidən tutulan)', sev: 7, kod: 124210, k: 'tibbi_isci' },
+    { q: 'mues', ad: 'Pensiya fondu — MDSS (işəgötürən tərəfindən)', sev: 4, kod: fs ? 121112 : 121111, k: 'dsmf_isveren' },
+    { q: 'mues', ad: 'İşsizlikdən sığorta (işəgötürən tərəfindən)', sev: 4, kod: 123100, k: 'issizlik_isveren' },
+    { q: 'mues', ad: 'İcbari tibbi sığorta (işəgötürən tərəfindən)', sev: 7, kod: 124110, k: 'tibbi_isveren' },
+    ...(fs ? [{ q: 'sah', ad: 'Sahibkarın icbari tibbi sığorta haqqı', sev: 7, kod: 124300, k: 'sah_its' },
+      { q: 'sah', ad: `${sahe} sahəsində sahibkarlıq fəaliyyəti ilə məşğul olan fiziki şəxslər üzrə sosial ayırmalar (MDSS)`, sev: 4, kod: FS_SAHE_KOD[sahe] || 121340, k: 'sah_mdss' }] : [])];
+}
+async function pageEmekOdenis(params) {
+  const ay = params.get('ay') || ayBasi(today()), il = +ay.slice(0, 4), A = await ayarlar(), fs = fsMi(A), sahe = A.fs_sahe || 'Ticarət';
+  shell('emek', 'Əmək haqqı', `Ödəniləcək məbləğlər · ${ayAdi(ay)}`, `<div class="seg" id="et">${EMEK_TABLAR.map(([k, t]) => `<button data-t="${k}" class="${k === 'od' ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <select class="in" id="oay" style="width:auto">${ayOpt(ay)}</select><button class="btn" id="oxls">${ico('down')}Excel</button>`);
+  $$('#et button').forEach(b => b.onclick = () => { location.hash = `#/emek?t=${b.dataset.t}&ay=${ay}`; });
+  $('#oay').onchange = e => { location.hash = `#/emek?t=od&ay=${e.target.value}`; };
+  const eh = await all(() => sb.from('emek_haqqi').select('*').eq('ay', ay).order('id'));
+  const me = MIN_EMEK[il] || 400, gelir = num(A['mdss_gelir_' + ay.slice(0, 7)]);
+  const M = {}; ['gelir_vergisi', 'dsmf_isci', 'issizlik_isci', 'tibbi_isci', 'dsmf_isveren', 'issizlik_isveren', 'tibbi_isveren'].forEach(k => M[k] = r2(eh.reduce((s, r) => s + num(r[k]), 0)));
+  if (fs) { M.sah_its = r2(me * 0.04); M.sah_mdss = il >= 2026 ? sahibkarMdss(gelir, il) : 0; }
+  const K = odenisKodlari(fs, sahe), C = q_ => r2(K.filter(x => x.q === q_).reduce((s, x) => s + M[x.k], 0));
+  const qrup = { isci: 'İşçinin adından (maaşdan tutulan)', mues: 'Müəssisənin adından (işəgötürən)', sah: 'Sahibkarın adından' };
+  $('#page').innerHTML = `<div class="kpis">${Object.keys(qrup).filter(q_ => K.some(x => x.q === q_)).map(q_ => `<div class="kpi"><div class="l">${qrup[q_]}</div><div class="v">${fmt(C(q_), 2)} ₼</div></div>`).join('')}
+      <div class="kpi"><div class="l">Cəmi ödəniləcək</div><div class="v">${fmt(K.reduce((s, x) => s + M[x.k], 0), 2)} ₼</div><div class="s">${eh.length} işçi${fs ? ' + sahibkar' : ''}</div></div></div>
+    ${fs ? `<div class="card" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:12px 16px;margin-bottom:12px"><span>Sahibkarın fəaliyyət sahəsi:</span>
+      <select class="in" id="osahe" style="width:auto" ${canWrite() ? '' : 'disabled'}>${Object.keys(FS_SAHE_KOD).map(x => `<option ${x === sahe ? 'selected' : ''}>${x}</option>`).join('')}</select>
+      <span class="muted" style="font-size:13px">Ayın satışı: <b>${fmt(gelir, 2)} ₼</b> — <a href="#/emek?t=sah&il=${il}">dəyişmək</a></span></div>` : ''}
+    <div class="tbl-wrap"><table class="t" data-flt="0"><thead><tr><th>№</th><th>Büdcə səviyyə kodu</th><th>Büdcə təsnifat kodu</th><th>Təyinatı</th><th class="n">Məbləğ</th></tr></thead>
+      <tbody>${K.map((x, i) => `<tr style="${M[x.k] > 0 ? '' : 'opacity:.45'}"><td class="muted">${i + 1}</td><td>${x.sev}</td><td><b>${x.kod}</b></td><td>${esc(x.ad)}</td><td class="n"><b>${fmt(M[x.k], 2)}</b></td></tr>`).join('')}</tbody>
+      <tfoot><tr><td></td><td></td><td></td><td>Cəmi</td><td class="n sabit">${fmt(K.reduce((s, x) => s + M[x.k], 0), 2)}</td></tr></tfoot></table></div>
+    <p class="muted" style="font-size:12.5px;line-height:1.6">İşçilərin məbləğləri "Aylıq hesablama"dan götürülür${eh.length ? '' : ' — bu ay üçün hələ hesablanmayıb'}. Kodlar ${fs ? 'fərdi sahibkar' : 'hüquqi şəxs'} üçündür (Ayarlar → Rekvizitlər → Hüquqi forma).${fs ? ' Sahibkarın MDSS-i ayın satışının 2%-i (60–400 ₼), İTS-i 16 ₼-dır.' : ''}</p>`;
+  if ($('#osahe')) $('#osahe').onchange = async e => { try { await ayarYaz(A, 'fs_sahe', e.target.value); S.cache.ayar = null; refresh(); } catch (er) { fail(er); } };
+  $('#oxls').onclick = () => xlsxEndir(`${S.magaza.ad} - ödənişlər - ${ayAdi(ay)}`, [{ ad: ayAdi(ay), rows: [['№', 'Büdcə səviyyə kodu', 'Büdcə təsnifat kodu', 'Təyinatı', 'Məbləğ'], ...K.map((x, i) => [i + 1, x.sev, x.kod, x.ad, M[x.k]]), ['', '', '', 'Cəmi', r2(K.reduce((s, x) => s + M[x.k], 0))]] }]);
+}
+const EMEK_TABLAR = [['ay', 'Aylıq hesablama'], ['isci', 'Əməkdaşlar'], ['sah', 'Sahibkarın sığorta haqları'], ['od', 'Ödəniləcək məbləğlər (kodlarla)']];
 async function pageEmek(params) {
-  const tab = ['isci', 'sah'].includes(params.get('t')) ? params.get('t') : 'ay', ay = params.get('ay') || ayBasi(today()), w = canWrite();
+  const tab = ['isci', 'sah', 'od'].includes(params.get('t')) ? params.get('t') : 'ay', ay = params.get('ay') || ayBasi(today()), w = canWrite();
   if (tab === 'sah') return pageSahibkarMdss(params);
-  shell('emek', 'Əmək haqqı', tab === 'ay' ? ayAdi(ay) : 'Əməkdaşlar', `<div class="seg" id="et">${[['ay', 'Aylıq hesablama'], ['isci', 'Əməkdaşlar'], ['sah', 'Sahibkarın sığorta haqları']].map(([k, t]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+  if (tab === 'od') return pageEmekOdenis(params);
+  shell('emek', 'Əmək haqqı', tab === 'ay' ? ayAdi(ay) : 'Əməkdaşlar', `<div class="seg" id="et">${EMEK_TABLAR.map(([k, t]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     ${tab === 'ay' ? `<select class="in" id="eay" style="width:auto">${ayOpt(ay)}</select>${w ? `<button class="btn primary" id="ehes">Hesabla</button>` : ''}` : (w ? `<button class="btn primary" id="eyeni">${ico('plus')}Yeni əməkdaş</button>` : '')}`);
   $$('#et button').forEach(b => b.onclick = () => { location.hash = `#/emek?t=${b.dataset.t}&ay=${ay}`; });
   const isci = await all(() => sb.from('emekdaslar').select('*').order('ad'));
