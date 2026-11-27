@@ -2209,13 +2209,21 @@ async function pageCedvel(params) {
     const t = [...tr.children].slice(3); const vals = [s.E, s.D, s.qE, s.qD, ...s.m.flat(), s.pE, s.pD]; vals.forEach((n, i) => { if (t[i]) t[i].textContent = v(n); }); altPanel(); };
   $('#cgot').onclick = () => {
     const buAy = il === +today().slice(0, 4) ? Math.max(0, +today().slice(5, 7) - 2) : 11;
-    const m = modal('Əvəzləşən qaimələri götür', `<p class="muted" style="margin-top:0;font-size:13.5px">Seçdiyiniz ayda ödənilmiş qaimələr (ödənilən əsas və ƏDV ilə) Excel faylına çıxarılır.</p>
-      <div class="field"><label class="f">Ay</label><select class="in" id="gay">${AY_QISA.map((a, i) => `<option value="${i}" ${i === buAy ? 'selected' : ''}>${a} ${il}</option>`).join('')}</select></div><div id="ginfo" class="muted" style="font-size:13.5px"></div>`,
-      `<button class="btn" data-close>Bağla</button><button class="btn primary" id="gok">${ico('down')}Excel-ə çıxar</button>`);
-    const info = () => { const i = +$('#gay', m).value, l = L.filter(x => x.m[i].e + x.m[i].d > 0.004);
-      $('#ginfo', m).innerHTML = `${l.length} qaimə · ödənilən əsas <b>${fmt(l.reduce((s, x) => s + x.m[i].e, 0), 2)}</b> · ƏDV <b>${fmt(l.reduce((s, x) => s + x.m[i].d, 0), 2)}</b>`; return l; };
+    let kod = '308'; try { kod = localStorage.getItem('evez_kod') || '308'; } catch (_) {}
+    const m = modal('Əvəzləşən qaimələri götür', `<p class="muted" style="margin-top:0;font-size:13.5px;line-height:1.55">Seçdiyiniz ayda ödənilmiş qaimələr vergiyə təqdim olunan formada Excel faylına çıxarılır: <b>kod · seriya · nömrə · məbləğ</b> (başlıqsız). Məbləğ = həmin ayda ödənilmiş ƏDV ÷ 0,18 — yəni ƏDV-si ödənilmiş əsas məbləğ.</p>
+      <div class="row2"><div class="field"><label class="f">Ay</label><select class="in" id="gay">${AY_QISA.map((a, i) => `<option value="${i}" ${i === buAy ? 'selected' : ''}>${a} ${il}</option>`).join('')}</select></div>
+      <div class="field"><label class="f">Kod (1-ci sütun)</label><input class="in" id="gkod" value="${esc(kod)}"></div></div>
+      <div id="ginfo" class="muted" style="font-size:13.5px"></div>`,
+      `<button class="btn" data-close>Bağla</button><button class="btn" id="getr">${ico('down')}Ətraflı siyahı</button><button class="btn primary" id="gok">${ico('down')}Vergi üçün fayl</button>`);
+    const sec_ = () => { const i = +$('#gay', m).value; return { i, l: L.filter(x => x.m[i].d > 0.004) }; };
+    const info = () => { const { i, l } = sec_();
+      $('#ginfo', m).innerHTML = `${l.length} qaimə · ödənilən ƏDV <b>${fmt(l.reduce((s, x) => s + x.m[i].d, 0), 2)} ₼</b> · fayldakı məbləğ cəmi <b>${fmt(l.reduce((s, x) => s + x.m[i].d / 0.18, 0), 2)} ₼</b>`; };
     $('#gay', m).onchange = info; info();
-    $('#gok', m).onclick = () => { const i = +$('#gay', m).value, l = info(); if (!l.length) return toast('Bu ayda ödənilmiş qaimə yoxdur');
+    $('#gok', m).onclick = () => { const { i, l } = sec_(); if (!l.length) return toast('Bu ayda ƏDV-si ödənilmiş qaimə yoxdur');
+      const k = $('#gkod', m).value.trim() || '308'; try { localStorage.setItem('evez_kod', k); } catch (_) {}
+      xlsxEndir(`${S.magaza.ad} - əvəzləşmə - ${AY_QISA[i]} ${il}`, [{ ad: 'Əvəzləşdirmə', basliqsiz: true, rows: l.map(x => [/^\d+$/.test(k) ? +k : k, String(x.seriya || ''), String(x.nomre || ''), x.m[i].d / 0.18]) }]);
+      closeModal(); };
+    $('#getr', m).onclick = () => { const { i, l } = sec_(); if (!l.length) return toast('Bu ayda ƏDV-si ödənilmiş qaimə yoxdur');
       xlsxEndir(`${S.magaza.ad} - əvəzləşən qaimələr - ${AY_QISA[i]} ${il}`, [{ ad: `${AY_QISA[i]} ${il}`, rows: [['№', 'Kontragent', 'VÖEN', 'Seriya', 'Nömrə', 'Tarix', 'Qaimənin əsas məbləği', 'Qaimənin ƏDV-si', 'Ödənilən əsas məbləğ', 'Ödənilən ƏDV'],
         ...l.map((x, n) => [n + 1, x.kontragent || '', x.voen || '', x.seriya || '', x.nomre || '', fd(x.tarix), x.E, x.D, r2(x.m[i].e), r2(x.m[i].d)]),
         ['', 'Cəmi', '', '', '', '', r2(l.reduce((s, x) => s + x.E, 0)), r2(l.reduce((s, x) => s + x.D, 0)), r2(l.reduce((s, x) => s + x.m[i].e, 0)), r2(l.reduce((s, x) => s + x.m[i].d, 0))]] }]);
@@ -4292,13 +4300,13 @@ function xlsxYarat(sheets) {
     const rows = s.rows.map((r, ri) => `<row r="${ri + 1}">${r.map((v, ci) => {
       const ref = col(ci) + (ri + 1);
       if (v == null || v === '') return '';
-      if (ri === 0) return `<c r="${ref}" s="1" t="inlineStr"><is><t>${x(v)}</t></is></c>`;
+      if (ri === 0 && !s.basliqsiz) return `<c r="${ref}" s="1" t="inlineStr"><is><t>${x(v)}</t></is></c>`;
       if (typeof v === 'number' && isFinite(v)) return `<c r="${ref}"${Number.isInteger(v) && Math.abs(v) < 1e6 && ci === 0 ? '' : ' s="3"'}><v>${v}</v></c>`;
       if (isDate(v)) return `<c r="${ref}" s="2"><v>${serial(v)}</v></c>`;
       return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${x(v)}</t></is></c>`;
     }).join('')}</row>`).join('');
     const widths = s.rows[0].map((h, ci) => Math.min(45, Math.max(10, ...s.rows.slice(0, 200).map(r => String(r[ci] == null ? '' : r[ci]).length + 2))));
-    files[`xl/worksheets/sheet${i + 1}.xml`] = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w2, ci) => `<col min="${ci + 1}" max="${ci + 1}" width="${w2}" customWidth="1"/>`).join('')}</cols><sheetData>${rows}</sheetData><autoFilter ref="A1:${col(s.rows[0].length - 1)}${s.rows.length}"/></worksheet>`;
+    files[`xl/worksheets/sheet${i + 1}.xml`] = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0">${s.basliqsiz ? '' : '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'}</sheetView></sheetViews><cols>${widths.map((w2, ci) => `<col min="${ci + 1}" max="${ci + 1}" width="${w2}" customWidth="1"/>`).join('')}</cols><sheetData>${rows}</sheetData><autoFilter ref="A1:${col(s.rows[0].length - 1)}${s.rows.length}"/></worksheet>`;
   });
   // ZIP (sıxılmadan)
   const crcT = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
