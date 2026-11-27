@@ -1739,9 +1739,8 @@ async function pageEmekOdenis(params) {
   const edvHisse = r2(satis * 18 / 118); M.edv = r2(edvHisse * rent / 100);
   const K = odenisKodlari(fs, sahe, A), C = q_ => r2(K.filter(x => x.q === q_).reduce((s, x) => s + M[x.k], 0)), CEM = r2(K.reduce((s, x) => s + M[x.k], 0));
   const qrup = [['isci', 'İşçinin adından (maaşdan tutulan)'], ['mues', 'Müəssisənin adından (işəgötürən)'], ['sah', 'Sahibkarın adından'], ['icare', 'İcarə vergisi'], ['edv', 'ƏDV']].filter(([q_]) => K.some(x => x.q === q_));
-  const izah = x => x.icare ? (icare ? `icarə haqqı ${fmt(icare, 2)} ₼${A.icare_veren ? ' (' + esc(A.icare_veren) + ')' : ''} → icarəyə verənə ${fmt(icare - M.icare_vergi, 2)} ₼` : 'icarə yoxdur')
-    : '';
-  const qeyd = `${avto ? 'İşçilərin məbləğləri "Əməkdaşlar" siyahısındakı maaşlardan hesablanıb' : eh.length ? 'İşçilərin məbləğləri ayın əmək haqqı hesablamasından götürülüb' : 'Bu ay işçi yoxdur'}. Kodlar ${fs ? 'fərdi sahibkar' : 'hüquqi şəxs'} üçündür.${fs ? ` Sahibkarın MDSS-i ayın satışının 2%-i (ən azı ${fmt(me * 0.15, 0)}, ən çoxu ${me} ₼), İTS-i minimum əməkhaqqının 4%-i (${fmt(me * 0.04, 2)} ₼).` : ''} İcarə vergisi fiziki şəxsə ödənilən icarə haqqının 14%-idir (hüquqi şəxsə ödənilən icarədən tutulmur) və rüb bitdikdən sonrakı ayın 20-dək ödənilir.`;
+  const izah = () => '';
+  const qeyd = `${avto ? 'İşçilərin məbləğləri "Əməkdaşlar" siyahısındakı maaşlardan hesablanıb' : eh.length ? 'İşçilərin məbləğləri ayın əmək haqqı hesablamasından götürülüb' : 'Bu ay işçi yoxdur'}. Kodlar ${fs ? 'fərdi sahibkar' : 'hüquqi şəxs'} üçündür.${fs ? ` Sahibkarın MDSS-i ayın satışının 2%-i (ən azı ${fmt(me * 0.15, 0)}, ən çoxu ${me} ₼), İTS-i minimum əməkhaqqının 4%-i (${fmt(me * 0.04, 2)} ₼).` : ''} İcarə vergisi rüb bitdikdən sonrakı ayın 20-dək ödənilir.`;
   $('#page').innerHTML = `<div class="print-only" style="margin-bottom:12px"><div style="font-size:18px;font-weight:700">${esc(A.firma_adi || S.magaza.ad)}</div>
       <div style="font-size:13px">${A.firma_voen ? 'VÖEN: ' + esc(A.firma_voen) + ' · ' : ''}${fs ? 'Fərdi sahibkar' : 'Hüquqi şəxs'}</div>
       <div style="font-size:15px;font-weight:600;margin-top:8px">${ayAdi(ay)} — ödəniləcək vergi və sığorta məbləğləri</div></div>
