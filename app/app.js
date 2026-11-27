@@ -357,7 +357,7 @@ function route() {
   const [p, id] = path.split('/');
   const run = { cedvel: () => pageCedvel(params), panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), sat: () => pageSat(params), mpanel: () => { location.replace('#/bugun'); }, gelen: () => { location.replace('#/qaime?ist=gelen'); }, geden: () => { location.replace('#/qaime?ist=geden'); },
     bugun: () => pageBugun(), qaime: () => pageQaime(params), akt: () => pageAkt(params), odenis: () => pageOdenis(params), edv: () => pageEdv(params), depozit: () => pageDepozit(params), hesab: () => pageMHesabat(params), xeber: () => pageXeber(),
-    gomruk: () => pageGomruk(params), bank: () => pageBank(params), evez: () => pageEvez(params), emek: () => pageEmek(params), mz: () => pageMZ(params), kontragent: () => pageKontragent(), firmalar: () => pageFirmalar(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id), etiket: () => pageEtiket(),
+    gomruk: () => pageGomruk(params), bank: () => pageBank(params), evez: () => pageEvez(params), emek: () => pageEmek(params), mz: () => pageMZ(params), kontragent: () => pageKontragent(params), firmalar: () => pageFirmalar(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id), etiket: () => pageEtiket(),
     rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
     kassa: () => pageKassa(), sifarisler: () => pageSifarisler(params), hesabat: () => pageHesabat(params),
     teqvim: () => pageTeqvim(params), menfeet: () => pageMenfeet(), jurnal: () => pageJurnal(params), ayarlar: () => pageAyarlar(params),
@@ -1174,7 +1174,7 @@ const NAV_M = [['cedvel', 'Əvəzləşmə cədvəli', 'doc'], ['bugun', 'Bu gün
   ['odenis', 'Ödənişlər', 'exp'], ['bank', 'Bank hesabları', 'kassaI'], ['kontragent', 'Kontragentlər', 'users'],
   ['gomruk', 'Gömrük bəyanı', 'box'], ['edv', 'ƏDV hesabatı', 'chart'], ['depozit', 'ƏDV depozit', 'wallet'], ['emek', 'Əmək haqqı', 'worker'], ['hesab', 'Hesabatlar', 'trend'], ['xeber', 'Xəbərdarlıqlar', 'hist'],
   ['jurnal', 'Jurnal', 'hist'], ['ayarlar', 'Ayarlar', 'gear'], ['evez', 'Əvəzləşmə', 'doc'], ['mz', 'Mənfəət / Zərər', 'trend']];
-const NAVBOLME_M = [['Əsas', ['cedvel', 'bank', 'emek']], ['Digər bölmələr', ['qaime', 'odenis', 'edv', 'kontragent', 'hesab', 'bugun', 'akt', 'gomruk', 'depozit', 'xeber']], ['Sistem', ['ayarlar', 'jurnal']]];
+const NAVBOLME_M = [['Əsas', ['cedvel', 'kontragent', 'bank', 'emek']], ['Digər bölmələr', ['qaime', 'odenis', 'edv', 'hesab', 'bugun', 'akt', 'gomruk', 'depozit', 'xeber']], ['Sistem', ['ayarlar', 'jurnal']]];
 const MUH_SEHIFE = ['cedvel', 'bugun', 'qaime', 'akt', 'odenis', 'bank', 'kontragent', 'gomruk', 'edv', 'depozit', 'emek', 'hesab', 'xeber', 'evez', 'mz', 'mpanel', 'gelen', 'geden'];
 const r2 = v => Math.round((num(v) + Number.EPSILON) * 100) / 100;
 const aylarSiyahi = (n = 24) => { const d = new Date(); d.setDate(1); const o = [];
@@ -1874,20 +1874,38 @@ async function pageMZ(params) {
 }
 
 /* ---------- Kontragentlər ---------- */
-async function pageKontragent() {
-  const w = canWrite();
-  shell('kontragent', 'Kontragentlər', '', `<input class="in search" id="kax" placeholder="Axtar: VÖEN, ad">${w ? `<button class="btn primary" id="kyeni">${ico('plus')}Yeni kontragent</button>` : ''}`);
-  const [k, qm] = await Promise.all([all(() => sb.from('kontragentler').select('*').order('ad')), all(() => sb.from('v_qaimeler').select('istiqamet,voen,kontragent,cem,qaliq').order('id'))]);
-  if ($('#kyeni')) $('#kyeni').onclick = () => kontragentForm(null);
-  const st = new Map(); qm.forEach(x => { const o = st.get(x.voen) || { g: 0, d: 0, gq: 0, dq: 0 };
-    if (x.istiqamet === 'gelen') { o.g += num(x.cem); o.gq += num(x.qaliq); } else { o.d += num(x.cem); o.dq += num(x.qaliq); } st.set(x.voen, o); });
-  $('.topbar .sub').textContent = `${k.length} kontragent`;
-  $('#page').innerHTML = k.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>VÖEN</th><th>Ad</th><th class="hide-m">Telefon</th><th class="n">Gələn qaimələr</th><th class="n">Bizim borc</th><th class="n">Gedən qaimələr</th><th class="n">Onun borcu</th></tr></thead>
-    <tbody>${k.map(x => { const o = st.get(x.voen) || { g: 0, d: 0, gq: 0, dq: 0 };
-      return `<tr class="${w ? 'click' : ''}" data-k="${x.id}"><td>${esc(x.voen || '')}</td><td>${esc(qisaAd(x.ad))}</td><td class="hide-m">${esc(x.telefon || '')}</td><td class="n">${fmt(o.g, 2)}</td><td class="n"><b class="${o.gq > 0.005 ? 'neg' : ''}">${fmt(o.gq, 2)}</b></td><td class="n">${fmt(o.d, 2)}</td><td class="n"><b>${fmt(o.dq, 2)}</b></td></tr>`; }).join('')}</tbody></table></div>`
-    : '<div class="card empty">Kontragent yoxdur. Qaimələri yükləyəndə avtomatik əlavə olunur.</div>';
-  $('#kax').oninput = e => { const t = azLow(e.target.value); $$('[data-k]').forEach(tr => { tr.style.display = !t || azLow(tr.textContent).includes(t) ? '' : 'none'; }); };
-  $$('[data-k]').forEach(tr => tr.onclick = () => w && kontragentForm(k.find(x => x.id === +tr.dataset.k)));
+async function pageKontragent(params) {
+  params = params || new URLSearchParams();
+  const ist = params.get('ist') === 'geden' ? 'geden' : 'gelen', ay = params.get('ay') || ayBasi(today()), son = ayinSonu(ay), f = params.get('f') || 'hamisi';
+  const hesab = ist === 'gelen' ? '531 — Təchizatçılar (kreditor borcu)' : '211 — Alıcılar (debitor borcu)';
+  shell('kontragent', 'Kontragentlər', `${hesab} · ${ayAdi(ay)}`, `<div class="seg" id="kist">${[['gelen', 'Təchizatçılar (531)'], ['geden', 'Alıcılar (211)']].map(([k, t]) => `<button data-i="${k}" class="${k === ist ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <select class="in" id="kay" style="width:auto">${ayOpt(ay)}</select><button class="btn" onclick="window.print()">${ico('print')}PDF / Çap</button>`);
+  const go = (k, v) => { const p = new URLSearchParams(params); p.set(k, v); location.hash = '#/kontragent?' + p; };
+  $$('#kist button').forEach(b => b.onclick = () => go('ist', b.dataset.i));
+  $('#kay').onchange = e => go('ay', e.target.value);
+  const [qm, od] = await Promise.all([all(() => sb.from('qaimeler').select('id,voen,kontragent,tarix,esas,edv,edvsiz').eq('istiqamet', ist).lte('tarix', son).order('tarix').order('id')),
+    all(() => sb.from('v_qaime_odenisleri').select('qaime_id,tarix,mebleg,voen').eq('istiqamet', ist).lte('tarix', son).order('id'))]);
+  const K = new Map(), al = v => { let o = K.get(v); if (!o) K.set(v, o = { voen: v, ad: '', ilk: 0, gel: 0, od: 0 }); return o; };
+  const qV = new Map();
+  qm.forEach(x => { const v = x.voen || '—', o = al(v), c = num(x.esas) + num(x.edv) + num(x.edvsiz); o.ad = x.kontragent || o.ad; qV.set(x.id, v);
+    if (x.tarix < ay) o.ilk += c; else o.gel += c; });
+  od.forEach(p => { const o = al(qV.get(p.qaime_id) || p.voen || '—'), m = num(p.mebleg); if (p.tarix < ay) o.ilk -= m; else o.od += m; });
+  let L = [...K.values()].map(o => ({ ...o, ilk: r2(o.ilk), gel: r2(o.gel), od: r2(o.od), son: r2(o.ilk + o.gel - o.od) }))
+    .filter(o => Math.abs(o.ilk) > 0.004 || o.gel > 0.004 || o.od > 0.004 || Math.abs(o.son) > 0.004);
+  if (f === 'borc') L = L.filter(o => o.son > 0.004);
+  L.sort((a, b) => b.son - a.son || a.ad.localeCompare(b.ad));
+  const S_ = k => r2(L.reduce((s, o) => s + o[k], 0)), v = n => Math.abs(n) < 0.005 ? '—' : fmt(n, 2);
+  const A = await ayarlar();
+  $('#page').innerHTML = `<div class="print-only" style="margin-bottom:10px"><div style="font-size:17px;font-weight:700">${esc(A.firma_adi || S.magaza.ad)}</div>
+      <div style="font-size:14px;font-weight:600;margin-top:4px">${hesab} — ${ayAdi(ay)}</div></div>
+    <div class="ced-ust no-print"><div class="seg" id="kf">${[['hamisi', 'Hamısı'], ['borc', 'Yalnız borcu qalanlar']].map(([k, t]) => `<button data-f="${k}" class="${k === f ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <span class="muted" style="font-size:13px">${L.length} kontragent</span></div>
+    ${L.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>№</th><th>VÖEN</th><th>Kontragent</th><th class="n">${ayAdi(ay)}-ın əvvəlinə qalıq</th><th class="n">${ist === 'gelen' ? 'Bu ay gələn qaimələr' : 'Bu ay gedən qaimələr'}</th><th class="n">${ist === 'gelen' ? 'Bu ay ödənilən' : 'Bu ay alınan'}</th><th class="n">Yekun borc</th></tr></thead>
+      <tbody>${L.map((o, i) => `<tr><td class="muted">${i + 1}</td><td class="muted">${esc(o.voen)}</td><td>${esc(qisaAd(o.ad))}</td><td class="n">${v(o.ilk)}</td><td class="n">${v(o.gel)}</td><td class="n">${v(o.od)}</td><td class="n"><b class="${o.son > 0.004 ? 'neg' : ''}">${v(o.son)}</b></td></tr>`).join('')}</tbody>
+      <tfoot><tr><td></td><td></td><td>Cəmi</td><td class="n">${fmt(S_('ilk'), 2)}</td><td class="n">${fmt(S_('gel'), 2)}</td><td class="n">${fmt(S_('od'), 2)}</td><td class="n">${fmt(S_('son'), 2)}</td></tr></tfoot></table></div>
+      <p class="muted no-print" style="font-size:12.5px">Yekun borc = əvvələ qalıq + bu ay ${ist === 'gelen' ? 'gələn' : 'gedən'} qaimələr − bu ay ${ist === 'gelen' ? 'ödənilən' : 'alınan'}. ${ist === 'gelen' ? 'Ödənişlər "Əvəzləşmə cədvəli"ndən götürülür.' : ''} Mənfi rəqəm artıq ödənişi (avansı) göstərir.</p>`
+      : `<div class="card empty">${ist === 'gelen' ? 'Gələn qaimə yoxdur — "Vergidən qaimə yüklə" ilə yükləyin.' : 'Gedən qaimə yoxdur.'}</div>`}`;
+  $$('#kf button').forEach(b => b.onclick = () => go('f', b.dataset.f));
 }
 function kontragentForm(x) {
   const m = modal(x ? 'Kontragenti düzəlt' : 'Yeni kontragent', `<form id="kf">
