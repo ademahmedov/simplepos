@@ -291,7 +291,7 @@ function meqsedModal() {
   $$('[data-mq]', m).forEach(b => b.onclick = async () => {
     const k = b.dataset.mq;
     try { await q(sb.rpc('meqsed_sec', { m: k })); S.profil.meqsed = k; closeModal();
-      if (k === 'muhasib') { toast('Mühasib rejimi açıldı — firmalarınızı "Firmalarım" bölməsindən əlavə edin', 4500); await start(); location.hash = '#/firmalar'; }
+      if (k === 'muhasib') { toast('Mühasib rejimi açıldı — firmalarınızı "Müəssisələr" bölməsindən əlavə edin', 4500); await start(); location.hash = '#/firmalar'; }
       else { if (S.magaza && S.rol === 'muhasib') S.magaza.sahe = k; toast('Yadda saxlanıldı'); route(); }
     } catch (er) { fail(er); }
   });
@@ -328,7 +328,7 @@ function shell(active, title, sub, tools, body) {
   app.innerHTML = `<div class="shell">
    <aside class="side"><div class="logo">${LOGO}<div><span>${esc(CFG.FIRMA_ADI)}</span><small>${S.magaza ? esc(S.magaza.ad) : S.admin ? 'Admin' : ''}</small></div></div>
     ${S.coxFirma && S.firmalar.length > 1 && !muhFirma() ? `<div class="firma-sec"><select id="fsec" title="Firmanı dəyiş">${S.firmalar.map(x => `<option value="${x.id}" ${S.magaza && x.id === S.magaza.id ? 'selected' : ''}>${esc(x.ad)}</option>`).join('')}</select></div>` : ''}
-    <nav>${S.coxFirma || (!S.magaza && !S.admin) ? `<a href="#/firmalar" class="${active === 'firmalar' ? 'active' : ''}">${ico('bina')}${S.muhasibHesab ? 'Firmalarım' : 'Dükanlarım'}</a>` : ''}${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? `<div class="sec">${muhFirma() ? 'Firma' : 'Dükan'}</div>` : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? navBolmeler(active) : ''}</nav>
+    <nav>${S.coxFirma || (!S.magaza && !S.admin) ? `<a href="#/firmalar" class="${active === 'firmalar' ? 'active' : ''}">${ico('bina')}Müəssisələr</a>` : ''}${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? `<div class="sec">${muhFirma() ? 'Firma' : 'Dükan'}</div>` : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? navBolmeler(active) : ''}</nav>
     <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'sahibkar' ? 'Yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
    <div class="mobile-bar"><button id="geri" class="mb-geri" ${active === 'menyu' || (S.rol === 'kuryer' && active === 'yigim') ? 'style="visibility:hidden"' : ''}>‹ Geri</button><b ${S.coxFirma ? 'id="mbfirma" style="cursor:pointer"' : ''}>${LOGO}${esc(firmaAdi())}${S.coxFirma ? ' ▾' : ''}</b><button id="out2">Çıxış</button></div>
    <main class="main">${S.magaza && muhFirma() && S.rol !== 'kuryer' ? mUstPanel(active) : ''}${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
@@ -385,7 +385,7 @@ async function firmaSec(id) {
   finally { S.deyisir = false; ov.remove(); }
 }
 async function pageFirmalar() {
-  const bas = S.muhasibHesab ? 'Firmalarım' : 'Dükanlarım';
+  const bas = 'Müəssisələr';
   shell('firmalar', bas, '', `<input class="in" id="fax" placeholder="Axtar: firma adı" style="width:200px">
     <button class="btn" id="fqos">${ico('users')}Kodla qoşul</button><button class="btn primary" id="fyeni">${ico('plus')}Yeni firma</button>`);
   $('#fyeni').onclick = firmaYeniModal; $('#fqos').onclick = firmaQosulModal;
@@ -521,7 +521,7 @@ function pageMenyu() {
   $('#page').innerHTML = `
     ${canWrite() ? (muhFirma() ? `<div class="kafel-tez"><a class="btn primary" href="#/gelen">${ico('down')}Gələn qaimələr</a><a class="btn" href="#/geden">${ico('up')}Gedən qaimələr</a></div>`
       : `<div class="kafel-tez"><button class="btn primary" id="ts">${ico('plus')}Yeni satış</button><button class="btn" id="tm">${ico('plus')}Yeni müştəri</button></div>`) : ''}
-    ${S.coxFirma ? `<div class="kafel-bas">Firmalar</div><div class="kafeller"><a class="kafel" href="#/firmalar">${ico('bina')}<span>${S.muhasibHesab ? 'Firmalarım' : 'Dükanlarım'}</span></a></div>` : ''}
+    ${S.coxFirma ? `<div class="kafel-bas">Firmalar</div><div class="kafeller"><a class="kafel" href="#/firmalar">${ico('bina')}<span>Müəssisələr</span></a></div>` : ''}
     ${S.admin ? `<div class="kafel-bas">Sistem</div><div class="kafeller"><a class="kafel" href="#/admin">${ico('panel')}<span>Admin panel</span></a></div>` : ''}
     ${(muhFirma() ? NAVBOLME_M : NAVBOLME).map(([b, ks]) => `<div class="kafel-bas">${b}</div><div class="kafeller">${ks.map(kafel).join('')}</div>`).join('')}`;
   if ($('#ts')) $('#ts').onclick = () => { location.hash = '#/sat'; };
