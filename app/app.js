@@ -4306,7 +4306,7 @@ function xlsxYarat(sheets) {
       return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${x(v)}</t></is></c>`;
     }).join('')}</row>`).join('');
     const widths = s.rows[0].map((h, ci) => Math.min(45, Math.max(10, ...s.rows.slice(0, 200).map(r => String(r[ci] == null ? '' : r[ci]).length + 2))));
-    files[`xl/worksheets/sheet${i + 1}.xml`] = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0">${s.basliqsiz ? '' : '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'}</sheetView></sheetViews><cols>${widths.map((w2, ci) => `<col min="${ci + 1}" max="${ci + 1}" width="${w2}" customWidth="1"/>`).join('')}</cols><sheetData>${rows}</sheetData><autoFilter ref="A1:${col(s.rows[0].length - 1)}${s.rows.length}"/></worksheet>`;
+    files[`xl/worksheets/sheet${i + 1}.xml`] = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0">${s.basliqsiz ? '' : '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'}</sheetView></sheetViews><cols>${widths.map((w2, ci) => `<col min="${ci + 1}" max="${ci + 1}" width="${w2}" customWidth="1"/>`).join('')}</cols><sheetData>${rows}</sheetData>${s.basliqsiz ? '' : `<autoFilter ref="A1:${col(s.rows[0].length - 1)}${s.rows.length}"/>`}</worksheet>`;
   });
   // ZIP (sıxılmadan)
   const crcT = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
