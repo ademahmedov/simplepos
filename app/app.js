@@ -281,7 +281,7 @@ async function start() {
   const get = h => { if (location.hash !== h) history.replaceState(null, '', h); };
   if (!S.magaza) get(S.admin && !S.muhasibHesab ? '#/admin' : '#/firmalar');
   else if (S.rol === 'kuryer') get('#/yigim');
-  else if (!location.hash || /access_token|type=/.test(location.hash)) get(window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/bugun' : '#/panel'));
+  else if (!location.hash || /access_token|type=/.test(location.hash)) get(window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/cedvel' : '#/panel'));
   route();
   if (S.profil && !S.profil.meqsed && (S.rol === 'muhasib' || (!S.magaza && !S.admin))) setTimeout(meqsedModal, 600);
 }
@@ -355,7 +355,7 @@ function route() {
   const [path, qs] = h.split('?');
   const params = new URLSearchParams(qs || '');
   const [p, id] = path.split('/');
-  const run = { panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), sat: () => pageSat(params), mpanel: () => { location.replace('#/bugun'); }, gelen: () => { location.replace('#/qaime?ist=gelen'); }, geden: () => { location.replace('#/qaime?ist=geden'); },
+  const run = { cedvel: () => pageCedvel(params), panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), sat: () => pageSat(params), mpanel: () => { location.replace('#/bugun'); }, gelen: () => { location.replace('#/qaime?ist=gelen'); }, geden: () => { location.replace('#/qaime?ist=geden'); },
     bugun: () => pageBugun(), qaime: () => pageQaime(params), akt: () => pageAkt(params), odenis: () => pageOdenis(params), edv: () => pageEdv(params), depozit: () => pageDepozit(params), hesab: () => pageMHesabat(params), xeber: () => pageXeber(),
     gomruk: () => pageGomruk(params), bank: () => pageBank(params), evez: () => pageEvez(params), emek: () => pageEmek(params), mz: () => pageMZ(params), kontragent: () => pageKontragent(), firmalar: () => pageFirmalar(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id), etiket: () => pageEtiket(),
     rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
@@ -364,8 +364,8 @@ function route() {
     qebz: () => pageQebz(id), muqavile: () => pageMuqavile(id), admin: () => pageAdmin() }[p] || pagePanel;
   if (!S.magaza && !['admin', 'firmalar'].includes(p)) { location.hash = S.admin && !S.muhasibHesab ? '#/admin' : '#/firmalar'; return; }
   if (S.rol === 'kuryer' && !['yigim', 'qebz', 'menyu', 'firmalar'].includes(p)) { location.hash = '#/yigim'; return; }
-  if (S.magaza && muhFirma() && !MUH_SEHIFE.includes(p) && !['jurnal', 'ayarlar', 'menyu', 'firmalar', 'admin'].includes(p)) { location.hash = '#/bugun'; return; }
-  if (S.magaza && muhFirma()) mTabQeyd(p, location.hash || '#/bugun');
+  if (S.magaza && muhFirma() && !MUH_SEHIFE.includes(p) && !['jurnal', 'ayarlar', 'menyu', 'firmalar', 'admin'].includes(p)) { location.hash = '#/cedvel'; return; }
+  if (S.magaza && muhFirma()) mTabQeyd(p, location.hash || '#/cedvel');
   if (S.magaza && !muhFirma() && MUH_SEHIFE.includes(p)) { location.hash = '#/panel'; return; }
   if (p === 'admin' && !S.admin) { location.hash = '#/panel'; return; }
   Promise.resolve(run()).catch(fail);
@@ -376,7 +376,7 @@ window.addEventListener('hashchange', route);
    FİRMALARIM — bir hesabda bir neçə dükan (mühasib rejimi)
    ===================================================================== */
 async function firmaSec(id) {
-  if (S.magaza && S.magaza.id === id) { location.hash = window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/bugun' : '#/panel'); return; }
+  if (S.magaza && S.magaza.id === id) { location.hash = window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/cedvel' : '#/panel'); return; }
   if (S.deyisir) return; S.deyisir = true;
   const ad = (S.firmalar.find(x => x.id === id) || {}).ad || '';
   const ov = document.createElement('div'); ov.className = 'firma-ov'; ov.innerHTML = `<div><div class="spinner"></div>${esc(ad)} açılır…</div>`; document.body.appendChild(ov);
@@ -1170,12 +1170,12 @@ async function pageSat(params) {
    əmək haqqı, mənfəət/zərər, kontragentlər (sahe = 'muhasibat')
    ===================================================================== */
 const muhFirma = () => !!(S.magaza && S.magaza.sahe === 'muhasibat');
-const NAV_M = [['bugun', 'Bu gün', 'panel'], ['qaime', 'Qaimələr', 'doc'], ['akt', 'Alış aktları', 'clip'],
+const NAV_M = [['cedvel', 'Əvəzləşmə cədvəli', 'doc'], ['bugun', 'Bu gün', 'panel'], ['qaime', 'Qaimələr', 'doc'], ['akt', 'Alış aktları', 'clip'],
   ['odenis', 'Ödənişlər', 'exp'], ['bank', 'Bank hesabları', 'kassaI'], ['kontragent', 'Kontragentlər', 'users'],
   ['gomruk', 'Gömrük bəyanı', 'box'], ['edv', 'ƏDV hesabatı', 'chart'], ['depozit', 'ƏDV depozit', 'wallet'], ['emek', 'Əmək haqqı', 'worker'], ['hesab', 'Hesabatlar', 'trend'], ['xeber', 'Xəbərdarlıqlar', 'hist'],
   ['jurnal', 'Jurnal', 'hist'], ['ayarlar', 'Ayarlar', 'gear'], ['evez', 'Əvəzləşmə', 'doc'], ['mz', 'Mənfəət / Zərər', 'trend']];
-const NAVBOLME_M = [['Sənədlər', ['bugun', 'qaime', 'akt']], ['Bank və borclar', ['odenis', 'bank', 'kontragent']], ['Uçot və hesabat', ['gomruk', 'edv', 'depozit', 'emek', 'hesab', 'xeber']], ['Sistem', ['jurnal', 'ayarlar']]];
-const MUH_SEHIFE = ['bugun', 'qaime', 'akt', 'odenis', 'bank', 'kontragent', 'gomruk', 'edv', 'depozit', 'emek', 'hesab', 'xeber', 'evez', 'mz', 'mpanel', 'gelen', 'geden'];
+const NAVBOLME_M = [['Əsas', ['cedvel', 'bank', 'emek']], ['Digər bölmələr', ['qaime', 'odenis', 'edv', 'kontragent', 'hesab', 'bugun', 'akt', 'gomruk', 'depozit', 'xeber']], ['Sistem', ['ayarlar', 'jurnal']]];
+const MUH_SEHIFE = ['cedvel', 'bugun', 'qaime', 'akt', 'odenis', 'bank', 'kontragent', 'gomruk', 'edv', 'depozit', 'emek', 'hesab', 'xeber', 'evez', 'mz', 'mpanel', 'gelen', 'geden'];
 const r2 = v => Math.round((num(v) + Number.EPSILON) * 100) / 100;
 const aylarSiyahi = (n = 24) => { const d = new Date(); d.setDate(1); const o = [];
   for (let i = 0; i < n; i++) { o.push(iso(d).slice(0, 7) + '-01'); d.setMonth(d.getMonth() - 1); } return o; };
@@ -1884,7 +1884,7 @@ function mTabQeyd(p, h) {
 function mTabBag(p) {
   const T = mTablar(), i = T.l.findIndex(x => x.p === p); if (i < 0) return;
   T.l.splice(i, 1); try { localStorage.setItem(T.k, JSON.stringify(T.l)); } catch (_) {}
-  if (location.hash.replace(/^#\/?/, '').split(/[/?]/)[0] === p) { const n = T.l[Math.min(i, T.l.length - 1)]; location.hash = n ? n.h : '#/bugun'; } else route();
+  if (location.hash.replace(/^#\/?/, '').split(/[/?]/)[0] === p) { const n = T.l[Math.min(i, T.l.length - 1)]; location.hash = n ? n.h : '#/cedvel'; } else route();
 }
 function mUstPanel(active) {
   const T = mTablar(), sonYuk = (() => { try { return localStorage.getItem('son_yukleme_' + S.magaza.id); } catch (_) { return null; } })();
@@ -1894,7 +1894,7 @@ function mUstPanel(active) {
       <span class="mpill ${S.aktiv ? 'ok' : 'xeta'}">${S.magaza.dayandirilib ? 'Dayandırılıb' : S.aktiv ? `Abunə: ${S.qalan} gün` : 'Abunə bitib'}</span>
       ${sonYuk ? `<span class="mpill">Son yükləmə: ${esc(sonYuk)}</span>` : ''}
       <span style="flex:1"></span>
-      ${canWrite() ? `<button class="btn sm" id="mq-yuk">${ico('up')}Qaimə yüklə</button><button class="btn sm" id="mb-yuk">${ico('up')}Bank çıxarışı</button><button class="btn sm" id="me-yuk">${ico('up')}Əvəzləşmə faylı</button><button class="btn sm" id="mg-yen">${ico('plus')}Gömrük bəyanı</button>` : ''}
+      ${canWrite() ? `<button class="btn sm" id="mq-yuk">${ico('up')}Vergidən qaimə yüklə</button><button class="btn sm" id="mb-yuk">${ico('up')}Bank çıxarışı</button>` : ''}
     </div>
     <div class="mtabs">${T.l.map(x => `<a href="${esc(x.h)}" class="${x.p === active ? 'on' : ''}">${esc(MUH_BASLIQ[x.p] || x.p)}<i data-tx="${x.p}" title="Bağla">×</i></a>`).join('')}</div>`;
 }
@@ -2118,6 +2118,110 @@ function evezIdxal() {
       refresh();
     } catch (er) { btn.disabled = false; btn.textContent = 'Yüklə'; fail(er); }
   };
+}
+/* ---------- Əvəzləşmə cədvəli: mühasibin Excel-i kimi — qaimələr sətirlərdə, aylar üzrə ödənilən əsas / ƏDV xanalarda ---------- */
+const AY_QISA = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
+async function pageCedvel(params) {
+  const il = +(params.get('il') || today().slice(0, 4)), f = params.get('f') || 'qaliq', w = canWrite();
+  shell('cedvel', 'Əvəzləşmə cədvəli', `${il}-ci il · gələn qaimələr`, `<select class="in" id="cil" style="width:auto">${[il0 => il0 + 1, il0 => il0, il0 => il0 - 1, il0 => il0 - 2].map(g => g(+today().slice(0, 4))).map(y => `<option ${y === il ? 'selected' : ''}>${y}</option>`).join('')}</select>
+    ${w ? `<button class="btn" id="cexl" title="Öz əvəzləşmə Excel-inizdəki ödənişləri bura köçürün">${ico('up')}Öz Excel-imdən köçür</button><button class="btn" id="cyuk">${ico('up')}Vergidən qaimə yüklə</button>` : ''}<button class="btn primary" id="cgot">${ico('down')}Əvəzləşən qaimələri götür</button>`);
+  $('#cil').onchange = e => { location.hash = `#/cedvel?il=${e.target.value}&f=${f}`; };
+  if ($('#cyuk')) $('#cyuk').onclick = () => qaimeIdxal('gelen');
+  if ($('#cexl')) $('#cexl').onclick = evezIdxal;
+  const [qm, od] = await Promise.all([
+    all(() => sb.from('qaimeler').select('id,voen,kontragent,seriya,nomre,tarix,esas,edv,edvsiz').eq('istiqamet', 'gelen').lte('tarix', il + '-12-31').order('tarix').order('id')),
+    all(() => sb.from('v_qaime_odenisleri').select('id,qaime_id,tarix,mebleg,edv').eq('istiqamet', 'gelen').lte('tarix', il + '-12-31').order('id'))]);
+  const Q = new Map(qm.map(x => [x.id, { ...x, E: r2(num(x.esas) + num(x.edvsiz)), D: r2(num(x.edv)), pE: 0, pD: 0, m: Array.from({ length: 12 }, () => ({ e: 0, d: 0, ids: [] })) }]));
+  od.forEach(o => { const x = Q.get(o.qaime_id); if (!x) return; const d = num(o.edv), e = num(o.mebleg) - d;
+    if (o.tarix < il + '-01-01') { x.pE += e; x.pD += d; } else { const c = x.m[+o.tarix.slice(5, 7) - 1]; c.e += e; c.d += d; c.ids.push(o.id); } });
+  const hesab = x => { x.qE = r2(x.E - x.pE - x.m.reduce((s, c) => s + c.e, 0)); x.qD = r2(x.D - x.pD - x.m.reduce((s, c) => s + c.d, 0)); };
+  let L = [...Q.values()]; L.forEach(hesab);
+  L = L.filter(x => x.tarix >= il + '-01-01' || r2(x.E + x.D - x.pE - x.pD) > 0.004);   // ildən əvvəl tam ödənilənlər görünmür
+  L.forEach((x, i) => { x.no = i + 1; });
+  const sec = new Set(); let axtar = '', goster = 200;
+  const v = n => Math.abs(n) < 0.005 ? '' : fmt(n, 2);
+  const filtrli = () => { const t = azLow(axtar.trim());
+    return L.filter(x => (f === 'hamisi' || (f === 'qaliq' ? x.qE + x.qD > 0.004 : x.m.some(c => c.e + c.d > 0.004))) && (!t || azLow(`${x.kontragent} ${x.voen} ${x.seriya} ${x.nomre}`).includes(t))); };
+  const setir = x => `<tr data-r="${x.id}" class="${sec.has(x.id) ? 'sel' : ''}"><td class="cb"><input type="checkbox" data-s="${x.id}" ${sec.has(x.id) ? 'checked' : ''}></td><td class="muted">${x.no}</td>
+    <td class="kn" title="${esc(x.kontragent || '')}">${esc(qisaAd(x.kontragent))}</td><td class="muted">${esc(x.voen || '')}</td><td>${esc(x.seriya || '')}</td><td>${esc(x.nomre || '')}</td><td>${fd(x.tarix)}</td>
+    <td class="n">${v(x.E)}</td><td class="n">${v(x.D)}</td><td class="n q ${x.qE > 0.004 ? 'neg' : ''}">${v(x.qE)}</td><td class="n q ${x.qD > 0.004 ? 'neg' : ''}">${v(x.qD)}</td>
+    ${x.m.map((c, i) => `<td class="n ec ${i % 2 ? '' : 'alt'}" data-m="${i}" data-k="e">${v(c.e)}</td><td class="n ec ${i % 2 ? '' : 'alt'}" data-m="${i}" data-k="d">${v(c.d)}</td>`).join('')}
+    <td class="n muted">${v(x.pE)}</td><td class="n muted">${v(x.pD)}</td></tr>`;
+  const cem = l => { const s = { E: 0, D: 0, qE: 0, qD: 0, pE: 0, pD: 0, m: Array.from({ length: 12 }, () => [0, 0]) };
+    l.forEach(x => { ['E', 'D', 'qE', 'qD', 'pE', 'pD'].forEach(k => s[k] += x[k]); x.m.forEach((c, i) => { s.m[i][0] += c.e; s.m[i][1] += c.d; }); }); return s; };
+  const ciz = () => {
+    const l = filtrli(), s = cem(l);
+    $('#page').innerHTML = `<div class="ced-ust"><div class="seg" id="cf">${[['qaliq', 'Qalığı olanlar'], ['odenen', `${il}-də ödənilənlər`], ['hamisi', 'Hamısı']].map(([k, t]) => `<button data-f="${k}" class="${f === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+        <input class="in" id="cax" placeholder="Axtar: kontragent, VÖEN, nömrə…" value="${esc(axtar)}" style="max-width:300px">
+        <span class="muted" style="font-size:13px">${l.length} qaimə · qalıq <b class="neg">${fmt(s.qE + s.qD, 2)} ₼</b> (əsas ${fmt(s.qE, 2)} + ƏDV ${fmt(s.qD, 2)})</span></div>
+      <div class="tbl-wrap ced-wrap"><table class="t ced" data-flt="0"><thead>
+        <tr><th rowspan="2" class="cb"><input type="checkbox" id="call"></th><th rowspan="2">№</th><th rowspan="2">Kontragent</th><th rowspan="2">VÖEN</th><th rowspan="2">Seriya</th><th rowspan="2">Nömrə</th><th rowspan="2">Tarix</th>
+          <th colspan="2" class="c">Qaimə</th><th colspan="2" class="c">Qalıq</th>${AY_QISA.map((a, i) => `<th colspan="2" class="c ${i % 2 ? '' : 'alt'}">${a}</th>`).join('')}<th colspan="2" class="c">${il}-dən əvvəl</th></tr>
+        <tr>${Array.from({ length: 16 }, (_, i) => `<th class="n ${i >= 2 && i < 14 && i % 2 === 0 ? 'alt' : ''}">Əsas</th><th class="n ${i >= 2 && i < 14 && i % 2 === 0 ? 'alt' : ''}">ƏDV</th>`).join('')}</tr>
+        <tr class="cem"><td></td><td></td><td colspan="5">Cəmi</td><td class="n">${v(s.E)}</td><td class="n">${v(s.D)}</td><td class="n neg">${v(s.qE)}</td><td class="n neg">${v(s.qD)}</td>${s.m.map(([e, d], i) => `<td class="n ${i % 2 ? '' : 'alt'}">${v(e)}</td><td class="n ${i % 2 ? '' : 'alt'}">${v(d)}</td>`).join('')}<td class="n">${v(s.pE)}</td><td class="n">${v(s.pD)}</td></tr></thead>
+        <tbody>${l.slice(0, goster).map(setir).join('')}</tbody></table></div>
+      ${l.length > goster ? `<div style="text-align:center;margin:10px"><button class="btn" id="cdaha">Daha ${Math.min(500, l.length - goster)} qaimə göstər (${l.length - goster} qalıb)</button></div>` : ''}
+      <div class="ced-alt" id="calt" style="display:none"></div>
+      <p class="muted" style="font-size:12.5px;margin-top:10px">Ödəniş etdikcə ayın xanasına ödənilən əsas məbləği və ƏDV-ni yazın (xanaya basın, yazın, Enter). Xanaya iki dəfə basanda qaimənin qalığı həmin aya yazılır. Bir neçə qaiməni işarələyib aşağıdakı paneldən birdən ödənilmiş edə bilərsiniz.</p>`;
+    $$('#cf button').forEach(b => b.onclick = () => { location.hash = `#/cedvel?il=${il}&f=${b.dataset.f}`; });
+    $('#cax').oninput = e => { axtar = e.target.value; clearTimeout(ciz.t); ciz.t = setTimeout(() => { ciz(); const i = $('#cax'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 300); };
+    if ($('#cdaha')) $('#cdaha').onclick = () => { goster += 500; ciz(); };
+    $('#call').onchange = e => { l.slice(0, goster).forEach(x => e.target.checked ? sec.add(x.id) : sec.delete(x.id)); ciz(); };
+    $('.ced tbody').onchange = e => { const id = +e.target.dataset.s; if (!id) return; e.target.checked ? sec.add(id) : sec.delete(id); e.target.closest('tr').classList.toggle('sel', e.target.checked); altPanel(); };
+    if (w) { $('.ced tbody').onclick = e => { const td = e.target.closest('td.ec'); if (td && !td.querySelector('input')) xanaRed(td); };
+      $('.ced tbody').ondblclick = e => { const td = e.target.closest('td.ec'); if (!td) return; const x = Q.get(+td.parentNode.dataset.r), c = x.m[+td.dataset.m];
+        if (x.qE + x.qD > 0.004) yaz(x, +td.dataset.m, r2(c.e + Math.max(0, x.qE)), r2(c.d + Math.max(0, x.qD))); }; }
+    altPanel();
+  };
+  const altPanel = () => {
+    const b = $('#calt'); if (!b) return; const s = L.filter(x => sec.has(x.id));
+    if (!s.length) { b.style.display = 'none'; return; }
+    const qE = s.reduce((a, x) => a + Math.max(0, x.qE), 0), qD = s.reduce((a, x) => a + Math.max(0, x.qD), 0);
+    const buAy = +today().slice(5, 7) - 1;
+    b.style.display = ''; b.innerHTML = `<b>${s.length}</b> qaimə seçilib · qalıq: əsas <b>${fmt(qE, 2)}</b> + ƏDV <b>${fmt(qD, 2)}</b> = <b>${fmt(qE + qD, 2)} ₼</b>
+      ${w ? `<select class="in" id="cay" style="width:auto">${AY_QISA.map((a, i) => `<option value="${i}" ${i === (il === +today().slice(0, 4) ? buAy : 11) ? 'selected' : ''}>${a} ${il}</option>`).join('')}</select><button class="btn primary sm" id="code">Seçilənləri bu ayda ödənilmiş et</button>` : ''}<button class="btn sm" id="csil">Seçimi təmizlə</button>`;
+    $('#csil').onclick = () => { sec.clear(); ciz(); };
+    if ($('#code')) $('#code').onclick = async () => { const i = +$('#cay').value; $('#code').disabled = true;
+      try { for (const x of s) if (x.qE + x.qD > 0.004) await yaz(x, i, r2(x.m[i].e + Math.max(0, x.qE)), r2(x.m[i].d + Math.max(0, x.qD)), true); sec.clear(); toast(`${s.length} qaimə ${AY_QISA[i]} ayında ödənilmiş yazıldı`); ciz(); } catch (er) { fail(er); ciz(); } };
+  };
+  const xanaRed = td => {
+    const x = Q.get(+td.parentNode.dataset.r), i = +td.dataset.m, k = td.dataset.k, c = x.m[i], kohne = k === 'e' ? c.e : c.d;
+    td.innerHTML = `<input class="ced-in" value="${Math.abs(kohne) < 0.005 ? '' : r2(kohne)}">`; const inp = td.firstChild; inp.focus(); inp.select();
+    let bitdi = false;
+    const bitir = async saxla => { if (bitdi) return; bitdi = true;
+      const n = idxalEded(inp.value); if (!saxla || n == null && inp.value.trim() || Number.isNaN(n) || r2(n || 0) === r2(kohne)) { td.textContent = v(kohne); return; }
+      await yaz(x, i, k === 'e' ? r2(n || 0) : r2(c.e), k === 'd' ? r2(n || 0) : r2(c.d)); };
+    inp.onkeydown = e => { if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); bitir(true).then(() => { const sonra = e.shiftKey ? td.previousElementSibling : td.nextElementSibling; if (e.key === 'Tab' && sonra && sonra.classList.contains('ec')) xanaRed($(`tr[data-r="${x.id}"] td[data-m="${sonra.dataset.m}"][data-k="${sonra.dataset.k}"]`)); }); } else if (e.key === 'Escape') bitir(false); };
+    inp.onblur = () => bitir(true);
+  };
+  const yaz = async (x, i, e, d, sessiz) => {
+    const c = x.m[i], tarix = (() => { const t = ayinSonu(`${il}-${String(i + 1).padStart(2, '0')}-01`); return t > today() && il === +today().slice(0, 4) ? today() : t; })();
+    try {
+      if (e + d <= 0.004) { if (c.ids.length) await q(sb.from('qaime_odenisleri').delete().in('id', c.ids)); c.ids = []; }
+      else if (c.ids.length === 1) await q(sb.from('qaime_odenisleri').update({ mebleg: r2(e + d), edv: r2(d) }).eq('id', c.ids[0]));
+      else { if (c.ids.length) await q(sb.from('qaime_odenisleri').delete().in('id', c.ids));
+        const r = await q(sb.from('qaime_odenisleri').insert({ qaime_id: x.id, tarix, mebleg: r2(e + d), edv: r2(d), qeyd: `Əvəzləşmə: ${AY_QISA[i]} ${il}` }).select('id').single()); c.ids = [r.id]; }
+      c.e = e; c.d = d; hesab(x);
+      if (!sessiz) { const tr = $(`tr[data-r="${x.id}"]`); if (tr) { const y = document.createElement('tbody'); y.innerHTML = setir(x); tr.replaceWith(y.firstChild); } yenileCem(); }
+    } catch (er) { fail(er); ciz(); }
+  };
+  const yenileCem = () => { const s = cem(filtrli()), tr = $('.ced tr.cem'); if (!tr) return;
+    const t = [...tr.children].slice(3); const vals = [s.E, s.D, s.qE, s.qD, ...s.m.flat(), s.pE, s.pD]; vals.forEach((n, i) => { if (t[i]) t[i].textContent = v(n); }); altPanel(); };
+  $('#cgot').onclick = () => {
+    const buAy = il === +today().slice(0, 4) ? Math.max(0, +today().slice(5, 7) - 2) : 11;
+    const m = modal('Əvəzləşən qaimələri götür', `<p class="muted" style="margin-top:0;font-size:13.5px">Seçdiyiniz ayda ödənilmiş qaimələr (ödənilən əsas və ƏDV ilə) Excel faylına çıxarılır.</p>
+      <div class="field"><label class="f">Ay</label><select class="in" id="gay">${AY_QISA.map((a, i) => `<option value="${i}" ${i === buAy ? 'selected' : ''}>${a} ${il}</option>`).join('')}</select></div><div id="ginfo" class="muted" style="font-size:13.5px"></div>`,
+      `<button class="btn" data-close>Bağla</button><button class="btn primary" id="gok">${ico('down')}Excel-ə çıxar</button>`);
+    const info = () => { const i = +$('#gay', m).value, l = L.filter(x => x.m[i].e + x.m[i].d > 0.004);
+      $('#ginfo', m).innerHTML = `${l.length} qaimə · ödənilən əsas <b>${fmt(l.reduce((s, x) => s + x.m[i].e, 0), 2)}</b> · ƏDV <b>${fmt(l.reduce((s, x) => s + x.m[i].d, 0), 2)}</b>`; return l; };
+    $('#gay', m).onchange = info; info();
+    $('#gok', m).onclick = () => { const i = +$('#gay', m).value, l = info(); if (!l.length) return toast('Bu ayda ödənilmiş qaimə yoxdur');
+      xlsxEndir(`${S.magaza.ad} - əvəzləşən qaimələr - ${AY_QISA[i]} ${il}`, [{ ad: `${AY_QISA[i]} ${il}`, rows: [['№', 'Kontragent', 'VÖEN', 'Seriya', 'Nömrə', 'Tarix', 'Qaimənin əsas məbləği', 'Qaimənin ƏDV-si', 'Ödənilən əsas məbləğ', 'Ödənilən ƏDV'],
+        ...l.map((x, n) => [n + 1, x.kontragent || '', x.voen || '', x.seriya || '', x.nomre || '', fd(x.tarix), x.E, x.D, r2(x.m[i].e), r2(x.m[i].d)]),
+        ['', 'Cəmi', '', '', '', '', r2(l.reduce((s, x) => s + x.E, 0)), r2(l.reduce((s, x) => s + x.D, 0)), r2(l.reduce((s, x) => s + x.m[i].e, 0)), r2(l.reduce((s, x) => s + x.m[i].d, 0))]] }]);
+      closeModal(); };
+  };
+  ciz();
 }
 async function pageOdenis(params) {
   const tab = params.get('t') || 'qaime', w = canWrite(), D = dovrPanel(params, '#/odenis');
