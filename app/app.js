@@ -1173,8 +1173,8 @@ const muhFirma = () => !!(S.magaza && S.magaza.sahe === 'muhasibat');
 const NAV_M = [['cedvel', 'Əvəzləşmə cədvəli', 'doc'], ['bugun', 'Bu gün', 'panel'], ['qaime', 'Qaimələr', 'doc'], ['akt', 'Alış aktları', 'clip'],
   ['odenis', 'Ödənişlər', 'exp'], ['bank', 'Bank hesabları', 'kassaI'], ['kontragent', 'Kontragentlər', 'users'],
   ['gomruk', 'Gömrük bəyanı', 'box'], ['edv', 'ƏDV hesabatı', 'chart'], ['depozit', 'ƏDV depozit', 'wallet'], ['emek', 'Əmək haqqı', 'worker'], ['hesab', 'Hesabatlar', 'trend'], ['xeber', 'Xəbərdarlıqlar', 'hist'],
-  ['jurnal', 'Jurnal', 'hist'], ['ayarlar', 'Ayarlar', 'gear'], ['evez', 'Əvəzləşmə', 'doc'], ['mz', 'Mənfəət / Zərər', 'trend']];
-const NAVBOLME_M = [['Əsas', ['cedvel', 'kontragent', 'bank', 'emek']], ['Digər bölmələr', ['qaime', 'odenis', 'edv', 'hesab', 'bugun', 'akt', 'gomruk', 'depozit', 'xeber']], ['Sistem', ['ayarlar', 'jurnal']]];
+  ['jurnal', 'Jurnal', 'hist'], ['ayarlar', 'Ayarlar', 'gear'], ['evez', 'ƏDV əvəzləşməsi', 'doc'], ['mz', 'Mənfəət / Zərər', 'trend']];
+const NAVBOLME_M = [['Əsas', ['cedvel', 'kontragent', 'bank', 'emek']], ['Digər bölmələr', ['evez', 'mz', 'qaime', 'odenis', 'edv', 'hesab', 'bugun', 'akt', 'gomruk', 'depozit', 'xeber']], ['Sistem', ['ayarlar', 'jurnal']]];
 const MUH_SEHIFE = ['cedvel', 'bugun', 'qaime', 'akt', 'odenis', 'bank', 'kontragent', 'gomruk', 'edv', 'depozit', 'emek', 'hesab', 'xeber', 'evez', 'mz', 'mpanel', 'gelen', 'geden'];
 const r2 = v => Math.round((num(v) + Number.EPSILON) * 100) / 100;
 const aylarSiyahi = (n = 24) => { const d = new Date(); d.setDate(1); const o = [];
