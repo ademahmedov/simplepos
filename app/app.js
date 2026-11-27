@@ -1707,7 +1707,8 @@ async function pageSahibkarMdss(params) {
 }
 // Ödəniləcək məbləğlər büdcə səviyyə və təsnifat kodları ilə (mühasibin ödəniş cədvəli kimi)
 const FS_SAHE_KOD = { 'Ticarət': 121340, 'Tikinti': 121350 };
-function odenisKodlari(fs, sahe) {
+function odenisKodlari(fs, sahe, A = {}) {
+  const ik = fs ? A.icare_kod_fs : A.icare_kod_huquqi;
   return [
     { q: 'isci', ad: 'Gəlir vergisi (işçidən tutulan)', sev: 1, kod: 111111, k: 'gelir_vergisi' },
     { q: 'isci', ad: 'Pensiya fondu — MDSS (işçidən tutulan)', sev: 4, kod: fs ? 121212 : 121211, k: 'dsmf_isci' },
@@ -1717,7 +1718,8 @@ function odenisKodlari(fs, sahe) {
     { q: 'mues', ad: 'İşsizlikdən sığorta (işəgötürən tərəfindən)', sev: 4, kod: 123100, k: 'issizlik_isveren' },
     { q: 'mues', ad: 'İcbari tibbi sığorta (işəgötürən tərəfindən)', sev: 7, kod: 124110, k: 'tibbi_isveren' },
     ...(fs ? [{ q: 'sah', ad: 'Sahibkarın icbari tibbi sığorta haqqı', sev: 7, kod: 124300, k: 'sah_its' },
-      { q: 'sah', ad: `${sahe} sahəsində sahibkarlıq fəaliyyəti ilə məşğul olan fiziki şəxslər üzrə sosial ayırmalar (MDSS)`, sev: 4, kod: FS_SAHE_KOD[sahe] || 121340, k: 'sah_mdss' }] : [])];
+      { q: 'sah', ad: `${sahe} sahəsində sahibkarlıq fəaliyyəti ilə məşğul olan fiziki şəxslər üzrə sosial ayırmalar (MDSS)`, sev: 4, kod: FS_SAHE_KOD[sahe] || 121340, k: 'sah_mdss' }] : []),
+    { q: 'icare', ad: 'Fiziki şəxsə ödənilən icarə haqqından ödəmə mənbəyində vergi (14%)', sev: 1, kod: ik || '', k: 'icare_vergi', icare: true }];
 }
 async function pageEmekOdenis(params) {
   const ay = params.get('ay') || ayBasi(today()), il = +ay.slice(0, 4), A = await ayarlar(), fs = fsMi(A), sahe = A.fs_sahe || 'Ticarət';
@@ -1729,17 +1731,21 @@ async function pageEmekOdenis(params) {
   const me = MIN_EMEK[il] || 400, gelir = num(A['mdss_gelir_' + ay.slice(0, 7)]);
   const M = {}; ['gelir_vergisi', 'dsmf_isci', 'issizlik_isci', 'tibbi_isci', 'dsmf_isveren', 'issizlik_isveren', 'tibbi_isveren'].forEach(k => M[k] = r2(eh.reduce((s, r) => s + num(r[k]), 0)));
   if (fs) { M.sah_its = r2(me * 0.04); M.sah_mdss = il >= 2026 ? sahibkarMdss(gelir, il) : 0; }
-  const K = odenisKodlari(fs, sahe), C = q_ => r2(K.filter(x => x.q === q_).reduce((s, x) => s + M[x.k], 0));
-  const qrup = { isci: 'İşçinin adından (maaşdan tutulan)', mues: 'Müəssisənin adından (işəgötürən)', sah: 'Sahibkarın adından' };
+  const icare = num(A['icare_' + ay.slice(0, 7)]); M.icare_vergi = r2(icare * 0.14);
+  const K = odenisKodlari(fs, sahe, A), C = q_ => r2(K.filter(x => x.q === q_).reduce((s, x) => s + M[x.k], 0));
+  const qrup = { isci: 'İşçinin adından (maaşdan tutulan)', mues: 'Müəssisənin adından (işəgötürən)', sah: 'Sahibkarın adından', icare: 'İcarə vergisi' };
   $('#page').innerHTML = `<div class="kpis">${Object.keys(qrup).filter(q_ => K.some(x => x.q === q_)).map(q_ => `<div class="kpi"><div class="l">${qrup[q_]}</div><div class="v">${fmt(C(q_), 2)} ₼</div></div>`).join('')}
       <div class="kpi"><div class="l">Cəmi ödəniləcək</div><div class="v">${fmt(K.reduce((s, x) => s + M[x.k], 0), 2)} ₼</div><div class="s">${eh.length} işçi${fs ? ' + sahibkar' : ''}</div></div></div>
     ${fs ? `<div class="card" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:12px 16px;margin-bottom:12px"><span>Sahibkarın fəaliyyət sahəsi:</span>
       <select class="in" id="osahe" style="width:auto" ${canWrite() ? '' : 'disabled'}>${Object.keys(FS_SAHE_KOD).map(x => `<option ${x === sahe ? 'selected' : ''}>${x}</option>`).join('')}</select>
       <span class="muted" style="font-size:13px">Ayın satışı: <b>${fmt(gelir, 2)} ₼</b> — <a href="#/emek?t=sah&il=${il}">dəyişmək</a></span></div>` : ''}
     <div class="tbl-wrap"><table class="t" data-flt="0"><thead><tr><th>№</th><th>Büdcə səviyyə kodu</th><th>Büdcə təsnifat kodu</th><th>Təyinatı</th><th class="n">Məbləğ</th></tr></thead>
-      <tbody>${K.map((x, i) => `<tr style="${M[x.k] > 0 ? '' : 'opacity:.45'}"><td class="muted">${i + 1}</td><td>${x.sev}</td><td><b>${x.kod}</b></td><td>${esc(x.ad)}</td><td class="n"><b>${fmt(M[x.k], 2)}</b></td></tr>`).join('')}</tbody>
+      <tbody>${K.map((x, i) => `<tr style="${M[x.k] > 0 ? '' : 'opacity:.45'}"><td class="muted">${i + 1}</td><td>${x.sev}</td><td>${x.icare && canWrite() ? `<input class="in" id="oikod" style="width:110px;padding:4px 6px" value="${esc(x.kod)}" placeholder="kodu yazın">` : `<b>${x.kod}</b>`}</td><td>${esc(x.ad)}${x.icare ? `<div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px">Bu ay fiziki şəxsə hesablanan icarə haqqı: ${canWrite() ? `<input class="in" id="oicare" style="width:120px;padding:4px 6px;text-align:right" value="${icare ? esc(A['icare_' + ay.slice(0, 7)]) : ''}" placeholder="0,00">` : fmt(icare, 2)} ₼ <span class="muted">→ icarəyə verənə ödəniləcək ${fmt(icare - M.icare_vergi, 2)} ₼</span></div>` : ''}</td><td class="n"><b>${fmt(M[x.k], 2)}</b></td></tr>`).join('')}</tbody>
       <tfoot><tr><td></td><td></td><td></td><td>Cəmi</td><td class="n sabit">${fmt(K.reduce((s, x) => s + M[x.k], 0), 2)}</td></tr></tfoot></table></div>
-    <p class="muted" style="font-size:12.5px;line-height:1.6">İşçilərin məbləğləri "Aylıq hesablama"dan götürülür${eh.length ? '' : ' — bu ay üçün hələ hesablanmayıb'}. Kodlar ${fs ? 'fərdi sahibkar' : 'hüquqi şəxs'} üçündür (Ayarlar → Rekvizitlər → Hüquqi forma).${fs ? ' Sahibkarın MDSS-i ayın satışının 2%-i (60–400 ₼), İTS-i 16 ₼-dır.' : ''}</p>`;
+    <p class="muted" style="font-size:12.5px;line-height:1.6">İşçilərin məbləğləri "Aylıq hesablama"dan götürülür${eh.length ? '' : ' — bu ay üçün hələ hesablanmayıb'}. Kodlar ${fs ? 'fərdi sahibkar' : 'hüquqi şəxs'} üçündür (Ayarlar → Rekvizitlər → Hüquqi forma).${fs ? ' Sahibkarın MDSS-i ayın satışının 2%-i (60–400 ₼), İTS-i 16 ₼-dır.' : ''} İcarə: fiziki şəxsə ödənilən icarə haqqından 14% vergi tutulur; hüquqi şəxsə ödənilən icarədən tutulmur. Bu vergi rüb bitdikdən sonrakı ayın 20-dək ödənilir.</p>`;
+  if ($('#oicare')) $('#oicare').onchange = async e => { const v = e.target.value.trim().replace(/\s/g, '').replace(',', '.'); if (v && isNaN(+v)) return toast('Rəqəm yazın');
+    try { await ayarYaz(A, 'icare_' + ay.slice(0, 7), v); S.cache.ayar = null; refresh(); } catch (er) { fail(er); } };
+  if ($('#oikod')) $('#oikod').onchange = async e => { try { await ayarYaz(A, fs ? 'icare_kod_fs' : 'icare_kod_huquqi', e.target.value.trim()); S.cache.ayar = null; toast('Kod yadda saxlanıldı'); } catch (er) { fail(er); } };
   if ($('#osahe')) $('#osahe').onchange = async e => { try { await ayarYaz(A, 'fs_sahe', e.target.value); S.cache.ayar = null; refresh(); } catch (er) { fail(er); } };
   $('#oxls').onclick = () => xlsxEndir(`${S.magaza.ad} - ödənişlər - ${ayAdi(ay)}`, [{ ad: ayAdi(ay), rows: [['№', 'Büdcə səviyyə kodu', 'Büdcə təsnifat kodu', 'Təyinatı', 'Məbləğ'], ...K.map((x, i) => [i + 1, x.sev, x.kod, x.ad, M[x.k]]), ['', '', '', 'Cəmi', r2(K.reduce((s, x) => s + M[x.k], 0))]] }]);
 }
