@@ -1727,7 +1727,12 @@ async function pageEmekOdenis(params) {
     <select class="in" id="oay" style="width:auto">${ayOpt(ay)}</select><button class="btn" id="oxls">${ico('down')}Excel</button>`);
   $$('#et button').forEach(b => b.onclick = () => { location.hash = `#/emek?t=${b.dataset.t}&ay=${ay}`; });
   $('#oay').onchange = e => { location.hash = `#/emek?t=od&ay=${e.target.value}`; };
-  const eh = await all(() => sb.from('emek_haqqi').select('*').eq('ay', ay).order('id'));
+  let eh = await all(() => sb.from('emek_haqqi').select('*').eq('ay', ay).order('id')), avto = false;
+  if (!eh.length) {   // bu ay hələ "Hesabla" basılmayıbsa — işçilərin maaşından avtomatik hesabla
+    const son = ayinSonu(ay), isci = (await all(() => sb.from('emekdaslar').select('*').order('ad'))).filter(x => (!x.ise_qebul || x.ise_qebul <= son) && (!x.cixis || x.cixis >= ay));
+    eh = isci.map(x => { const R = emekHesabla(x.maas, il, x.esas_is); return { gelir_vergisi: R.gv, dsmf_isci: R.dsmf_i, issizlik_isci: R.iss_i, tibbi_isci: R.tib_i, dsmf_isveren: R.dsmf_v, issizlik_isveren: R.iss_v, tibbi_isveren: R.tib_v }; });
+    avto = eh.length > 0;
+  }
   const me = MIN_EMEK[il] || 400, gelir = num(A['mdss_gelir_' + ay.slice(0, 7)]);
   const M = {}; ['gelir_vergisi', 'dsmf_isci', 'issizlik_isci', 'tibbi_isci', 'dsmf_isveren', 'issizlik_isveren', 'tibbi_isveren'].forEach(k => M[k] = r2(eh.reduce((s, r) => s + num(r[k]), 0)));
   if (fs) { M.sah_its = r2(me * 0.04); M.sah_mdss = il >= 2026 ? sahibkarMdss(gelir, il) : 0; }
@@ -1742,7 +1747,7 @@ async function pageEmekOdenis(params) {
     <div class="tbl-wrap"><table class="t" data-flt="0"><thead><tr><th>№</th><th>Büdcə səviyyə kodu</th><th>Büdcə təsnifat kodu</th><th>Təyinatı</th><th class="n">Məbləğ</th></tr></thead>
       <tbody>${K.map((x, i) => `<tr style="${M[x.k] > 0 ? '' : 'opacity:.45'}"><td class="muted">${i + 1}</td><td>${x.sev}</td><td>${x.icare && canWrite() ? `<input class="in" id="oikod" style="width:110px;padding:4px 6px" value="${esc(x.kod)}" placeholder="kodu yazın">` : `<b>${x.kod}</b>`}</td><td>${esc(x.ad)}${x.icare ? `<div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px">Bu ay fiziki şəxsə hesablanan icarə haqqı: ${canWrite() ? `<input class="in" id="oicare" style="width:120px;padding:4px 6px;text-align:right" value="${icare ? esc(A['icare_' + ay.slice(0, 7)]) : ''}" placeholder="0,00">` : fmt(icare, 2)} ₼ <span class="muted">→ icarəyə verənə ödəniləcək ${fmt(icare - M.icare_vergi, 2)} ₼</span></div>` : ''}</td><td class="n"><b>${fmt(M[x.k], 2)}</b></td></tr>`).join('')}</tbody>
       <tfoot><tr><td></td><td></td><td></td><td>Cəmi</td><td class="n sabit">${fmt(K.reduce((s, x) => s + M[x.k], 0), 2)}</td></tr></tfoot></table></div>
-    <p class="muted" style="font-size:12.5px;line-height:1.6">İşçilərin məbləğləri "Aylıq hesablama"dan götürülür${eh.length ? '' : ' — bu ay üçün hələ hesablanmayıb'}. Kodlar ${fs ? 'fərdi sahibkar' : 'hüquqi şəxs'} üçündür (Ayarlar → Rekvizitlər → Hüquqi forma).${fs ? ' Sahibkarın MDSS-i ayın satışının 2%-i (60–400 ₼), İTS-i 16 ₼-dır.' : ''} İcarə: fiziki şəxsə ödənilən icarə haqqından 14% vergi tutulur; hüquqi şəxsə ödənilən icarədən tutulmur. Bu vergi rüb bitdikdən sonrakı ayın 20-dək ödənilir.</p>`;
+    <p class="muted" style="font-size:12.5px;line-height:1.6">${avto ? 'İşçilərin məbləğləri "Əməkdaşlar" siyahısındakı maaşlardan avtomatik hesablandı. Bu ay maaşı fərqlidirsə (məzuniyyət, natamam ay), "Aylıq hesablama"da "Hesabla" basıb rəqəmləri düzəldin — onda düzəlişlər buraya düşəcək.' : eh.length ? 'İşçilərin məbləğləri "Aylıq hesablama"dan götürülür.' : 'İşçi yoxdur — "Əməkdaşlar" bölməsində əlavə edin.'} Kodlar ${fs ? 'fərdi sahibkar' : 'hüquqi şəxs'} üçündür (Ayarlar → Rekvizitlər → Hüquqi forma).${fs ? ' Sahibkarın MDSS-i ayın satışının 2%-i (60–400 ₼), İTS-i 16 ₼-dır.' : ''} İcarə: fiziki şəxsə ödənilən icarə haqqından 14% vergi tutulur; hüquqi şəxsə ödənilən icarədən tutulmur. Bu vergi rüb bitdikdən sonrakı ayın 20-dək ödənilir.</p>`;
   if ($('#oicare')) $('#oicare').onchange = async e => { const v = e.target.value.trim().replace(/\s/g, '').replace(',', '.'); if (v && isNaN(+v)) return toast('Rəqəm yazın');
     try { await ayarYaz(A, 'icare_' + ay.slice(0, 7), v); S.cache.ayar = null; refresh(); } catch (er) { fail(er); } };
   if ($('#oikod')) $('#oikod').onchange = async e => { try { await ayarYaz(A, fs ? 'icare_kod_fs' : 'icare_kod_huquqi', e.target.value.trim()); S.cache.ayar = null; toast('Kod yadda saxlanıldı'); } catch (er) { fail(er); } };
