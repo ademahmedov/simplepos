@@ -1674,7 +1674,7 @@ function sahibkarMdss(gelir, il) {
 }
 async function pageSahibkarMdss(params) {
   const il = +(params.get('il') || today().slice(0, 4)), w = canWrite(), A = await ayarlar(), fs = fsMi(A);
-  shell('emek', 'Əmək haqqı', `Sahibkarın sosial sığortası · ${il}`, `<div class="seg" id="et">${[['ay', 'Aylıq hesablama'], ['isci', 'Əməkdaşlar'], ['sah', 'Sahibkarın sosial sığortası']].map(([k, t]) => `<button data-t="${k}" class="${k === 'sah' ? 'on' : ''}">${t}</button>`).join('')}</div>
+  shell('emek', 'Əmək haqqı', `Sahibkarın sığorta haqları (MDSS + İTS) · ${il}`, `<div class="seg" id="et">${[['ay', 'Aylıq hesablama'], ['isci', 'Əməkdaşlar'], ['sah', 'Sahibkarın sığorta haqları']].map(([k, t]) => `<button data-t="${k}" class="${k === 'sah' ? 'on' : ''}">${t}</button>`).join('')}</div>
     <select class="in" id="sil" style="width:auto">${[il + 1, il, il - 1, il - 2].map(y => `<option ${y === il ? 'selected' : ''}>${y}</option>`).join('')}</select>`);
   $$('#et button').forEach(b => b.onclick = () => { location.hash = `#/emek?t=${b.dataset.t}`; });
   $('#sil').onchange = e => { location.hash = `#/emek?t=sah&il=${e.target.value}`; };
@@ -1694,19 +1694,19 @@ async function pageSahibkarMdss(params) {
     const bk = r2(be.filter(x => x.tarix.slice(0, 7) === a.slice(0, 7)).reduce((s, x) => s + num(x.mebleg), 0));
     const el = A['mdss_gelir_' + a.slice(0, 7)];
     const gelir = el != null && el !== '' ? num(el) : qg;
-    return { a, qg, bk, el, gelir, mdss: sahibkarMdss(gelir, il) };
+    return { a, qg, bk, el, gelir, mdss: sahibkarMdss(gelir, il), its: r2(me * 0.04) };
   });
   const cem = f => r2(setir.reduce((s, x) => s + num(x[f]), 0));
   $('#page').innerHTML = `<div class="kpis">
-      <div class="kpi"><div class="l">${il} — hesablanmış MDSS</div><div class="v">${fmt(cem('mdss'), 2)} ₼</div><div class="s">${setir.length} ay</div></div>
+      <div class="kpi"><div class="l">${il} — cəmi ödəniləcək</div><div class="v">${fmt(cem('mdss') + cem('its'), 2)} ₼</div><div class="s">MDSS ${fmt(cem('mdss'), 2)} + İTS ${fmt(cem('its'), 2)} · ${setir.length} ay</div></div>
       <div class="kpi"><div class="l">Gəlir (hesablamaya daxil)</div><div class="v">${fmt(cem('gelir'), 2)} ₼</div><div class="s">xərclər çıxılmadan</div></div>
       <div class="kpi"><div class="l">Aylıq hədd</div><div class="v">${fmt(me * 0.15, 0)} – ${fmt(me, 0)} ₼</div><div class="s">min. əməkhaqqı ${me} ₼-ın 15%–100%-i</div></div></div>
-    <div class="tbl-wrap"><table class="t" data-flt="0"><thead><tr><th>Ay</th><th class="n">Gedən qaimələr (ƏDV-siz)</th><th class="n">Bankda mədaxil (məlumat üçün)</th><th class="n" style="width:190px">Hesablamaya daxil gəlir</th><th class="n">2%</th><th class="n">MDSS</th></tr></thead>
+    <div class="tbl-wrap"><table class="t" data-flt="0"><thead><tr><th>Ay</th><th class="n">Gedən qaimələr (ƏDV-siz)</th><th class="n">Bankda mədaxil (məlumat üçün)</th><th class="n" style="width:190px">Hesablamaya daxil gəlir</th><th class="n">2%</th><th class="n">MDSS</th><th class="n">İTS (tibbi)</th><th class="n">Cəmi</th></tr></thead>
       <tbody>${setir.map(x => `<tr><td>${ayAdi(x.a)}</td><td class="n">${fmt(x.qg, 2)}</td><td class="n muted">${fmt(x.bk, 2)}</td>
         <td class="n">${w ? `<input class="in" style="text-align:right;padding:5px 8px" data-ay="${x.a.slice(0, 7)}" value="${x.el != null && x.el !== '' ? esc(x.el) : ''}" placeholder="${fmt(x.qg, 2)}">` : fmt(x.gelir, 2)}</td>
-        <td class="n">${fmt(r2(x.gelir * 0.02), 2)}</td><td class="n"><b>${fmt(x.mdss, 2)}</b>${x.mdss === r2(me * 0.15) && x.gelir * 0.02 < me * 0.15 ? ' <span class="badge b-gray">min.</span>' : x.mdss === me && x.gelir * 0.02 > me ? ' <span class="badge b-gray">maks.</span>' : ''}</td></tr>`).join('')}</tbody>
-      <tfoot><tr><td>Cəmi</td><td class="n sabit">${fmt(cem('qg'), 2)}</td><td class="n sabit">${fmt(cem('bk'), 2)}</td><td class="n sabit">${fmt(cem('gelir'), 2)}</td><td class="n sabit"></td><td class="n sabit"><b>${fmt(cem('mdss'), 2)}</b></td></tr></tfoot></table></div>
-    <p class="muted" style="font-size:12.5px;line-height:1.6">2026-cı ildən fərdi sahibkarın öz sahibkarlıq fəaliyyəti üzrə məcburi dövlət sosial sığorta haqqı aylıq gəlirin (xərclər çıxılmadan) 2%-i qədərdir, amma minimum aylıq əməkhaqqının 15%-indən (${fmt(me * 0.15, 0)} ₼) az, 100%-indən (${me} ₼) çox olmur. Gəlir avtomatik olaraq gedən qaimələrdən götürülür; nağd satış və ya qaiməsiz gəlir varsa, "Hesablamaya daxil gəlir" xanasına ayın ümumi gəlirini yazın (boş qoysanız qaimələr götürülür). Bu, işçilərin əmək haqqından tutulan DSMF-dən ayrıdır. Hüquqi şəxslərdə (MMC, ASC) hesablanmır.</p>`;
+        <td class="n">${fmt(r2(x.gelir * 0.02), 2)}</td><td class="n"><b>${fmt(x.mdss, 2)}</b>${x.mdss === r2(me * 0.15) && x.gelir * 0.02 < me * 0.15 ? ' <span class="badge b-gray">min.</span>' : x.mdss === me && x.gelir * 0.02 > me ? ' <span class="badge b-gray">maks.</span>' : ''}</td><td class="n">${fmt(x.its, 2)}</td><td class="n"><b>${fmt(x.mdss + x.its, 2)}</b></td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>Cəmi</td><td class="n sabit">${fmt(cem('qg'), 2)}</td><td class="n sabit">${fmt(cem('bk'), 2)}</td><td class="n sabit">${fmt(cem('gelir'), 2)}</td><td class="n sabit"></td><td class="n sabit"><b>${fmt(cem('mdss'), 2)}</b></td><td class="n sabit">${fmt(cem('its'), 2)}</td><td class="n sabit"><b>${fmt(cem('mdss') + cem('its'), 2)}</b></td></tr></tfoot></table></div>
+    <p class="muted" style="font-size:12.5px;line-height:1.6">2026-cı ildən fərdi sahibkarın öz sahibkarlıq fəaliyyəti üzrə məcburi dövlət sosial sığorta haqqı aylıq gəlirin (xərclər çıxılmadan) 2%-i qədərdir, amma minimum aylıq əməkhaqqının 15%-indən (${fmt(me * 0.15, 0)} ₼) az, 100%-indən (${me} ₼) çox olmur. İcbari tibbi sığorta (İTS) haqqı isə gəlirdən asılı olmayaraq minimum aylıq əməkhaqqının 4%-i — ayda ${fmt(me * 0.04, 2)} ₼-dır. Gəlir avtomatik olaraq gedən qaimələrdən götürülür; nağd satış və ya qaiməsiz gəlir varsa, "Hesablamaya daxil gəlir" xanasına ayın ümumi gəlirini yazın (boş qoysanız qaimələr götürülür). Bu, işçilərin əmək haqqından tutulan DSMF-dən ayrıdır. Hüquqi şəxslərdə (MMC, ASC) hesablanmır.</p>`;
   $$('[data-ay]').forEach(inp => inp.onchange = async () => {
     try { const v = inp.value.trim().replace(/\s/g, '').replace(',', '.'); if (v && isNaN(+v)) return toast('Rəqəm yazın');
       await ayarYaz(A, 'mdss_gelir_' + inp.dataset.ay, v); S.cache.ayar = null; refresh(); } catch (er) { fail(er); }
@@ -1715,7 +1715,7 @@ async function pageSahibkarMdss(params) {
 async function pageEmek(params) {
   const tab = ['isci', 'sah'].includes(params.get('t')) ? params.get('t') : 'ay', ay = params.get('ay') || ayBasi(today()), w = canWrite();
   if (tab === 'sah') return pageSahibkarMdss(params);
-  shell('emek', 'Əmək haqqı', tab === 'ay' ? ayAdi(ay) : 'Əməkdaşlar', `<div class="seg" id="et">${[['ay', 'Aylıq hesablama'], ['isci', 'Əməkdaşlar'], ['sah', 'Sahibkarın sosial sığortası']].map(([k, t]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+  shell('emek', 'Əmək haqqı', tab === 'ay' ? ayAdi(ay) : 'Əməkdaşlar', `<div class="seg" id="et">${[['ay', 'Aylıq hesablama'], ['isci', 'Əməkdaşlar'], ['sah', 'Sahibkarın sığorta haqları']].map(([k, t]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     ${tab === 'ay' ? `<select class="in" id="eay" style="width:auto">${ayOpt(ay)}</select>${w ? `<button class="btn primary" id="ehes">Hesabla</button>` : ''}` : (w ? `<button class="btn primary" id="eyeni">${ico('plus')}Yeni əməkdaş</button>` : '')}`);
   $$('#et button').forEach(b => b.onclick = () => { location.hash = `#/emek?t=${b.dataset.t}&ay=${ay}`; });
   const isci = await all(() => sb.from('emekdaslar').select('*').order('ad'));
