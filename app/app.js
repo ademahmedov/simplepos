@@ -1523,11 +1523,13 @@ function qaimeRefler(t) {
   const tm = T.match(/(\d{2})\.(\d{2})\.(\d{4})\s*-\s*(\d{2})\.(\d{2})\.(\d{4})/);
   return { refs, aralig, tarix: tm ? [`${tm[3]}-${tm[2]}-${tm[1]}`, `${tm[6]}-${tm[5]}-${tm[4]}`] : null };
 }
+// Təyinata 130 simvol sığdığı üçün qaimə nömrələri tam yazılmır — ödənişlər qaimələrə avtomatik bağlanmır; ödəniş vəziyyəti əvəzləşmə faylından gəlir
+const BANK_AVTO_BAGLA = false;
 function bankIdxal(hesabId, bh) {
   let ust = [];
   idxalPencere({
     basliq: 'Bank çıxarışını yüklə',
-    izah: 'İnternet-bankdan çıxarışı Excel kimi yükləyib olduğu kimi seçin (Kapital Bank formatı tam tanınır). Hesab nömrəsinə görə bank hesabı tapılır və ya yaradılır. Təyinatda qaimə seriyası və nömrəsi varsa (məs. "MT2601 10071114 EQ ESAS ODEN", "EDV odenisi ..."), ödəniş həmin qaiməyə özü bağlanır. Eyni sənəd nömrəli əməliyyat təkrar yüklənmir.',
+    izah: 'İnternet-bankdan çıxarışı Excel kimi yükləyib olduğu kimi seçin (Kapital Bank formatı tam tanınır). Hesab nömrəsinə görə bank hesabı tapılır və ya yaradılır. Əməliyyatlar kateqoriyalara özü bölünür (bank xərci, vergi, hesablar arası, kassadan mədaxil, təchizatçıya ödəniş). Qaimələrin ödəniş vəziyyəti "Əvəzləşmə faylı"ndan götürülür. Eyni sənəd nömrəli əməliyyat təkrar yüklənmir.',
     ust: r => { ust = r; },
     saheler: [{ k: 'tarix', ad: 'Tarix', lazim: true, tip: 'tarix', ox: ['tarix', 'əməliyyattarixi', 'date', 'valyutalaşmatarixi'] },
       { k: 'sened', ad: 'Sənədin nömrəsi', ox: ['sənədinnömrəsi', 'sənəd', 'sənədnömrəsi', 'referans'] },
@@ -1577,7 +1579,7 @@ function bankIdxal(hesabId, bh) {
         else if (edvOd || esasOd) kat = nov === 'Məxaric' ? 'Təchizatçıya ödəniş' : 'Alıcıdan daxilolma';
         // --- qaiməyə bağlama
         let qal = m;
-        if ((edvOd || esasOd) && voen && voen !== voenOz) {
+        if (BANK_AVTO_BAGLA && (edvOd || esasOd) && voen && voen !== voenOz) {
           const ist = nov === 'Məxaric' ? 'gelen' : 'geden';
           let hedef = [];
           if (R.aralig) { const a = qaimeTap(ist, voen, ...R.refs[0]), b = qaimeTap(ist, voen, ...R.refs[1]);
@@ -1612,7 +1614,7 @@ function bankIdxal(hesabId, bh) {
         yoxla = Math.abs(hes - son) < 0.01 ? ` Son qalıq bankla eynidir: ${fmt(son, 2)} ₼ ✓` : ` Diqqət: hesablanan qalıq ${fmt(hes, 2)} ₼, bankda ${fmt(son, 2)} ₼.`;
       }
       try { localStorage.setItem('son_yukleme_' + S.magaza.id, new Date().toLocaleString('az-AZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })); } catch (_) {}
-      return `${h.bank}: ${rows.length - tekrar} əməliyyat yükləndi — ${oden.length} ödəniş qaimələrə bağlandı${fifo ? ` (${fifo}-i nömrəsiz, köhnə qaimələrdən başlayaraq)` : ''}, ${emel.length} bank əməliyyatı${tekrar ? `, ${tekrar} təkrar buraxıldı` : ''}.${yoxla}`;
+      return `${h.bank}: ${rows.length - tekrar} əməliyyat yükləndi${oden.length ? ` — ${oden.length} ödəniş qaimələrə bağlandı` : ''}${tekrar ? `, ${tekrar} təkrar buraxıldı` : ''}.${yoxla}`;
     },
   });
 }
@@ -1892,7 +1894,7 @@ function mUstPanel(active) {
       <span class="mpill ${S.aktiv ? 'ok' : 'xeta'}">${S.magaza.dayandirilib ? 'Dayandırılıb' : S.aktiv ? `Abunə: ${S.qalan} gün` : 'Abunə bitib'}</span>
       ${sonYuk ? `<span class="mpill">Son yükləmə: ${esc(sonYuk)}</span>` : ''}
       <span style="flex:1"></span>
-      ${canWrite() ? `<button class="btn sm" id="mq-yuk">${ico('up')}Qaimə yüklə</button><button class="btn sm" id="mb-yuk">${ico('up')}Bank çıxarışı</button><button class="btn sm" id="mg-yen">${ico('plus')}Gömrük bəyanı</button>` : ''}
+      ${canWrite() ? `<button class="btn sm" id="mq-yuk">${ico('up')}Qaimə yüklə</button><button class="btn sm" id="mb-yuk">${ico('up')}Bank çıxarışı</button><button class="btn sm" id="me-yuk">${ico('up')}Əvəzləşmə faylı</button><button class="btn sm" id="mg-yen">${ico('plus')}Gömrük bəyanı</button>` : ''}
     </div>
     <div class="mtabs">${T.l.map(x => `<a href="${esc(x.h)}" class="${x.p === active ? 'on' : ''}">${esc(MUH_BASLIQ[x.p] || x.p)}<i data-tx="${x.p}" title="Bağla">×</i></a>`).join('')}</div>`;
 }
@@ -1903,6 +1905,7 @@ function mUstBagla() {
   $('#mkart').onclick = () => sirketKarti().catch(fail);
   $$('[data-tx]').forEach(i => i.onclick = e => { e.preventDefault(); e.stopPropagation(); mTabBag(i.dataset.tx); });
   if ($('#mq-yuk')) $('#mq-yuk').onclick = () => qaimeIdxal('gelen');
+  if ($('#me-yuk')) $('#me-yuk').onclick = evezIdxal;
   if ($('#mb-yuk')) $('#mb-yuk').onclick = async () => { const bh = await bankHesablari(); bankIdxal(bh[0] && bh[0].id, bh); };
   if ($('#mg-yen')) $('#mg-yen').onclick = () => gomrukForm('idxal', null);
 }
@@ -2025,11 +2028,103 @@ function aktIdxal() {
 }
 
 /* ---------- Ödənişlər ---------- */
+// Əvəzləşmə faylı (mühasibin öz Excel-i): hər qaimə üzrə aylar üzrə ödənilmiş əsas/ƏDV və qalıq. Qaimələrin ödəniş vəziyyəti üçün əsas mənbə budur.
+const AY_ADLARI = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avqust', 'sentyabr', 'oktyabr', 'noyabr', 'dekabr'];
+function evezFaylOxu(rows) {
+  const N = c => normBas(c == null ? '' : c);
+  const hi = rows.findIndex(r => r.some(c => N(c) === 'seriyası' || N(c) === 'seriya') && r.some(c => N(c) === 'nömrəsi' || N(c) === 'nömrə'));
+  if (hi < 0) throw new Error('Başlıq sətri tapılmadı (Seriyası, Nömrəsi sütunları olmalıdır)');
+  const H = rows[hi].map(N), col = (...a) => H.findIndex(h => a.some(x => h === x || h.startsWith(x)));
+  const c = { ad: col('əldəediləndqaimələr', 'əldəedilənqaimələr', 'kontragent', 'adı', 'təchizatçı'), voen: col('vöen'), ser: col('seriyası', 'seriya'), no: col('nömrəsi', 'nömrə'), tarix: col('tarix'), esas: col('əsasməbləğ', 'əsas'), edv: col('ədv'), qal: col('qalıq') };
+  if (c.voen < 0 || c.esas < 0 || c.edv < 0) throw new Error('VÖEN, Əsas məbləğ və ƏDV sütunları tapılmadı');
+  // ay adları başlıqdan sonrakı sətirlərdədir; hər ayın altında Əsas / ƏDV
+  const ay = []; for (let k = hi + 1; k < Math.min(hi + 4, rows.length); k++) rows[k].forEach((x, i) => { const j = AY_ADLARI.indexOf(N(x)); if (j >= 0 && ay[j] == null) ay[j] = i; });
+  if (ay.filter(x => x != null).length < 6) throw new Error('Ay sütunları (Yanvar … Dekabr) tapılmadı');
+  const qal = c.qal >= 0 ? c.qal : null;
+  const out = [];
+  for (let k = hi + 1; k < rows.length; k++) {
+    const r = rows[k], ser = String(r[c.ser] ?? '').trim().toUpperCase(), no = String(r[c.no] ?? '').trim().replace(/\.0+$/, '');
+    const voen = String(r[c.voen] ?? '').replace(/\D/g, '');
+    if (!ser || !no || !voen) continue;
+    const esas = idxalEded(r[c.esas]), edv = idxalEded(r[c.edv]); if (esas == null || isNaN(esas)) continue;
+    const t = c.tarix >= 0 ? idxalTarix(r[c.tarix]) : null;
+    const aylar = ay.map(i => i == null ? [0, 0] : [num(idxalEded(r[i])), num(idxalEded(r[i + 1]))]);
+    const qe = qal != null ? num(idxalEded(r[qal])) : null, qd = qal != null ? num(idxalEded(r[qal + 1])) : null;
+    const odE = aylar.reduce((s, x) => s + x[0], 0), odD = aylar.reduce((s, x) => s + x[1], 0);
+    // əvvəlki dövrlərdə ödənilən = əsas − qalıq − bu ilin ödənişləri
+    const evE = qal != null ? r2(esas - qe - odE) : 0, evD = qal != null ? r2(num(edv) - qd - odD) : 0;
+    out.push({ voen: voen.padStart(10, '0'), ad: c.ad >= 0 ? String(r[c.ad] ?? '').trim() : '', ser, no: no.replace(/^0+/, ''), noXam: no, tarix: t && t !== 'X' ? t : null, esas: r2(esas), edv: r2(num(edv)), aylar, evE: Math.max(0, evE), evD: Math.max(0, evD), qe: qe == null ? null : r2(qe), qd: qd == null ? null : r2(qd) });
+  }
+  return out;
+}
+function evezIdxal() {
+  const il0 = +today().slice(0, 4);
+  const m = modal('Əvəzləşmə faylını yüklə (ödənilmiş qaimələr)', `<div id="ev1">
+      <p class="muted" style="margin-top:0;font-size:13.5px;line-height:1.55">Qaimələrin aylar üzrə ödənilmiş əsas məbləğ və ƏDV-si olan Excel faylınızı seçin (sütunlar: VÖEN, Seriyası, Nömrəsi, Tarix, Əsas məbləğ, ƏDV, Qalıq, Yanvar … Dekabr). Hansı qaimənin ödənildiyi, hansının qaldığı <b>bu fayla görə</b> yazılır: faylda olan qaimələrin əvvəlki ödəniş qeydləri əvəzlənir. Proqramda olmayan qaimələr (məs. keçən illərin) əlavə edilir.</p>
+      <div class="row2" style="align-items:end"><div class="field"><label class="f">Aylar hansı ilə aiddir</label><select class="in" id="evil">${[il0, il0 - 1, il0 - 2].map(y => `<option>${y}</option>`).join('')}</select></div>
+      <div class="field"><label class="btn primary" style="cursor:pointer">${ico('up')}Fayl seç (.xlsx)<input type="file" id="evf" accept=".xlsx" style="display:none"></label></div></div></div>
+    <div id="ev2"></div>`, `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="evok" disabled>Yüklə</button>`, true);
+  let S_ = null;
+  $('#evf', m).onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const fq = evezFaylOxu(await xlsxOxu(await f.arrayBuffer()));
+      if (!fq.length) throw new Error('Faylda qaimə tapılmadı');
+      const qm = await all(() => sb.from('qaimeler').select('id,voen,seriya,nomre,esas,edv,edvsiz').eq('istiqamet', 'gelen').order('id'));
+      const K = new Map(qm.map(x => [`${x.voen}|${String(x.seriya || '').toUpperCase()}|${String(x.nomre || '').replace(/^0+/, '')}`, x]));
+      fq.forEach(x => { x.q = K.get(`${x.voen}|${x.ser}|${x.no}`) || null; });
+      const tam = fq.filter(x => x.qe != null && x.qe <= 0.004 && x.qd <= 0.004).length, yeni = fq.filter(x => !x.q).length;
+      const qalE = fq.reduce((s, x) => s + num(x.qe), 0), qalD = fq.reduce((s, x) => s + num(x.qd), 0);
+      S_ = fq;
+      $('#ev2', m).innerHTML = `<div class="kpis" style="margin:12px 0 0"><div class="kpi"><div class="l">Faylda qaimə</div><div class="v">${fq.length}</div><div class="s">${fq.length - yeni} proqramda var, ${yeni} əlavə ediləcək</div></div>
+        <div class="kpi"><div class="l">Tam ödənilib</div><div class="v">${tam}</div><div class="s">${fq.length - tam} qaimədə qalıq var</div></div>
+        <div class="kpi"><div class="l">Ödənilməmiş qalıq</div><div class="v">${fmt(qalE + qalD, 2)} ₼</div><div class="s">əsas ${fmt(qalE, 2)} + ƏDV ${fmt(qalD, 2)}</div></div></div>`;
+      $('#evok', m).disabled = false;
+    } catch (er) { toast('Faylı oxumaq olmadı: ' + er.message, 6000); }
+  };
+  $('#evok', m).onclick = async () => {
+    const btn = $('#evok', m); btn.disabled = true; const il = +$('#evil', m).value;
+    try {
+      // 1) proqramda olmayan qaimələri əlavə et
+      const yeni = S_.filter(x => !x.q);
+      for (const h of hisse(yeni, 500)) {
+        btn.textContent = 'Qaimələr əlavə edilir…';
+        const r = await q(sb.from('qaimeler').insert(h.map(x => ({ istiqamet: 'gelen', voen: x.voen, kontragent: x.ad || null, seriya: x.ser, nomre: x.noXam, tarix: x.tarix || `${il}-01-01`, esas: x.esas, edv: x.edv, edvsiz: 0, status: 'Əvəzləşmə faylından', qeyd: null }))).select('id,voen,seriya,nomre,esas,edv,edvsiz'));
+        r.forEach(y => { const x = h.find(z => z.voen === y.voen && z.ser === String(y.seriya).toUpperCase() && z.noXam === y.nomre); if (x) x.q = y; });
+      }
+      // 2) bu qaimələrin köhnə ödənişləri: bankdan gələnlər bank əməliyyatına qaytarılır (bank qalığı dəyişməsin), qalanı silinir
+      const ids = S_.filter(x => x.q).map(x => x.q.id), idSet = new Set(ids);
+      btn.textContent = 'Köhnə ödənişlər yoxlanılır…';
+      const kohne = (await all(() => sb.from('v_qaime_odenisleri').select('id,qaime_id,tarix,mebleg,hesab_id,sened,qeyd,voen,kontragent,istiqamet').eq('istiqamet', 'gelen').order('id'))).filter(o => idSet.has(o.qaime_id) || o.sened);
+      const geri = kohne.filter(o => o.hesab_id);
+      for (const h of hisse(geri, 500)) await q(sb.from('bank_emeliyyatlari').insert(h.map(o => ({ hesab_id: o.hesab_id, tarix: o.tarix, nov: 'Məxaric', mebleg: o.mebleg, kateqoriya: 'Təchizatçıya ödəniş', voen: o.voen, kontragent: o.kontragent, teyinat: String(o.qeyd || '').replace(/^\[avtomatik[^\]]*\]\s*/, '').slice(0, 480) || null, sened: o.sened }))));
+      for (const h of hisse(kohne.map(o => o.id), 300)) await q(sb.from('qaime_odenisleri').delete().in('id', h));
+      // 3) fayldakı ödənişlər
+      const son = a => { const d = ayinSonu(a); return d > today() ? today() : d; };
+      const od = [];
+      S_.filter(x => x.q).forEach(x => {
+        if (x.evE + x.evD > 0.004) od.push({ qaime_id: x.q.id, tarix: `${il - 1}-12-31`, mebleg: r2(x.evE + x.evD), edv: x.evD, qeyd: `Əvəzləşmə faylı: ${il}-ci ilədək ödənilib` });
+        x.aylar.forEach(([e, d], i) => { if (e + d > 0.004) od.push({ qaime_id: x.q.id, tarix: son(`${il}-${String(i + 1).padStart(2, '0')}-01`), mebleg: r2(e + d), edv: r2(d), qeyd: `Əvəzləşmə faylı: ${AY_ADLARI[i][0].toUpperCase() + AY_ADLARI[i].slice(1)} ${il}` }); });
+        // faylda tam ödənilib, amma proqramdakı məbləğ fərqlidir — qalıq sıfırlansın
+        if (x.qe != null && x.qe <= 0.004 && x.qd <= 0.004) {
+          const fq = r2(num(x.q.esas) + num(x.q.edv) + num(x.q.edvsiz) - x.esas - x.edv);
+          if (fq > 0.004) od.push({ qaime_id: x.q.id, tarix: son(`${il}-12-01`), mebleg: fq, edv: 0, qeyd: 'Əvəzləşmə faylına görə tam ödənilib (məbləğ fərqi)' });
+        }
+      });
+      let i = 0; for (const h of hisse(od, 500)) { await q(sb.from('qaime_odenisleri').insert(h)); i += h.length; btn.textContent = `Ödənişlər yazılır… ${i}/${od.length}`; }
+      try { localStorage.setItem('son_yukleme_' + S.magaza.id, new Date().toLocaleString('az-AZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })); } catch (_) {}
+      closeModal(); S.cache = {};
+      toast(`Əvəzləşmə faylı yükləndi: ${S_.length} qaimə (${yeni.length} yeni), ${od.length} ödəniş yazıldı${geri.length ? `, ${geri.length} bank ödənişi qaimədən ayrılıb bank əməliyyatına qaytarıldı` : ''}.`, 9000);
+      refresh();
+    } catch (er) { btn.disabled = false; btn.textContent = 'Yüklə'; fail(er); }
+  };
+}
 async function pageOdenis(params) {
   const tab = params.get('t') || 'qaime', w = canWrite(), D = dovrPanel(params, '#/odenis');
-  shell('odenis', 'Ödənişlər', 'Qaimə ödənişləri və bağlanmamış bank əməliyyatları', `<div class="seg" id="ot">${[['qaime', 'Qaimə ödənişləri'], ['bag', 'Bağlanmamış ödənişlər']].map(([k, t]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>`);
+  shell('odenis', 'Ödənişlər', 'Qaimə ödənişləri və bağlanmamış bank əməliyyatları', `<div class="seg" id="ot">${[['qaime', 'Qaimə ödənişləri'], ['bag', 'Bağlanmamış ödənişlər']].map(([k, t]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>${w ? `<button class="btn primary" id="evyuk">${ico('up')}Əvəzləşmə faylını yüklə</button>` : ''}`);
+  if ($('#evyuk')) $('#evyuk').onclick = evezIdxal;
   $$('#ot button').forEach(b => b.onclick = () => { const p = new URLSearchParams(params); p.set('t', b.dataset.t); location.hash = '#/odenis?' + p; });
-  const bh = await bankHesablari(), hAd = id => { const h = bh.find(x => x.id === id); return h ? h.bank : 'nağd'; };
+  const bh = await bankHesablari(), hAd = id => { const h = bh.find(x => x.id === id); return h ? h.bank : '—'; };
   if (tab === 'qaime') {
     const rows = await all(() => sb.from('v_qaime_odenisleri').select('*').gte('tarix', D.a).lte('tarix', D.b).order('tarix', { ascending: false }).order('id', { ascending: false }));
     const sum = (l, k) => l.reduce((a, r) => a + num(r[k]), 0);
