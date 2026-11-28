@@ -2354,6 +2354,8 @@ async function pageQaime(params) {
   $$('#qist button').forEach(b => b.onclick = () => { const p = new URLSearchParams(params); if (b.dataset.i) p.set('ist', b.dataset.i); else p.delete('ist'); location.hash = '#/qaime?' + p; });
   $$('#qgor button').forEach(b => b.onclick = () => { const p = new URLSearchParams(params); if (b.dataset.v) p.set('v', b.dataset.v); else p.delete('v'); location.hash = '#/qaime?' + p; });
   if ($('#qy1')) { $('#qy1').onclick = () => qaimeIdxal('gelen'); $('#qy2').onclick = () => qaimeIdxal('geden'); $('#qyeni').onclick = () => qaimeForm(ist || 'gelen', null); $('#qode').onclick = () => topluOdenis(ist || 'gelen'); }
+  // e-taxes görünüşü: bütün sütunlar qaimələrlə eyni vaxtda yüklənir
+  const xrP = gor === 'tam' ? Promise.all([all(() => { let z = sb.from('qaimeler').select('id,xam').gte('tarix', D.a).lte('tarix', D.b); if (ist) z = z.eq('istiqamet', ist); return z.order('id'); }), ayarlar()]) : null;
   const rows = await all(() => { let s = sb.from('v_qaimeler').select('*').gte('tarix', D.a).lte('tarix', D.b); if (ist) s = s.eq('istiqamet', ist); return s.order('tarix', { ascending: false }).order('id', { ascending: false }); });
   const sum = (l, k) => l.reduce((a, r) => a + num(r[k]), 0), g = rows.filter(r => r.istiqamet === 'gelen'), d = rows.filter(r => r.istiqamet === 'geden');
   $('.topbar .sub').textContent = `${rows.length} qaimə · gələn ${man(sum(g, 'cem'))} · gedən ${man(sum(d, 'cem'))}`;
@@ -2361,22 +2363,22 @@ async function pageQaime(params) {
   const sdHtml = sdl.length ? `<div class="card" style="border-left:4px solid #c0392b;margin-bottom:14px;padding:14px 16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><b>${sdl.length} qaimənin statusu e-taxes-də dəyişib</b>${w ? '<button class="btn sm" id="sdbax">Hamısına baxdım</button>' : ''}</div>
       <table class="t" data-flt="0" style="margin-top:8px"><thead><tr><th>Qaimə</th><th>Kontragent</th><th>Tarix</th><th>Əvvəl</th><th>İndi</th><th>Dəyişdi</th>${w ? '<th></th>' : ''}</tr></thead><tbody>${sdl.map(x => `<tr><td style="white-space:nowrap">${esc(x.seriya || '')} ${esc(x.nomre || '')}</td><td>${esc(qisaAd(x.kontragent))}</td><td>${fd(x.tarix)}</td>
         <td class="muted">${esc(x.kohne_status || '—')}</td><td><b class="${LEGV_RE.test(x.status || '') ? 'neg' : ''}">${esc(x.status || '')}</b></td><td>${fd(String(x.status_deyisib).slice(0, 10))}</td>${w ? `<td><button class="btn sm" data-sdb="${x.id}">Baxdım</button></td>` : ''}</tr>`).join('')}</tbody></table></div>` : '';
+  const [xr, Ax] = xrP ? await xrP : [null, null];
   $('#page').innerHTML = `${sdHtml}${D.html}<div class="hes-link"><span class="muted">Hesabatlar:</span>${[['dinamika', 'Aylıq dinamika'], ['kxulase', 'Kontragent xülasəsi'], ['quzles', 'Qaimələr üzrə üzləşmə'], ['yaslanma', 'Borcların yaşlanması']].map(([k, t]) => `<a class="chip" href="#/hesab?r=${k}">${t}</a>`).join('')}</div>
     ${rows.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>İstiqamət</th><th>Tarix</th><th>Seriya / №</th><th>VÖEN</th><th>Kontragent</th><th class="n">Əsas</th><th class="n">ƏDV</th><th class="n">Cəm</th><th class="n">Ödənilib</th><th class="n">Qalıq</th><th>Vəziyyət</th><th class="hide-m">e-taxes</th></tr></thead>
-      <tbody>${rows.map(r => `<tr class="click" data-q="${r.id}"><td><span class="badge ${r.istiqamet === 'gelen' ? 'b-blue' : 'b-amber'}">${r.istiqamet === 'gelen' ? 'Gələn' : 'Gedən'}</span>${r.qaytarma ? ' <span class="badge b-red">Qaytarma</span>' : ''}</td><td class="nw">${fd(r.tarix)}</td><td class="nw">${esc(qaimeNo(r))}</td><td class="muted nw">${esc(r.voen || '')}</td><td class="kname" title="${esc(qisaAd(r.kontragent))}">${esc(qisaAd(r.kontragent))}</td>
+      <tbody>${(gor === 'tam' ? [] : rows).map(r => `<tr class="click" data-q="${r.id}"><td><span class="badge ${r.istiqamet === 'gelen' ? 'b-blue' : 'b-amber'}">${r.istiqamet === 'gelen' ? 'Gələn' : 'Gedən'}</span>${r.qaytarma ? ' <span class="badge b-red">Qaytarma</span>' : ''}</td><td class="nw">${fd(r.tarix)}</td><td class="nw">${esc(qaimeNo(r))}</td><td class="muted nw">${esc(r.voen || '')}</td><td class="kname" title="${esc(qisaAd(r.kontragent))}">${esc(qisaAd(r.kontragent))}</td>
         <td class="n">${fmt(r.esas, 2)}</td><td class="n">${fmt(r.edv, 2)}</td><td class="n"><b>${fmt(r.cem, 2)}</b></td><td class="n">${fmt(r.odenilib, 2)}</td><td class="n"><b class="${num(r.qaliq) > 0.005 ? 'neg' : ''}">${fmt(r.qaliq, 2)}</b></td><td class="nw">${odenisBadge(r)}</td><td class="hide-m muted nw">${esc(r.status || '')}</td></tr>`).join('')}</tbody>
       <tfoot><tr><td>${rows.length}</td><td></td><td></td><td></td><td></td><td class="n">${fmt(sum(rows, 'esas'), 2)}</td><td class="n">${fmt(sum(rows, 'edv'), 2)}</td><td class="n">${fmt(sum(rows, 'cem'), 2)}</td><td class="n">${fmt(sum(rows, 'odenilib'), 2)}</td><td class="n">${fmt(sum(rows, 'qaliq'), 2)}</td><td></td><td class="hide-m"></td></tr></tfoot></table></div>`
       : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Bu dövrdə qaimə yoxdur</div><div class="muted">e-taxes.gov.az-dan qaimələrin siyahısını Excel kimi yükləyib "Gələnləri yüklə" / "Gedənləri yüklə" ilə köçürün.</div></div>`}`;
   D.bagla();
   $$('[data-q]').forEach(tr => tr.onclick = () => qaimeKart(rows.find(r => r.id === +tr.dataset.q)));
   if (gor === 'tam' && rows.length && $('#page .tbl-wrap')) {
-    const xr = await all(() => { let z = sb.from('qaimeler').select('id,xam').gte('tarix', D.a).lte('tarix', D.b); if (ist) z = z.eq('istiqamet', ist); return z.order('id'); });
     const XM = new Map(xr.map(x => [x.id, x.xam || {}])), kol = [];
-    const Ax = await ayarlar(); let sira = []; try { sira = [...JSON.parse(Ax.xam_sira_gelen || '[]'), ...JSON.parse(Ax.xam_sira_geden || '[]')]; } catch (_) {}
+    let sira = []; try { sira = [...JSON.parse(Ax.xam_sira_gelen || '[]'), ...JSON.parse(Ax.xam_sira_geden || '[]')]; } catch (_) {}
     sira.forEach(k => { if (k !== '№' && !kol.includes(k) && xr.some(x => x.xam && k in x.xam)) kol.push(k); });
     xr.forEach(x => Object.keys(x.xam || {}).forEach(k => { if (k !== '№' && !kol.includes(k)) kol.push(k); }));
     const say = v => typeof v === 'number' ? fmt(v, Math.abs(v % 1) > 0 ? 2 : 0) : esc(v);
-    const isNum = k => xr.some(x => x.xam && typeof x.xam[k] === 'number');
+    const numK = new Set(); xr.forEach(x => { for (const k in (x.xam || {})) if (typeof x.xam[k] === 'number') numK.add(k); }); const isNum = k => numK.has(k);
     $$('#page .flt-bar, #page .flt-pager').forEach(x => x.remove());
     $('#page .tbl-wrap').outerHTML = kol.length ? `<div class="tbl-wrap"><table class="t xam-t"><thead><tr>${kol.map(k => `<th class="${isNum(k) ? 'n' : ''}">${esc(k)}</th>`).join('')}<th class="n">Ödənilib</th><th class="n">Qalıq</th></tr></thead>
       <tbody>${rows.map(r => { const x = XM.get(r.id) || {}; return `<tr class="click" data-q="${r.id}">${kol.map(k => `<td class="${typeof x[k] === 'number' ? 'n' : ''}">${x[k] == null ? '' : say(x[k])}</td>`).join('')}<td class="n">${fmt(r.odenilib, 2)}</td><td class="n"><b class="${num(r.qaliq) > 0.005 ? 'neg' : ''}">${fmt(r.qaliq, 2)}</b></td></tr>`; }).join('')}</tbody></table></div>`
@@ -5199,7 +5201,29 @@ const SAY = () => { if (SAY._v == null) { let v = 20; try { const x = localStora
 const AXT_IKON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>';   // səhifə + sütun → dəyər (cədvəl yenidən çəkiləndə qorunur)
 const SRT = {};
 const azLow = t => String(t || '').toLocaleLowerCase('az').trim();
-function xanaMetni(td) { return (td ? td.innerText : '').replace(/\s+/g, ' ').trim(); }
+// Xananın mətni: innerText əvəzinə DOM-u gəzir — səhifəni yenidən ölçmür (böyük cədvəllərdə çox sürətli)
+const _XM = new WeakMap();
+function _metnTopla(n, o) {
+  for (let c = n.firstChild; c; c = c.nextSibling) {
+    if (c.nodeType === 3) o.push(c.data);
+    else if (c.nodeType === 1) {
+      const t = c.tagName;
+      if (t === 'SCRIPT' || t === 'STYLE' || t === 'BUTTON' || c.hidden || c.classList.contains('print-only') || c.style.display === 'none') continue;
+      if (t === 'SELECT') { const op = c.options[c.selectedIndex]; if (op) o.push(' ' + op.text + ' '); continue; }
+      if (t === 'INPUT') { if (c.type !== 'checkbox' && c.type !== 'hidden') o.push(' ' + c.value + ' '); continue; }
+      if (t === 'BR') { o.push(' '); continue; }
+      o.push(' '); _metnTopla(c, o); o.push(' ');
+    }
+  }
+  return o;
+}
+function xanaMetni(td) {
+  if (!td) return '';
+  if (td.tagName === 'TD' && td.parentElement && td.parentElement.parentElement && td.parentElement.parentElement.tagName === 'TBODY') {
+    let v = _XM.get(td); if (v == null) { v = _metnTopla(td, []).join('').replace(/\s+/g, ' ').trim(); _XM.set(td, v); } return v;
+  }
+  return _metnTopla(td, []).join('').replace(/\s+/g, ' ').trim();
+}
 function ededle(t) {
   const x = String(t).replace(/[\s ₼%]/g, '').replace('−', '-').replace(/ədəd|gün|ay/g, '');
   if (!/^-?\d+(,\d+)?(\.\d+)?$/.test(x)) return null;
@@ -5262,9 +5286,10 @@ function tabloFiltr(tb) {
   const thead = tb.tHead, body = tb.tBodies[0];
   if (!thead || !body || !thead.rows[0]) return;
   const ths = Array.from(thead.rows[0].cells);
+  const thT = ths.map(th => xanaMetni(th)); // başlıq mətnləri bir dəfə, layout-suz
   const rows = () => Array.from(body.rows).filter(r => r.cells.length === ths.length);
   if (!rows().length || tb.closest('.cek,.modal') || /^#\/(muqavile|qebz|cek)\//.test(location.hash)) return;
-  const acar = location.hash.split('?')[0] + '|' + ths.map(th => th.innerText.trim()).join('/');
+  const acar = location.hash.split('?')[0] + '|' + thT.join('/');
   const st = FLT[acar] || (FLT[acar] = {});
   const BOS = '(Boş)';
   const deyerAl = (r, i) => xanaMetni(r.cells[i]) || BOS;
@@ -5272,7 +5297,7 @@ function tabloFiltr(tb) {
   const sirKey = t => { const n = ededle(t); if (n != null) return [0, n]; const d = tarixle(t); return d ? [1, d] : [2, azLow(t)]; };
   const muqayise = (x, y) => x[0] !== y[0] ? x[0] - y[0] : (x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0);
   ths.forEach((th, i) => {
-    if (!th.innerText.trim()) return;
+    if (!thT[i]) return;
     th.classList.add('srt'); th.title = 'Sıralamaq üçün basın';
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'flt-btn no-print'; btn.title = 'Filtr'; btn.innerHTML = HUNI;
     th.appendChild(btn);
@@ -5291,7 +5316,7 @@ function tabloFiltr(tb) {
     const vals = [...say.keys()].sort((x, y) => x === BOS ? 1 : y === BOS ? -1 : muqayise(sirKey(x), sirKey(y)));
     const reqem = vals.some(v => v !== BOS) && vals.every(v => v === BOS || ededle(v) != null);
     const pop = document.createElement('div'); pop.id = 'fpop'; pop.className = 'fpop'; pop.dataset.col = acar + i;
-    pop.innerHTML = `<div class="fp-h">${esc(ths[i].innerText.trim())}</div>
+    pop.innerHTML = `<div class="fp-h">${esc(thT[i])}</div>
       <div class="fp-srt"><button type="button" data-s="1">${reqem ? 'Kiçikdən böyüyə' : 'A → Z'} ▲</button><button type="button" data-s="-1">${reqem ? 'Böyükdən kiçiyə' : 'Z → A'} ▼</button></div>
       <input class="fp-q" placeholder="${reqem ? 'Axtar və ya >100, <50, 100-500' : 'Axtar…'}" value="${esc(f.q || '')}">
       <label class="fp-all"><input type="checkbox"> <b>(Hamısını seç)</b></label>
@@ -5356,7 +5381,7 @@ function tabloFiltr(tb) {
   // səhifə keçidləri cədvəlin altında
   let pager = host.nextElementSibling && host.nextElementSibling.classList.contains('flt-pager') ? host.nextElementSibling : null;
   if (!pager) { pager = document.createElement('div'); pager.className = 'flt-pager no-print'; host.parentElement.insertBefore(pager, host.nextSibling); }
-  const metnler = new Map(rows().map(r => [r, azLow(r.innerText)]));
+  const metnler = new Map(); const setirMetni = r => { let m = metnler.get(r); if (m == null) { m = azLow(Array.from(r.cells).map(xanaMetni).join(' ')); metnler.set(r, m); } return m; };
   const xp = $('[data-x=pdf]', bar); if (xp) xp.onclick = () => cedveliPdf(tb);
   function sirala() {
     $$('th.srt', thead).forEach(th => th.classList.remove('asc', 'desc'));
@@ -5371,13 +5396,13 @@ function tabloFiltr(tb) {
     const axt = azLow(AXT[acar] || '').split(/\s+/).filter(Boolean);
     const uygunlar = [];
     hamisi.forEach(r => {
-      const ok = aktiv.every(([i, v]) => kecir(r, +i, v)) && axt.every(w => (metnler.get(r) || azLow(r.innerText)).includes(w));
-      r.style.display = ok ? '' : 'none'; r.classList.remove('pg-gizli'); if (ok) { gor++; uygunlar.push(r); }
+      const ok = aktiv.every(([i, v]) => kecir(r, +i, v)) && axt.every(w => setirMetni(r).includes(w));
+      const ds = ok ? '' : 'none'; if (r.style.display !== ds) r.style.display = ds; if (ok) { gor++; uygunlar.push(r); }
     });
     // səhifələmə (filtrdən sonra, cari sıralama ilə)
     const n = SAY(), sehSay = n ? Math.max(1, Math.ceil(gor / n)) : 1;
     let pgi = Math.min(PG[acar] || 0, sehSay - 1); PG[acar] = pgi;
-    if (n) uygunlar.forEach((r, k) => { if (k < pgi * n || k >= (pgi + 1) * n) r.classList.add('pg-gizli'); });
+    uygunlar.forEach((r, k) => { const gz = !!n && (k < pgi * n || k >= (pgi + 1) * n); if (r.classList.contains('pg-gizli') !== gz) r.classList.toggle('pg-gizli', gz); });
     if (n && gor > n) {
       const dug = (i, t, on, dis) => `<button type="button" class="btn sm ${on ? 'primary' : ''}" data-pg="${i}" ${dis ? 'disabled' : ''}>${t}</button>`;
       const nomreler = []; for (let i = 0; i < sehSay; i++) if (i === 0 || i === sehSay - 1 || Math.abs(i - pgi) <= 2) nomreler.push(i); else if (nomreler[nomreler.length - 1] !== '…') nomreler.push('…');
@@ -5387,11 +5412,11 @@ function tabloFiltr(tb) {
     } else pager.innerHTML = '';
     if (foot) {
       cemSut.forEach((ok, i) => { if (!ok) return;
-        const c = hamisi.filter(r => r.style.display !== 'none').reduce((a, r) => a + (ededle(xanaMetni(r.cells[i])) || 0), 0);
+        const c = uygunlar.reduce((a, r) => a + (ededle(xanaMetni(r.cells[i])) || 0), 0);
         const t = fCell[i]; const b = t.querySelector('b') || t; b.textContent = fmt(Math.round(c * 100) / 100) + (/₼/.test(t.innerText) ? ' ₼' : ''); });
       foot.cells[0].innerHTML = aktiv.length || axt.length ? `${gor} sətir (süzülüb)` : ilkFoot;
     }
-    info.innerHTML = aktiv.length || axt.length ? `<span>${HUNI} ${gor} / ${hamisi.length} sətir${aktiv.length ? ' · ' + aktiv.map(([i]) => esc(ths[+i].innerText.trim())).join(', ') : ''}</span> <a href="#" class="flt-sil">Təmizlə ✕</a>` : '';
+    info.innerHTML = aktiv.length || axt.length ? `<span>${HUNI} ${gor} / ${hamisi.length} sətir${aktiv.length ? ' · ' + aktiv.map(([i]) => esc(thT[+i])).join(', ') : ''}</span> <a href="#" class="flt-sil">Təmizlə ✕</a>` : '';
     const sil = info.querySelector('.flt-sil');
     if (sil) sil.onclick = e => { e.preventDefault(); Object.keys(st).forEach(k => delete st[k]); AXT[acar] = ''; if (ax) ax.value = ''; PG[acar] = 0; tetbiq(); };
   }
