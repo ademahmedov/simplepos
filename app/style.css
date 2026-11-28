@@ -642,3 +642,5 @@ input.ced-in{width:80px;font:inherit;text-align:right;border:2px solid #2f6fed;b
 .sifre-w input{padding-right:42px}
 .sifre-goz{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted,#888);cursor:pointer;padding:6px;display:flex;border-radius:6px}
 .sifre-goz:hover{color:var(--ink,#222);background:rgba(0,0,0,.05)}
+.admin-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#2b2118;color:#f5ead8;padding:10px 16px;border-radius:10px;margin-bottom:14px;font-size:13.5px}
+.admin-bar .btn{background:#f5ead8;color:#2b2118;border-color:transparent}

@@ -242,7 +242,8 @@ function loginView(msg, rejim) {
       const { error } = await sb.auth.signInWithPassword({ email: f.e.value.trim(), password: f.p.value });
       btn().disabled = false;
       if (error) return err(authXeta(error));
-      start();
+      try { await sb.rpc('admin_cix'); } catch (_) {}   // admin həmişə admin paneldən başlasın
+      history.replaceState(null, '', SAYT()); start();
     };
   }
 }
@@ -257,18 +258,19 @@ async function start() {
   try {
     // hamısı paralel: açıq dükanı RLS özü verir (magazalar yalnız açıq dükanı göstərir)
     const [uz, adm, pr, fl, mg] = await Promise.all([
-      q(sb.from('uzvler').select('rol,ad,magaza_id,secili,yaradildi').eq('user_id', S.user.id)),
+      q(sb.from('uzvler').select('rol,ad,magaza_id,secili,yaradildi,admin_giris').eq('user_id', S.user.id)),
       q(sb.from('adminler').select('user_id').eq('user_id', S.user.id).maybeSingle()),
       q(sb.from('profiller').select('*').eq('user_id', S.user.id).maybeSingle()).catch(() => null),
       q(sb.rpc('uzvluklerim')).catch(() => []),
       q(sb.from('magazalar').select('*')).catch(() => []),
     ]);
     S.admin = !!adm; S.profil = pr; S.muhasibHesab = !!(pr && pr.nov === 'muhasib');
-    const aktivUz = uz.filter(x => x.rol !== 'bloklu').sort((a, b) => (b.secili - a.secili) || String(a.yaradildi).localeCompare(String(b.yaradildi)) || a.magaza_id - b.magaza_id);
+    const aktivUz = uz.filter(x => x.rol !== 'bloklu' && (!x.admin_giris || x.secili)).sort((a, b) => (b.secili - a.secili) || String(a.yaradildi).localeCompare(String(b.yaradildi)) || a.magaza_id - b.magaza_id);
     if (!aktivUz.length && uz.length && !S.admin && !S.muhasibHesab) { await sb.auth.signOut(); return loginView('Bu hesab bloklanıb. Dükanınızın mühasibinə müraciət edin.'); }
-    S.coxFirma = S.muhasibHesab || aktivUz.length > 1;
+    S.coxFirma = S.muhasibHesab || aktivUz.filter(x => !x.admin_giris).length > 1;
     S.firmalar = S.coxFirma ? fl : [];
     const me = aktivUz[0];
+    S.adminBaxir = !!(me && me.admin_giris);
     if (me) {
       S.rol = me.rol; S.ad = me.ad || S.user.email;
       S.magaza = mg.find(x => x.id === me.magaza_id) || await q(sb.from('magazalar').select('*').eq('id', me.magaza_id).single());
@@ -283,7 +285,7 @@ async function start() {
   else if (S.rol === 'kuryer') get('#/yigim');
   else if (!location.hash || /access_token|type=/.test(location.hash)) get(window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/cedvel' : '#/panel'));
   route();
-  if (S.profil && !S.profil.meqsed && (S.rol === 'muhasib' || (!S.magaza && !S.admin))) setTimeout(meqsedModal, 600);
+  if (S.profil && !S.profil.meqsed && !S.admin && (S.rol === 'muhasib' || !S.magaza)) setTimeout(meqsedModal, 600);
 }
 function meqsedModal() {
   const m = modal('Proqramdan nə üçün istifadə edirsiniz?', `<p class="muted" style="margin-top:0;font-size:13.5px">Seçiminizə görə nümunələr və bölmələr uyğunlaşdırılacaq. Sonra Ayarlardan dəyişə bilərsiniz.</p>${meqsedKafel()}`,
@@ -338,13 +340,14 @@ function shell(active, title, sub, tools, body) {
     <nav>${S.coxFirma || (!S.magaza && !S.admin) ? `<a href="#/firmalar" class="${active === 'firmalar' ? 'active' : ''}">${ico('bina')}Müəssisələr</a>` : ''}${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? `<div class="sec">${muhFirma() ? 'Firma' : 'Dükan'}</div>` : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? navBolmeler(active) : ''}</nav>
     <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'sahibkar' ? 'Direktor · yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
    <div class="mobile-bar"><button id="geri" class="mb-geri" ${active === 'menyu' || (S.rol === 'kuryer' && active === 'yigim') ? 'style="visibility:hidden"' : ''}>‹ Geri</button><b ${S.coxFirma ? 'id="mbfirma" style="cursor:pointer"' : ''}>${LOGO}${esc(firmaAdi())}${S.coxFirma ? ' ▾' : ''}</b><button id="out2">Çıxış</button></div>
-   <main class="main">${S.magaza && muhFirma() && S.rol !== 'kuryer' ? mUstPanel(active) : ''}${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
+   <main class="main">${S.adminBaxir ? `<div class="admin-bar no-print"><span>Admin rejimi: <b>${esc(S.magaza.ad)}</b> müəssisəsinə baxırsınız — hər şeyi görə və düzəldə bilərsiniz</span><button class="btn sm" id="admgeri">← Admin panelə qayıt</button></div>` : ''}${S.magaza && muhFirma() && S.rol !== 'kuryer' ? mUstPanel(active) : ''}${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
    <div id="page">${body || '<div class="empty"><div class="spinner" style="margin:auto"></div></div>'}</div></main>
    <nav class="bottom-nav" ${S.magaza && S.rol !== 'kuryer' ? '' : 'style="display:none"'}><a href="#/menyu" class="${active === 'menyu' ? 'active' : ''}">${ico('grid')}Menyu</a></nav>
   </div>`;
   const out = async () => { await sb.auth.signOut(); S.user = null; S.magaza = null; S.cache = {}; YOL.length = 0; history.replaceState(null, '', SAYT()); loginView(); };
   $('#out').onclick = out; $('#out2').onclick = out;
   $('#geri').onclick = geri;
+  if ($('#admgeri')) $('#admgeri').onclick = adminPaneleQayit;
   document.body.classList.toggle('muh', muhFirma());
   mUstBagla();
   if ($('#fsec')) $('#fsec').onchange = e => firmaSec(+e.target.value);
@@ -368,7 +371,7 @@ function route() {
     rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
     kassa: () => pageKassa(), sifarisler: () => pageSifarisler(params), hesabat: () => pageHesabat(params),
     teqvim: () => pageTeqvim(params), menfeet: () => pageMenfeet(), jurnal: () => pageJurnal(params), ayarlar: () => pageAyarlar(params),
-    qebz: () => pageQebz(id), muqavile: () => pageMuqavile(id), admin: () => pageAdmin() }[p] || pagePanel;
+    qebz: () => pageQebz(id), muqavile: () => pageMuqavile(id), admin: () => pageAdmin(params) }[p] || pagePanel;
   if (!S.magaza && !['admin', 'firmalar'].includes(p)) { location.hash = S.admin && !S.muhasibHesab ? '#/admin' : '#/firmalar'; return; }
   if (S.rol === 'kuryer' && !['yigim', 'qebz', 'menyu', 'firmalar'].includes(p)) { location.hash = '#/yigim'; return; }
   if (S.magaza && muhFirma() && !MUH_SEHIFE.includes(p) && !['jurnal', 'ayarlar', 'menyu', 'firmalar', 'admin'].includes(p)) { location.hash = '#/cedvel'; return; }
@@ -4256,10 +4259,40 @@ async function telegramKart() {
 /* =====================================================================
    ADMIN PANEL — bütün dükanlar və abunələr
    ===================================================================== */
-async function pageAdmin() {
-  shell('admin', 'Admin panel', 'Bütün müəssisələr və abunələr', `<input class="in search" id="axtar" placeholder="Axtar: müəssisə, ad, telefon, e-poçt">
+async function adminPaneleQayit() {
+  try { await q(sb.rpc('admin_cix')); S.cache = {}; S.pos = null; YOL.length = 0; history.replaceState(null, '', SAYT() + '#/admin'); await start(); } catch (er) { fail(er); }
+}
+const ADM_TAB = a => `<div class="seg" id="admtab">${[['', 'Müəssisələr'], ['ist', 'İstifadəçilər']].map(([k, t]) => `<button data-t="${k}" class="${k === a ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+const admTabBagla = () => $$('#admtab button').forEach(b => b.onclick = () => { location.hash = '#/admin' + (b.dataset.t ? '?t=' + b.dataset.t : ''); });
+async function adminFirmaAc(id, ad) {
+  try { await q(sb.rpc('admin_firmaya_gir', { m: id })); S.cache = {}; S.pos = null; YOL.length = 0; history.replaceState(null, '', SAYT()); await start(); toast(`${ad} açıldı`, 3000); } catch (er) { fail(er); }
+}
+async function pageAdminIst() {
+  shell('admin', 'Admin panel', 'Saytdan istifadə edənlər', `${ADM_TAB('ist')}<input class="in search" id="axtar" placeholder="Axtar: e-poçt, ad, müəssisə">`);
+  admTabBagla();
+  const rows = await q(sb.rpc('admin_istifadeciler'));
+  const rolA = { muhasib: 'Mühasib', sahibkar: 'Direktor', kuryer: 'Kuryer', bloklu: 'Bloklanıb' };
+  const draw = () => {
+    const t = azLow($('#axtar').value || '');
+    const l = rows.filter(r => !t || azLow([r.email, r.ad, r.telefon, ...(r.firmalar || []).map(f => f.ad)].join(' ')).includes(t));
+    $('#page').innerHTML = `<div class="grid kpis"><div class="card kpi"><div class="lbl">İstifadəçilər</div><div class="val">${rows.length}</div></div>
+        <div class="card kpi"><div class="lbl">Son 7 gündə girən</div><div class="val">${rows.filter(r => r.son_giris && gunFerqi(String(r.son_giris).slice(0, 10)) >= -7).length}</div></div>
+        <div class="card kpi"><div class="lbl">Müəssisəsi olmayan</div><div class="val">${rows.filter(r => !(r.firmalar || []).length && !r.admin).length}</div></div></div>
+      <div class="tbl-wrap" style="margin-top:16px"><table class="t"><thead><tr><th>İstifadəçi</th><th class="hide-m">Telefon</th><th class="hide-m">Məqsəd</th><th class="hide-m">Qeydiyyat</th><th class="hide-m">Son giriş</th><th>Müəssisələri</th></tr></thead>
+      <tbody>${l.map(r => `<tr><td><div class="cell-main">${esc(r.ad || r.email)}${r.admin ? ' <span class="badge b-amber">Admin</span>' : ''}</div><div class="cell-sub">${esc(r.email)}</div></td>
+        <td class="hide-m">${esc(r.telefon || '')}</td><td class="hide-m">${esc(r.meqsed ? saheAd(r.meqsed) : '')}</td><td class="hide-m">${fd(String(r.qeydiyyat).slice(0, 10))}</td>
+        <td class="hide-m">${r.son_giris ? fd(String(r.son_giris).slice(0, 10)) : '—'}</td>
+        <td>${(r.firmalar || []).map(f => `<div style="display:flex;gap:8px;align-items:center;margin:2px 0"><button class="btn sm primary" data-ac="${f.id}" data-ad="${esc(f.ad)}">Aç →</button><span>${esc(f.ad)}</span><span class="muted" style="font-size:12px">${rolA[f.rol] || f.rol}</span></div>`).join('') || '<span class="muted">—</span>'}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Tapılmadı</td></tr>'}</tbody></table></div>`;
+    $$('[data-ac]').forEach(b => b.onclick = () => { b.disabled = true; adminFirmaAc(+b.dataset.ac, b.dataset.ad); });
+  };
+  $('#axtar').oninput = draw; draw();
+}
+async function pageAdmin(params) {
+  if (params && params.get('t') === 'ist') return pageAdminIst();
+  shell('admin', 'Admin panel', 'Bütün müəssisələr və abunələr', `${ADM_TAB('')}<input class="in search" id="axtar" placeholder="Axtar: müəssisə, ad, telefon, e-poçt">
     <div class="seg" id="nov">${[['hamisi', 'Hamısı'], ['satis', 'Satış'], ['muhasibat', 'Mühasibat']].map(([k, t], i) => `<button data-n="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
     <div class="seg" id="fil">${[['hamisi', 'Hamısı'], ['aktiv', 'Aktiv'], ['bitir', 'Bitir (7 gün)'], ['bitib', 'Bitib']].map(([k, t], i) => `<button data-f="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>`);
+  admTabBagla();
   const [rows, sis, ode] = await Promise.all([q(sb.rpc('admin_magazalar')), sistemOxu(), q(sb.from('abune_odenisleri').select('*').order('tarix', { ascending: false }))]);
   const buAy = ayBasi(today());
   const gelirAy = ode.filter(o => o.tarix >= buAy).reduce((a, o) => a + num(o.mebleg), 0);
@@ -4305,9 +4338,7 @@ async function pageAdmin() {
         <div class="field"><label class="f">Pulsuz sınaq (gün)</label><input class="in" type="number" min="0" name="sinaq_gun" value="${esc(sis.sinaq_gun || '14')}"></div></div>
         <button class="btn primary">Yadda saxla</button></form></div>`;
     $$('[data-ac]').forEach(b => b.onclick = async () => {
-      const r = rows.find(x => x.id === +b.dataset.ac); b.disabled = true;
-      try { await q(sb.rpc('admin_firmaya_gir', { m: r.id })); S.cache = {}; S.pos = null; YOL.length = 0; history.replaceState(null, '', SAYT()); await start(); toast(`${r.ad} açıldı — admin kimi hər şeyi görə və düzəldə bilərsiniz`, 4000); }
-      catch (er) { b.disabled = false; fail(er); }
+      const r = rows.find(x => x.id === +b.dataset.ac); b.disabled = true; adminFirmaAc(r.id, r.ad);
     });
     $$('[data-uz]').forEach(b => b.onclick = async () => {
       const r = rows.find(x => x.id === +b.dataset.uz), ay = +b.dataset.ay;
