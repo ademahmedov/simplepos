@@ -131,7 +131,8 @@ async function sistemOxu() {
   try { const r = await q(sb.from('sistem').select('*')); S.sistem = Object.fromEntries(r.map(x => [x.acar, x.deyer || ''])); } catch (_) {}
   return S.sistem;
 }
-// Qeydiyyatdan sonra e-poçta gələn kodla təsdiq
+// Qeydiyyatdan sonra e-poçta gələn kodla təsdiq — Supabase-də öz e-poçt göndəricisi (SMTP) qoşulub məktub şablonuna kod qoyulanda true edin
+const KOD_TESDIQ = false;
 function kodView(email, msg) {
   app.innerHTML = `<div class="login-wrap"><form class="login-card" id="kf">
     <div class="login-logo">${LOGO}</div><h1>${esc(CFG.FIRMA_ADI)}</h1><p>E-poçtun təsdiqi</p>
@@ -242,7 +243,8 @@ function loginView(msg, rejim) {
       if (error) return err(authXeta(error));
       if (r && r.session) return start();
       if (r && r.user && Array.isArray(r.user.identities) && r.user.identities.length === 0) return err('Bu e-poçt artıq qeydiyyatdan keçib.');
-      kodView(f.e.value.trim());
+      if (KOD_TESDIQ) return kodView(f.e.value.trim());
+      ok('Qeydiyyat alındı. E-poçtunuza təsdiq linki göndərildi — linkə basıb sonra daxil olun (məktub görünmürsə "Spam" qovluğuna baxın).');
     };
   } else if (rejim === 'unut') {
     f.onsubmit = async e => {
@@ -267,7 +269,9 @@ function loginView(msg, rejim) {
       e.preventDefault(); btn().disabled = true;
       const { error } = await sb.auth.signInWithPassword({ email: f.e.value.trim(), password: f.p.value });
       btn().disabled = false;
-      if (error && /Email not confirmed/i.test(error.message || '')) { const em = f.e.value.trim(); await sb.auth.resend({ type: 'signup', email: em }); return kodView(em, '<div class="banner b-amber-bg">E-poçtunuz hələ təsdiqlənməyib — yeni kod göndərdik.</div>'); }
+      if (error && /Email not confirmed/i.test(error.message || '')) { const em = f.e.value.trim(); await sb.auth.resend({ type: 'signup', email: em });
+        if (KOD_TESDIQ) return kodView(em, '<div class="banner b-amber-bg">E-poçtunuz hələ təsdiqlənməyib — yeni kod göndərdik.</div>');
+        return err('E-poçtunuz hələ təsdiqlənməyib. Yeni təsdiq linki göndərdik — məktubdakı linkə basıb sonra daxil olun.'); }
       if (error) return err(authXeta(error));
       try { await sb.rpc('admin_cix'); } catch (_) {}   // admin həmişə admin paneldən başlasın
       history.replaceState(null, '', SAYT()); start();
