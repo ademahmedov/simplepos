@@ -1384,11 +1384,15 @@ async function topluOdenis(ist, voen0) {
 }
 async function qaimeKart(r) {
   const gelen = r.istiqamet === 'gelen', w = canWrite();
-  const [od, bh] = await Promise.all([q(sb.from('qaime_odenisleri').select('*').eq('qaime_id', r.id).order('tarix')), bankHesablari()]);
+  const [od, bh, qn, kn] = await Promise.all([q(sb.from('qaime_odenisleri').select('*').eq('qaime_id', r.id).order('tarix')), bankHesablari(),
+    gelen ? q(sb.from('qaimeler').select('nov').eq('id', r.id).maybeSingle()) : null, gelen && r.voen ? q(sb.from('kontragentler').select('nov').eq('voen', r.voen).maybeSingle()) : null]);
+  const qNov = qn && qn.nov, kNov = kn && kn.nov;
   const qal = r2(num(r.cem) - od.reduce((a, x) => a + num(x.mebleg), 0)), edvQal = r2(num(r.edv) - od.reduce((a, x) => a + num(x.edv), 0));
   const hAd = id => { const h = bh.find(x => x.id === id); return h ? `${h.bank}${h.hesab_no ? ' · ' + h.hesab_no.slice(-4) : ''}` : ''; };
   const m = modal(`Qaimə ${esc(qaimeNo(r))}`, `<div class="info"><div><span>${gelen ? 'Təchizatçı' : 'Alıcı'}</span><b>${esc(r.kontragent || '—')}</b><small class="muted">${esc(r.voen || '')}</small></div>
       <div><span>Tarix</span><b>${fd(r.tarix)}</b></div><div><span>Cəm</span><b>${man(r.cem)}</b><small class="muted">əsas ${fmt(r.esas, 2)} · ƏDV ${fmt(r.edv, 2)}${num(r.edvsiz) ? ' · ƏDV-siz ' + fmt(r.edvsiz, 2) : ''}</small></div></div>
+    ${gelen ? `<div style="display:flex;align-items:center;gap:10px;margin:2px 0 12px;font-size:14px"><span>Növ (mənfəət-zərər üçün):</span>${w ? `<select class="in" id="qnov" style="width:auto;padding:5px 8px">
+        <option value="">${kNov && kNov !== 'qarisiq' ? `Təchizatçıya görə — ${NOV_AD[kNov]}` : '— təyin olunmayıb —'}</option><option value="mal" ${qNov === 'mal' ? 'selected' : ''}>Mal</option><option value="xidmet" ${qNov === 'xidmet' ? 'selected' : ''}>Xidmət</option></select>` : `<b>${NOV_AD[qNov || kNov] || '—'}</b>`}</div>` : ''}
     <h3 style="margin:6px 0 8px">Ödənişlər</h3>
     ${od.length ? `<table class="t"><thead><tr><th>Tarix</th><th class="n">Məbləğ</th><th class="n">o cümlədən ƏDV</th><th>Bank</th><th>Qeyd</th>${w ? '<th></th>' : ''}</tr></thead><tbody>
       ${od.map(x => `<tr><td>${fd(x.tarix)}</td><td class="n">${fmt(x.mebleg, 2)}</td><td class="n">${fmt(x.edv, 2)}</td><td>${esc(hAd(x.hesab_id))}</td><td>${esc(x.qeyd || '')}</td>${w ? `<td><button class="btn sm danger" data-os="${x.id}">×</button></td>` : ''}</tr>`).join('')}</tbody></table>` : '<div class="muted">Hələ ödəniş yoxdur</div>'}
@@ -1405,6 +1409,7 @@ async function qaimeKart(r) {
   const f = $('#of', m);
   if (f) f.m.oninput = () => { const v = num(f.m.value); f.e.value = Math.abs(v - qal) < 0.005 ? Math.max(0, edvQal) : r2(qal ? v * Math.max(0, edvQal) / qal : 0); };
   if ($('#qed', m)) $('#qed', m).onclick = () => { closeModal(); qaimeForm(r.istiqamet, r); };
+  if ($('#qnov', m)) $('#qnov', m).onchange = async e => { try { await q(sb.from('qaimeler').update({ nov: e.target.value || null }).eq('id', r.id)); toast('Növ yadda saxlanıldı'); } catch (er) { fail(er); } };
   $$('[data-os]', m).forEach(b => b.onclick = async () => {
     if (!confirm('Ödəniş silinsin?')) return;
     try { await q(sb.from('qaime_odenisleri').delete().eq('id', +b.dataset.os)); toast('Silindi'); closeModal(); qaimeKartYenile(r.id); } catch (er) { fail(er); }
@@ -1941,21 +1946,24 @@ async function pageMZ(params) {
   $('#mil').onchange = e => { location.hash = '#/mz?il=' + e.target.value; };
   const a = `${il}-01-01`, b = `${il}-12-31`;
   const [qm, eh, gm, be] = await Promise.all([
-    all(() => sb.from('qaimeler').select('istiqamet,tarix,esas,edvsiz').gte('tarix', a).lte('tarix', b).order('id')),
+    all(() => sb.from('qaimeler').select('istiqamet,tarix,esas,edvsiz,voen,nov').gte('tarix', a).lte('tarix', b).order('id')),
     all(() => sb.from('emek_haqqi').select('ay,hesablanan,dsmf_isveren,issizlik_isveren,tibbi_isveren').gte('ay', a).lte('ay', b).order('id')),
     all(() => sb.from('gomruk').select('nov,tarix,rusum,diger').gte('tarix', a).lte('tarix', b).order('id')),
     all(() => sb.from('bank_emeliyyatlari').select('tarix,nov,mebleg,kateqoriya').gte('tarix', a).lte('tarix', b).order('id')),
   ]);
+  const KN = new Map((await all(() => sb.from('kontragentler').select('voen,nov').order('id'))).map(k => [k.voen, k.nov]));
+  qm.forEach(x => { if (x.istiqamet === 'gelen') { const k = KN.get(x.voen); x.nv = x.nov || (k && k !== 'qarisiq' ? k : null); } });
   const aylar = Array.from({ length: 12 }, (_, i) => `${il}-${String(i + 1).padStart(2, '0')}-01`);
   const ayda = (l, k, f) => l.filter(x => String(x[k]).slice(0, 7) === f.slice(0, 7));
   const S_ = (l, f) => l.reduce((s, x) => s + f(x), 0);
   const setir = aylar.map(f => {
     const gelir = S_(ayda(qm, 'tarix', f).filter(x => x.istiqamet === 'geden'), x => num(x.esas) + num(x.edvsiz)) + S_(ayda(be, 'tarix', f).filter(x => x.nov === 'Mədaxil' && x.kateqoriya === 'Digər gəlir'), x => num(x.mebleg));
-    const alis = S_(ayda(qm, 'tarix', f).filter(x => x.istiqamet === 'gelen'), x => num(x.esas) + num(x.edvsiz));
+    const gq = ayda(qm, 'tarix', f).filter(x => x.istiqamet === 'gelen'), dey = x => num(x.esas) + num(x.edvsiz);
+    const mal = S_(gq.filter(x => x.nv === 'mal'), dey), xid = S_(gq.filter(x => x.nv === 'xidmet'), dey), tey = S_(gq.filter(x => !x.nv), dey), alis = mal + xid + tey;
     const emek = S_(ayda(eh, 'ay', f), x => num(x.hesablanan) + num(x.dsmf_isveren) + num(x.issizlik_isveren) + num(x.tibbi_isveren));
     const gomr = S_(ayda(gm, 'tarix', f).filter(x => x.nov === 'idxal'), x => num(x.rusum) + num(x.diger));
     const bank = S_(ayda(be, 'tarix', f).filter(x => x.nov === 'Məxaric' && ['Bank xərci', 'Digər xərc'].includes(x.kateqoriya)), x => num(x.mebleg));
-    return { f, gelir, alis, emek, gomr, bank, menfeet: gelir - alis - emek - gomr - bank };
+    return { f, gelir, alis, mal, xid, tey, emek, gomr, bank, menfeet: gelir - alis - emek - gomr - bank };
   });
   const cem = k => setir.reduce((s, x) => s + x[k], 0), mf = cem('menfeet');
   $('#page').innerHTML = `<div class="grid kpis">
@@ -1963,22 +1971,68 @@ async function pageMZ(params) {
       <div class="card kpi"><div class="lbl">Xərclər</div><div class="val">${man(cem('alis') + cem('emek') + cem('gomr') + cem('bank'))}</div><div class="cmp">alış, əmək haqqı, gömrük, bank</div></div>
       <div class="card kpi"><div class="lbl">${mf >= 0 ? 'Mənfəət' : 'Zərər'}</div><div class="val ${mf >= 0 ? 'pos' : 'neg'}">${man(Math.abs(mf))}</div><div class="cmp">${il}</div></div>
       <div class="card kpi"><div class="lbl">Təxmini mənfəət vergisi (20%)</div><div class="val">${man(Math.max(0, mf) * 0.2)}</div><div class="cmp">ilin nəticəsinə görə</div></div></div>
-    <div class="tbl-wrap" style="margin-top:16px"><table class="t"><thead><tr><th>Ay</th><th class="n">Gəlir</th><th class="n">Alış (gələn qaimələr)</th><th class="n">Əmək haqqı + sığorta</th><th class="n">Gömrük</th><th class="n">Bank / digər xərc</th><th class="n">Mənfəət / zərər</th></tr></thead>
-      <tbody>${setir.map(x => `<tr><td>${ayAdi(x.f)}</td><td class="n">${fmt(x.gelir, 2)}</td><td class="n">${fmt(x.alis, 2)}</td><td class="n">${fmt(x.emek, 2)}</td><td class="n">${fmt(x.gomr, 2)}</td><td class="n">${fmt(x.bank, 2)}</td>
+    ${cem('tey') > 0.005 ? `<div class="banner b-amber-bg" style="margin-top:16px">${man(cem('tey'))} məbləğində gələn qaimənin növü (mal / xidmət) təyin olunmayıb — <a href="#/kontragent?t=nov&f=yox">Kontragentlər → Mal / Xidmət</a> bölməsində təchizatçıların növünü seçin.</div>` : ''}
+    <div class="tbl-wrap" style="margin-top:16px"><table class="t"><thead><tr><th>Ay</th><th class="n">Gəlir</th><th class="n">Mal alışı</th><th class="n">Xidmətlər</th>${cem('tey') ? '<th class="n">Növü təyin olunmayan</th>' : ''}<th class="n">Əmək haqqı + sığorta</th><th class="n">Gömrük</th><th class="n">Bank / digər xərc</th><th class="n">Mənfəət / zərər</th></tr></thead>
+      <tbody>${setir.map(x => `<tr><td>${ayAdi(x.f)}</td><td class="n">${fmt(x.gelir, 2)}</td><td class="n">${fmt(x.mal, 2)}</td><td class="n">${fmt(x.xid, 2)}</td>${cem('tey') ? `<td class="n neg">${fmt(x.tey, 2)}</td>` : ''}<td class="n">${fmt(x.emek, 2)}</td><td class="n">${fmt(x.gomr, 2)}</td><td class="n">${fmt(x.bank, 2)}</td>
         <td class="n"><b class="${x.menfeet < 0 ? 'neg' : x.menfeet > 0 ? 'pos' : ''}">${fmt(x.menfeet, 2)}</b></td></tr>`).join('')}</tbody>
-      <tfoot><tr><td>Cəmi ${il}</td><td class="n">${fmt(cem('gelir'), 2)}</td><td class="n">${fmt(cem('alis'), 2)}</td><td class="n">${fmt(cem('emek'), 2)}</td><td class="n">${fmt(cem('gomr'), 2)}</td><td class="n">${fmt(cem('bank'), 2)}</td><td class="n">${fmt(mf, 2)}</td></tr></tfoot></table></div>
-    <p class="muted" style="font-size:12.5px">Sadələşdirilmiş hesablama: gəlir — gedən qaimələrin ƏDV-siz məbləği; alış xərci — gələn qaimələrin ƏDV-siz məbləği (anbar qalığı nəzərə alınmır). Bank əməliyyatlarında "Bank xərci" və "Digər xərc" kateqoriyaları xərcə, "Digər gəlir" gəlirə daxil olur.</p>`;
+      <tfoot><tr><td>Cəmi ${il}</td><td class="n">${fmt(cem('gelir'), 2)}</td><td class="n">${fmt(cem('mal'), 2)}</td><td class="n">${fmt(cem('xid'), 2)}</td>${cem('tey') ? `<td class="n">${fmt(cem('tey'), 2)}</td>` : ''}<td class="n">${fmt(cem('emek'), 2)}</td><td class="n">${fmt(cem('gomr'), 2)}</td><td class="n">${fmt(cem('bank'), 2)}</td><td class="n">${fmt(mf, 2)}</td></tr></tfoot></table></div>
+    <p class="muted" style="font-size:12.5px">Sadələşdirilmiş hesablama: gəlir — gedən qaimələrin ƏDV-siz məbləği; alış xərci — gələn qaimələrin ƏDV-siz məbləği, mal və xidmət ayrıca (növ təchizatçıya və ya qaimənin özünə görə; anbar qalığı nəzərə alınmır). Bank əməliyyatlarında "Bank xərci" və "Digər xərc" kateqoriyaları xərcə, "Digər gəlir" gəlirə daxil olur.</p>`;
 }
 
 /* ---------- Kontragentlər ---------- */
+/* ---------- Gələn qaimələr: mal / xidmət təsnifatı (mənfəət-zərər üçün) ---------- */
+const NOV_AD = { mal: 'Mal', xidmet: 'Xidmət', qarisiq: 'Qarışıq' };
+// qeyd və kontragent adına görə təxmin (yalnız təklif kimi göstərilir)
+const XIDMET_SOZ = /xidmət|xidmet|icarə|icare|kirayə|kiraye|təmir|temir|quraşdırma|qurasdirma|daşınma|dasinma|nəqliyyat|neqliyyat|daşıma|kommunal|elektrik enerji|elektrik enerjisi|qaz təchizat|su təchizat|kanalizasiya|internet|rabitə|rabite|telefon xidm|mobil|reklam|məsləhət|meslehet|konsult|audit|mühafizə|muhafize|təmizlik|temizlik|təlim|telim|kurs|sığorta|sigorta|poçt|poct|kuryer|layihə|layihe|proqram təminat|abunə|abune|lizinq|servis|texniki baxış|yükləmə|boşaltma|ekspeditor|logistik/i;
+const MAL_SOZ = /məhsul|mehsul|\bmal\b|mallar|ərzaq|erzaq|qida|material|ehtiyat hissə|avadanlıq|avadanliq|göndərilən|gonderilen|təhvil|tehvil|satış|satis|topdan/i;
+function novTexmin(metn) { const t = String(metn || ''); const x = XIDMET_SOZ.test(t), m = MAL_SOZ.test(t); return x && !m ? 'xidmet' : m && !x ? 'mal' : null; }
+async function kontragentNovYaz(voen, ad, nov) {
+  const r = await q(sb.from('kontragentler').update({ nov: nov || null }).eq('voen', voen).select('id'));
+  if (!r.length) await q(sb.from('kontragentler').insert({ voen, ad: ad || voen, nov: nov || null }));
+}
+async function pageMalXidmet(params) {
+  const w = canWrite(), f = params.get('f') || 'hamisi';
+  const [qm, kl] = await Promise.all([
+    all(() => sb.from('qaimeler').select('id,voen,kontragent,esas,edvsiz,nov,qeyd,xam').eq('istiqamet', 'gelen').order('id')),
+    all(() => sb.from('kontragentler').select('voen,ad,nov').order('id'))]);
+  const KN = new Map(kl.map(k => [k.voen, k.nov]));
+  const K = new Map();
+  qm.forEach(x => { const o = K.get(x.voen) || { voen: x.voen, ad: x.kontragent, say: 0, cem: 0, ayri: 0, mal: 0, xid: 0, metn: '' }; o.say++; o.cem += num(x.esas) + num(x.edvsiz); o.ad = x.kontragent || o.ad;
+    if (x.nov) { o.ayri++; o[x.nov === 'mal' ? 'mal' : 'xid'] += num(x.esas) + num(x.edvsiz); }
+    if (o.metn.length < 3000) o.metn += ' ' + (x.qeyd || '') + ' ' + ((x.xam && (x.xam['Əsas qeyd'] || '')) || '') + ' ' + ((x.xam && (x.xam['Əlavə qeyd'] || '')) || ''); K.set(x.voen, o); });
+  let L = [...K.values()].map(o => ({ ...o, nov: KN.get(o.voen) || null, teklif: novTexmin(o.ad + ' ' + o.metn) })).sort((a, b) => b.cem - a.cem);
+  const tey = L.filter(o => o.nov && o.nov !== 'qarisiq'), cem = l => l.reduce((s, o) => s + o.cem, 0);
+  if (f === 'yox') L = L.filter(o => !o.nov); else if (f === 'qar') L = L.filter(o => o.nov === 'qarisiq');
+  const tekl = L.filter(o => !o.nov && o.teklif);
+  $('#page').innerHTML = `<div class="grid kpis"><div class="card kpi"><div class="lbl">Mal təchizatçıları</div><div class="val">${fmt(tey.filter(o => o.nov === 'mal').length)}</div><div class="cmp">${man(cem(tey.filter(o => o.nov === 'mal')))}</div></div>
+      <div class="card kpi"><div class="lbl">Xidmət təchizatçıları</div><div class="val">${fmt(tey.filter(o => o.nov === 'xidmet').length)}</div><div class="cmp">${man(cem(tey.filter(o => o.nov === 'xidmet')))}</div></div>
+      <div class="card kpi"><div class="lbl">Təyin olunmayıb</div><div class="val ${[...K.values()].some(o => !KN.get(o.voen)) ? 'neg' : ''}">${fmt([...K.values()].filter(o => !KN.get(o.voen)).length)}</div><div class="cmp">${man(cem([...K.values()].filter(o => !KN.get(o.voen))))}</div></div></div>
+    <div class="ced-ust" style="margin-top:14px"><div class="seg" id="mxf">${[['hamisi', 'Hamısı'], ['yox', 'Təyin olunmayanlar'], ['qar', 'Qarışıq']].map(([k, t]) => `<button data-f="${k}" class="${f === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+      ${w && tekl.length ? `<button class="btn primary sm" id="mxtek">${tekl.length} təklifi qəbul et</button>` : ''}</div>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>VÖEN</th><th>Təchizatçı</th><th class="n">Qaimə</th><th class="n">Məbləğ (ƏDV-siz)</th><th>Növ</th><th>Təklif</th></tr></thead>
+      <tbody>${L.map(o => `<tr><td class="muted">${esc(o.voen || '')}</td><td>${esc(qisaAd(o.ad))}${o.nov === 'qarisiq' ? `<div class="cell-sub">${o.ayri} / ${o.say} qaimə ayrıca təyin olunub</div>` : ''}</td><td class="n">${fmt(o.say)}</td><td class="n">${fmt(o.cem, 2)}</td>
+        <td>${w ? `<select class="in" data-nv="${esc(o.voen)}" data-ad="${esc(o.ad || '')}" style="padding:4px 8px;width:auto">${[['', '— seçin —'], ['mal', 'Mal'], ['xidmet', 'Xidmət'], ['qarisiq', 'Qarışıq (hər qaimə ayrıca)']].map(([k, t]) => `<option value="${k}" ${(o.nov || '') === k ? 'selected' : ''}>${t}</option>`).join('')}</select>` : esc(NOV_AD[o.nov] || '—')}</td>
+        <td>${!o.nov && o.teklif ? `<span class="badge ${o.teklif === 'mal' ? 'b-blue' : 'b-amber'}">${NOV_AD[o.teklif]}?</span>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Siyahı boşdur</td></tr>'}</tbody></table></div>
+    <p class="muted" style="font-size:12.5px;line-height:1.6">Təchizatçının növünü bir dəfə seçin — onun bütün gələn qaimələri (yeniləri də) həmin növə düşür. Həm mal, həm xidmət verən təchizatçı üçün "Qarışıq" seçib hər qaimənin növünü qaimənin kartında təyin edin; istənilən qaimənin növünü kartda ayrıca dəyişmək də olar. "Təklif" qaimə qeydlərinə görə təxmindir — yoxlayıb qəbul edin. Mənfəət / Zərər hesabatı bu bölgüyə görə hesablanır.</p>`;
+  $$('#mxf button').forEach(b => b.onclick = () => { location.hash = `#/kontragent?t=nov&f=${b.dataset.f}`; });
+  $$('[data-nv]').forEach(s => s.onchange = async () => { try { await kontragentNovYaz(s.dataset.nv, s.dataset.ad, s.value); toast('Yadda saxlanıldı'); refresh(); } catch (er) { fail(er); } });
+  if ($('#mxtek')) $('#mxtek').onclick = async () => { if (!confirm(`${tekl.length} təchizatçıya təklif olunan növ yazılsın?`)) return;
+    try { for (const o of tekl) await kontragentNovYaz(o.voen, o.ad, o.teklif); toast('Yadda saxlanıldı'); refresh(); } catch (er) { fail(er); } };
+}
 async function pageKontragent(params) {
   params = params || new URLSearchParams();
+  if (params.get('t') === 'nov') {
+    shell('kontragent', 'Kontragentlər', 'Gələn qaimələr: mal və xidmət', `<div class="seg" id="kt">${[['', 'Borclar (531 / 211)'], ['nov', 'Mal / Xidmət']].map(([k, t]) => `<button data-t="${k}" class="${k === 'nov' ? 'on' : ''}">${t}</button>`).join('')}</div>`);
+    $$('#kt button').forEach(b => b.onclick = () => { location.hash = '#/kontragent' + (b.dataset.t ? '?t=' + b.dataset.t : ''); });
+    return pageMalXidmet(params);
+  }
   const ist = params.get('ist') === 'geden' ? 'geden' : 'gelen', ay = params.get('ay') || ayBasi(today()), son = ayinSonu(ay), f = params.get('f') || 'hamisi';
   const hesab = ist === 'gelen' ? '531 — Təchizatçılar (kreditor borcu)' : '211 — Alıcılar (debitor borcu)';
-  shell('kontragent', 'Kontragentlər', `${hesab} · ${ayAdi(ay)}`, `<div class="seg" id="kist">${[['gelen', 'Təchizatçılar (531)'], ['geden', 'Alıcılar (211)']].map(([k, t]) => `<button data-i="${k}" class="${k === ist ? 'on' : ''}">${t}</button>`).join('')}</div>
+  shell('kontragent', 'Kontragentlər', `${hesab} · ${ayAdi(ay)}`, `<div class="seg" id="kt">${[['', 'Borclar (531 / 211)'], ['nov', 'Mal / Xidmət']].map(([k, t]) => `<button data-t="${k}" class="${!k ? 'on' : ''}">${t}</button>`).join('')}</div><div class="seg" id="kist">${[['gelen', 'Təchizatçılar (531)'], ['geden', 'Alıcılar (211)']].map(([k, t]) => `<button data-i="${k}" class="${k === ist ? 'on' : ''}">${t}</button>`).join('')}</div>
     <select class="in" id="kay" style="width:auto">${ayOpt(ay)}</select><button class="btn" onclick="window.print()">${ico('print')}PDF / Çap</button>`);
   const go = (k, v) => { const p = new URLSearchParams(params); p.set(k, v); location.hash = '#/kontragent?' + p; };
   $$('#kist button').forEach(b => b.onclick = () => go('ist', b.dataset.i));
+  $$('#kt button').forEach(b => b.onclick = () => { location.hash = '#/kontragent' + (b.dataset.t ? '?t=' + b.dataset.t : ''); });
   $('#kay').onchange = e => go('ay', e.target.value);
   const [qm, od] = await Promise.all([all(() => sb.from('qaimeler').select('id,voen,kontragent,tarix,esas,edv,edvsiz').eq('istiqamet', ist).lte('tarix', son).order('tarix').order('id')),
     all(() => sb.from('v_qaime_odenisleri').select('qaime_id,tarix,mebleg,voen').eq('istiqamet', ist).lte('tarix', son).order('id'))]);
