@@ -382,6 +382,17 @@ window.addEventListener('hashchange', route);
 /* =====================================================================
    FİRMALARIM — bir hesabda bir neçə dükan (mühasib rejimi)
    ===================================================================== */
+// Şifrə xanalarında "göstər" düyməsi — səhv yazılıbsa baxmaq üçün
+const GOZ = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const GOZ_YOX = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.9 17.9A10.9 10.9 0 0 1 12 19c-7 0-11-7-11-7a20 20 0 0 1 5.1-5.9M9.9 4.2A10 10 0 0 1 12 4c7 0 11 7 11 7a20 20 0 0 1-3.2 4.2M1 1l22 22"/><path d="M14.1 14.1a3 3 0 1 1-4.2-4.2"/></svg>';
+function sifreGozler(root) {
+  (root || document).querySelectorAll('input[type=password]:not([data-goz])').forEach(inp => {
+    inp.dataset.goz = '1'; const w = document.createElement('span'); w.className = 'sifre-w'; inp.parentNode.insertBefore(w, inp); w.appendChild(inp);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'sifre-goz'; b.title = 'Şifrəni göstər'; b.innerHTML = GOZ; w.appendChild(b);
+    b.onclick = () => { const g = inp.type === 'password'; inp.type = g ? 'text' : 'password'; b.innerHTML = g ? GOZ_YOX : GOZ; b.title = g ? 'Şifrəni gizlət' : 'Şifrəni göstər'; inp.focus(); };
+  });
+}
+new MutationObserver(() => sifreGozler()).observe(document.documentElement, { childList: true, subtree: true });
 async function firmaSec(id) {
   if (S.magaza && S.magaza.id === id) { location.hash = window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/cedvel' : '#/panel'); return; }
   if (S.deyisir) return; S.deyisir = true;
@@ -4080,7 +4091,8 @@ async function pageAyarlar(params) {
   const BOL = [['umumi', 'Abunə və firma'], ['rekv', 'Rekvizitlər'], ...(muh ? [['vergi', 'Vergi və ödənişlər']] : [['satis', 'Satış ayarları']]), ['ist', 'İstifadəçilər'], ...(yaz && !muh ? [['bild', 'Telegram']] : []), ['ehtiyat', 'Ehtiyat nüsxə']];
   const t = BOL.some(x => x[0] === params.get('t')) ? params.get('t') : 'umumi';
   shell('ayarlar', 'Ayarlar', '', '');
-  const [A, ist] = await Promise.all([ayarlar(), q(sb.from('uzvler').select('*').eq('magaza_id', S.magaza.id).order('yaradildi'))]);
+  const [A, ist0] = await Promise.all([ayarlar(), q(sb.from('uzvler').select('*').eq('magaza_id', S.magaza.id).order('yaradildi'))]);
+  const ist = ist0.filter(i => !i.admin_giris || i.user_id === S.user.id);
   const rolAd = { muhasib: 'Mühasib (hər şeyi düzəldir)', sahibkar: 'Direktor (yalnız baxır, çıxarış alır)', kuryer: 'Kuryer (yalnız pul yığır)', bloklu: 'Bloklanıb' };
   const dis = w ? '' : 'disabled';
   const sat = (l, v) => `<tr><td class="muted" style="width:200px">${l}</td><td>${v}</td></tr>`;
@@ -4245,7 +4257,8 @@ async function telegramKart() {
    ADMIN PANEL — bütün dükanlar və abunələr
    ===================================================================== */
 async function pageAdmin() {
-  shell('admin', 'Admin panel', 'Dükanlar və abunələr', `<input class="in search" id="axtar" placeholder="Axtar: dükan, ad, telefon, e-poçt">
+  shell('admin', 'Admin panel', 'Bütün müəssisələr və abunələr', `<input class="in search" id="axtar" placeholder="Axtar: müəssisə, ad, telefon, e-poçt">
+    <div class="seg" id="nov">${[['hamisi', 'Hamısı'], ['satis', 'Satış'], ['muhasibat', 'Mühasibat']].map(([k, t], i) => `<button data-n="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
     <div class="seg" id="fil">${[['hamisi', 'Hamısı'], ['aktiv', 'Aktiv'], ['bitir', 'Bitir (7 gün)'], ['bitib', 'Bitib']].map(([k, t], i) => `<button data-f="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>`);
   const [rows, sis, ode] = await Promise.all([q(sb.rpc('admin_magazalar')), sistemOxu(), q(sb.from('abune_odenisleri').select('*').order('tarix', { ascending: false }))]);
   const buAy = ayBasi(today());
@@ -4255,18 +4268,19 @@ async function pageAdmin() {
     return { ay: a + '-01', c: ode.filter(o => o.tarix.slice(0, 7) === a).reduce((x, o) => x + num(o.mebleg), 0) }; });
   const mx = Math.max(1, ...son12.map(x => x.c));
   rows.forEach(r => { r.qalan = gunFerqi(r.abune_bitir); });
-  let fil = 'hamisi';
+  let fil = 'hamisi', nov = 'hamisi';
   const wa = t => t ? `https://wa.me/${(t.replace(/\D/g, '').replace(/^0/, '994'))}` : '';
   const draw = () => {
     const s = ($('#axtar').value || '').toLocaleLowerCase('az');
-    let list = rows.filter(r => !s || [r.ad, r.sahib_ad, r.telefon, r.email].join(' ').toLocaleLowerCase('az').includes(s));
+    let list = rows.filter(r => !s || [r.ad, r.sahib_ad, r.telefon, r.email, r.uzvler].join(' ').toLocaleLowerCase('az').includes(s));
+    if (nov === 'muhasibat') list = list.filter(r => r.sahe === 'muhasibat'); else if (nov === 'satis') list = list.filter(r => r.sahe !== 'muhasibat');
     if (fil === 'aktiv') list = list.filter(r => r.aktiv);
     if (fil === 'bitir') list = list.filter(r => r.aktiv && r.qalan <= 7);
     if (fil === 'bitib') list = list.filter(r => !r.aktiv);
     const say = f => rows.filter(f).length;
     $('#page').innerHTML = `
       <div class="grid kpis">
-        <div class="card kpi"><div class="lbl">Dükanlar</div><div class="val">${rows.length}</div><div class="cmp">Son 30 gündə: ${say(r => gunFerqi(String(r.qeydiyyat).slice(0, 10)) >= -30)} yeni</div></div>
+        <div class="card kpi"><div class="lbl">Müəssisələr</div><div class="val">${rows.length}</div><div class="cmp">satış ${say(r => r.sahe !== 'muhasibat')} · mühasibat ${say(r => r.sahe === 'muhasibat')}</div></div>
         <div class="card kpi"><div class="lbl">Aktiv</div><div class="val pos">${say(r => r.aktiv)}</div></div>
         <div class="card kpi"><div class="lbl">7 gün içində bitir</div><div class="val">${say(r => r.aktiv && r.qalan <= 7)}</div></div>
         <div class="card kpi"><div class="lbl">Bitib / dayandırılıb</div><div class="val neg">${say(r => !r.aktiv)}</div></div>
@@ -4275,21 +4289,26 @@ async function pageAdmin() {
       <div class="card" style="margin-top:16px"><h3>Abunə gəliri — son 12 ay</h3>
         <div class="bars">${son12.map(x => `<div class="col" title="${ayAdi(x.ay)}: ${man(x.c)}"><div class="pair"><div class="bar" style="height:${x.c / mx * 100}%;background:var(--c1)"></div></div><div class="lbl">${ayQisa(x.ay)}</div></div>`).join('')}</div></div>
       <div class="tbl-wrap" style="margin-top:16px"><table class="t"><thead><tr><th>Dükan</th><th class="hide-m">Əlaqə</th><th class="hide-m">Qeydiyyat</th><th>Abunə</th><th class="n hide-m">Ödəyib</th><th class="n hide-m">Müştəri / satış</th><th class="hide-m">Son iş</th><th></th></tr></thead>
-      <tbody>${list.map(r => `<tr><td><div class="cell-main">${esc(r.ad)}</div><div class="cell-sub">${esc(r.sahib_ad || '')}${r.uzv_sayi > 1 ? ` · ${r.uzv_sayi} istifadəçi` : ''}${r.admin_qeyd ? ` · <i>${esc(r.admin_qeyd)}</i>` : ''}</div></td>
+      <tbody>${list.map(r => `<tr><td><div class="cell-main">${esc(r.ad)} <span class="badge ${r.sahe === 'muhasibat' ? 'b-blue' : 'b-gray'}">${esc(saheAd(r.sahe))}</span></div><div class="cell-sub">${esc(r.uzvler || r.sahib_ad || '')}${r.uzv_sayi > 1 ? ` · ${r.uzv_sayi} istifadəçi` : ''}${r.admin_qeyd ? ` · <i>${esc(r.admin_qeyd)}</i>` : ''}</div></td>
         <td class="hide-m"><div>${esc(r.telefon || '')}${r.telefon ? ` <a href="${wa(r.telefon)}" target="_blank" title="WhatsApp">WA</a>` : ''}</div><div class="cell-sub">${esc(r.email || '')}</div></td>
         <td class="hide-m">${fd(String(r.qeydiyyat).slice(0, 10))}</td>
         <td>${fd(r.abune_bitir)}<div>${r.dayandirilib ? '<span class="badge b-red">Dayandırılıb</span>' : r.qalan < 0 ? `<span class="badge b-red">${-r.qalan} gün keçib</span>` : `<span class="badge ${r.qalan <= 7 ? 'b-amber' : 'b-green'}">${r.qalan} gün qalıb</span>`}</div></td>
         <td class="n hide-m">${num(r.odenilib) ? fmt(r.odenilib) + ' ₼' : '—'}${r.son_odenis ? `<div class="cell-sub">${fd(r.son_odenis)}</div>` : ''}</td>
-        <td class="n hide-m">${fmt(r.musteri_sayi)} / ${fmt(r.satis_sayi)}</td>
+        <td class="n hide-m">${r.sahe === 'muhasibat' ? `${fmt(r.qaime_sayi)} qaimə` : `${fmt(r.musteri_sayi)} / ${fmt(r.satis_sayi)}`}</td>
         <td class="hide-m">${r.son_aktivlik ? fd(String(r.son_aktivlik).slice(0, 10)) : '—'}</td>
-        <td class="n" style="white-space:nowrap"><button class="btn sm green" data-od="${r.id}">₼ Ödəniş</button> <button class="btn sm" data-uz="${r.id}" data-ay="1">+1 ay</button> <button class="btn sm" data-ed="${r.id}">…</button></td></tr>`).join('')
-        || '<tr><td colspan="8" class="empty">Dükan tapılmadı</td></tr>'}</tbody></table></div>
+        <td class="n" style="white-space:nowrap"><button class="btn sm primary" data-ac="${r.id}">Aç →</button> <button class="btn sm green" data-od="${r.id}">₼ Ödəniş</button> <button class="btn sm" data-uz="${r.id}" data-ay="1">+1 ay</button> <button class="btn sm" data-ed="${r.id}">…</button></td></tr>`).join('')
+        || '<tr><td colspan="8" class="empty">Müəssisə tapılmadı</td></tr>'}</tbody></table></div>
       <div class="card" style="margin-top:16px;max-width:720px"><h3>Sistem ayarları</h3><p class="muted" style="margin-top:-6px;font-size:13px">Qeydiyyat səhifəsində və abunə xəbərdarlıqlarında görünür.</p>
         <form id="sf"><div class="row2"><div class="field"><label class="f">Əlaqə telefonu</label><input class="in" name="elaqe_telefon" value="${esc(sis.elaqe_telefon || '')}"></div>
         <div class="field"><label class="f">WhatsApp nömrəsi (994…)</label><input class="in" name="elaqe_whatsapp" value="${esc(sis.elaqe_whatsapp || '')}"></div></div>
         <div class="row2"><div class="field"><label class="f">Qiymət (məs. "ayda 20 ₼")</label><input class="in" name="qiymet" value="${esc(sis.qiymet || '')}"></div>
         <div class="field"><label class="f">Pulsuz sınaq (gün)</label><input class="in" type="number" min="0" name="sinaq_gun" value="${esc(sis.sinaq_gun || '14')}"></div></div>
         <button class="btn primary">Yadda saxla</button></form></div>`;
+    $$('[data-ac]').forEach(b => b.onclick = async () => {
+      const r = rows.find(x => x.id === +b.dataset.ac); b.disabled = true;
+      try { await q(sb.rpc('admin_firmaya_gir', { m: r.id })); S.cache = {}; S.pos = null; YOL.length = 0; history.replaceState(null, '', SAYT()); await start(); toast(`${r.ad} açıldı — admin kimi hər şeyi görə və düzəldə bilərsiniz`, 4000); }
+      catch (er) { b.disabled = false; fail(er); }
+    });
     $$('[data-uz]').forEach(b => b.onclick = async () => {
       const r = rows.find(x => x.id === +b.dataset.uz), ay = +b.dataset.ay;
       if (!confirm(`${r.ad} — abunə ${ay === 12 ? '1 il' : '1 ay'} uzadılsın?`)) return;
@@ -4335,6 +4354,7 @@ async function pageAdmin() {
   };
   $('#axtar').oninput = draw;
   $$('#fil button').forEach(b => b.onclick = () => { fil = b.dataset.f; $$('#fil button').forEach(x => x.classList.toggle('on', x === b)); draw(); });
+  $$('#nov button').forEach(b => b.onclick = () => { nov = b.dataset.n; $$('#nov button').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   draw();
 }
 
