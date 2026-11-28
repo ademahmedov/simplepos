@@ -408,7 +408,7 @@ async function firmaSec(id) {
 async function pageFirmalar() {
   const bas = 'Müəssisələr';
   shell('firmalar', bas, '', `<input class="in" id="fax" placeholder="Axtar: firma adı" style="width:200px">
-    <button class="btn" id="fqos">${ico('users')}Kodla qoşul</button><button class="btn primary" id="fyeni">${ico('plus')}Yeni firma</button>`);
+    <button class="btn" id="fqos">${ico('users')}Kodla qoşul</button><button class="btn primary" id="fyeni">${ico('plus')}Yeni müəssisə</button>`);
   $('#fyeni').onclick = firmaYeniModal; $('#fqos').onclick = firmaQosulModal;
   const list = await q(sb.rpc('firmalarim'));
   S.firmalar = list.map(x => ({ id: x.id, ad: x.ad, rol: x.rol })).sort((a, b) => a.ad.localeCompare(b.ad, 'az'));
@@ -434,7 +434,7 @@ async function pageFirmalar() {
     <div class="firma-grid">${list.map(kart).join('')}</div>`
     : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Hələ firma yoxdur</div>
        <div class="muted" style="margin-bottom:14px">Uçotunu apardığınız ilk firmanı əlavə edin və ya dükanın verdiyi dəvət kodu ilə qoşulun.</div>
-       <button class="btn primary" id="fyeni2">${ico('plus')}Yeni firma</button> <button class="btn" id="fqos2">Kodla qoşul</button></div>`;
+       <button class="btn primary" id="fyeni2">${ico('plus')}Yeni müəssisə</button> <button class="btn" id="fqos2">Kodla qoşul</button></div>`;
   if ($('#fyeni2')) { $('#fyeni2').onclick = firmaYeniModal; $('#fqos2').onclick = firmaQosulModal; }
   $$('[data-f]').forEach(d => d.onclick = () => firmaSec(+d.dataset.f));
   $('#fax').oninput = e => { const t = azLow(e.target.value); $$('[data-f]').forEach(d => d.style.display = !t || d.dataset.ad.includes(t) ? '' : 'none'); };
