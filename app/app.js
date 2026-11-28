@@ -591,7 +591,7 @@ async function pagePanel() {
     ${top.map(m => `<tr class="click" data-m="${m.id}"><td class="cell-main">${esc(m.ad)}</td><td class="hide-m">${esc(m.telefon || '—')}</td><td class="n">${man(m.qaliq)}</td><td class="n"><span class="badge b-red">${m.gecikme_gun} gün</span></td></tr>`).join('')}</tbody></table>`
     : '<div class="empty">Gecikən müştəri yoxdur</div>';
 
-  const cedvel = `<table class="t"><thead><tr><th>Ay</th><th class="n">Satış</th><th class="n">Kassaya daxil</th><th class="n hide-m">Xərclər</th><th class="n hide-m">Maaş</th><th class="n hide-m">Sahib</th><th class="n">Xalis</th></tr></thead>
+  const cedvel = `<table class="t"><thead><tr><th>Ay</th><th class="n">Satış</th><th class="n">Kassaya daxil</th><th class="n hide-m">Xərclər</th><th class="n hide-m">Maaş</th><th class="n hide-m">Direktor</th><th class="n">Xalis</th></tr></thead>
     <tbody>${son12.slice().reverse().map(x => `<tr><td style="white-space:nowrap">${ayAdi(x.ay)}</td><td class="n">${fmt(x.satis)}</td><td class="n">${fmt(x.medaxil)}</td><td class="n hide-m">${fmt(x.rasxod)}</td><td class="n hide-m">${fmt(x.maas)}</td><td class="n hide-m">${fmt(x.sahib)}</td><td class="n ${xalis(x) < 0 ? 'neg' : ''}">${fmt(xalis(x))}</td></tr>`).join('')}</tbody>
     <tfoot><tr><td>Cəm</td>${['satis','medaxil'].map(k => `<td class="n">${fmt(son12.reduce((s, x) => s + num(x[k]), 0))}</td>`).join('')}${['rasxod','maas','sahib'].map(k => `<td class="n hide-m">${fmt(son12.reduce((s, x) => s + num(x[k]), 0))}</td>`).join('')}<td class="n">${fmt(son12.reduce((s, x) => s + xalis(x), 0))}</td></tr></tfoot></table>`;
 
@@ -603,7 +603,7 @@ async function pagePanel() {
      ${kpi('Kassaya daxil olan pul', A.medaxil, B.medaxil)}
      ${kpi('Xərclər', A.rasxod, B.rasxod)}
      ${kpi('İşçilərə verilən maaş', A.maas, B.maas)}
-     ${kpi('Sahib götürmələri', A.sahib, B.sahib)}
+     ${kpi('Direktor götürmələri', A.sahib, B.sahib)}
      ${kpi('Daxil olan − çıxan', xalis(A), xalis(B), { sign: true })}
      ${kpi('Hazırda kassada', kassa, undefined, { sign: true, note: 'Kassa hesabına görə' })}
      ${kpi('Ümumi müştəri borcu', borc, undefined, { note: mus.filter(m => num(m.qaliq) > 0).length + ' borclu müştəri' })}
@@ -3292,12 +3292,12 @@ async function pageIsciler(params) {
       <div class="card kpi"><div class="lbl">İşləyən işçilərə veriləcək</div><div class="val ${isleyenVer < 0 ? 'neg' : ''}">${man(isleyenVer)}</div><div class="cmp">Mənfi — işçilər artıq götürüb</div></div>
       <div class="card kpi"><div class="lbl">İşləyən işçi sayı</div><div class="val">${D.isc.filter(i => i.nov === 'İşçi' && i.status === 'İşləyir').length}</div></div>
       <div class="card kpi"><div class="lbl">Aylıq maaş fondu</div><div class="val">${man(D.isc.filter(i => i.nov === 'İşçi' && i.status === 'İşləyir').reduce((a, i) => a + num(i.cari_maas), 0))}</div></div>
-      <div class="card kpi"><div class="lbl">Sahib götürmələri (cəmi)</div><div class="val">${man(sahibCem)}</div></div>
+      <div class="card kpi"><div class="lbl">Direktor götürmələri (cəmi)</div><div class="val">${man(sahibCem)}</div></div>
     </div>
     <div class="tbl-wrap"><table class="t">
       <thead><tr><th>Ad Soyad</th><th class="hide-m">Vəzifə</th><th class="hide-m">İşə giriş</th><th class="n">Maaş</th><th class="hide-m">Növbəti maaş günü</th><th class="n hide-m">Bu dövrdə götürüb</th><th class="n">Veriləcək</th><th class="hide-m">Status</th></tr></thead>
       <tbody>${list.map(i => { const bd = buDovrdeGoturdu(i, D); return `<tr class="click" data-i="${i.id}">
-        <td><div class="cell-main">${esc(i.ad)}</div><div class="cell-sub">${i.nov === 'Sahib' ? 'Sahib' : esc(i.vezife || '')}</div></td>
+        <td><div class="cell-main">${esc(i.ad)}</div><div class="cell-sub">${i.nov === 'Sahib' ? 'Direktor' : esc(i.vezife || '')}</div></td>
         <td class="hide-m">${esc(i.vezife || '')}</td><td class="hide-m">${fd(i.ise_giris)}</td>
         <td class="n">${i.nov === 'Sahib' ? '—' : fmt(i.cari_maas)}</td>
         <td class="hide-m">${i.novbeti_maas_gunu ? `${fd(i.novbeti_maas_gunu)} <span class="muted">(${gun(i.novbeti_maas_gunu)})</span>` : '—'}</td>
@@ -3317,7 +3317,7 @@ async function isciForm(i) {
     <div class="field"><label class="f">Vəzifə</label><input class="in" name="v" value="${esc(i ? i.vezife || '' : '')}" list="vez"><datalist id="vez">${[...new Set(D.isc.map(x => x.vezife).filter(Boolean))].map(v => `<option value="${esc(v)}">`).join('')}</datalist></div></div>
     <div class="row2"><div class="field"><label class="f">İşə giriş tarixi</label><input class="in" type="date" name="g" value="${i ? i.ise_giris || '' : today()}" required></div>
     <div class="field"><label class="f">Başlanğıc maaş</label><input class="in" type="number" step="0.01" min="0" name="m" value="${i ? i.baslangic_maas : ''}" required></div></div>
-    <div class="row2"><div class="field"><label class="f">Növ</label><select class="in" name="n"><option ${!i || i.nov === 'İşçi' ? 'selected' : ''}>İşçi</option><option ${i && i.nov === 'Sahib' ? 'selected' : ''}>Sahib</option></select></div>
+    <div class="row2"><div class="field"><label class="f">Növ</label><select class="in" name="n"><option ${!i || i.nov === 'İşçi' ? 'selected' : ''}>İşçi</option><option value="Sahib" ${i && i.nov === 'Sahib' ? 'selected' : ''}>Direktor</option></select></div>
     <div class="field"><label class="f">Çıxış tarixi (işdən çıxıbsa)</label><input class="in" type="date" name="c" value="${i ? i.cixis || '' : ''}"></div></div>
     <div class="row2"><div class="field"><label class="f">Satışdan bonus, % <span class="muted" style="font-weight:400">(satıcıdırsa)</span></label><input class="in" type="number" step="0.1" min="0" name="sf" value="${i ? num(i.satis_faizi) : 0}"></div><div></div></div>
     </form>
@@ -3418,7 +3418,7 @@ async function odenisForm(o, isciId) {
   const info = () => {
     const i = D.isc.find(x => x.id === +f.i.value);
     if (!i) { $('#qinfo', m).textContent = ''; $('#sonra', m).style.display = 'none'; return; }
-    if (i.nov === 'Sahib') { $('#qinfo', m).textContent = `Sahib — cəmi götürüb: ${man(i.goturduyu)}`; $('#sonra', m).style.display = 'none'; return; }
+    if (i.nov === 'Sahib') { $('#qinfo', m).textContent = `Direktor — cəmi götürüb: ${man(i.goturduyu)}`; $('#sonra', m).style.display = 'none'; return; }
     const indi = num(i.verilecek) + (o && o.isci_id === i.id ? (o.nov === 'Bonus' ? -num(o.mebleg) : num(o.mebleg)) : 0);
     $('#qinfo', m).innerHTML = `Hazırda veriləcək: <b class="${indi < 0 ? 'neg' : ''}">${man(indi)}</b> · aylıq maaş ${man(i.cari_maas)}`;
     const mb = num(f.m.value);
@@ -3459,7 +3459,7 @@ async function pageCixaris(id, params) {
   const hes = aralig.reduce((a, e) => a + e.hes, 0), ver = aralig.reduce((a, e) => a + e.ver, 0);
   const son = acilis + hes - ver;
   const sahib = isci.nov === 'Sahib';
-  $('.topbar').innerHTML = `<div><h2>${esc(isci.ad)}</h2><div class="sub">${sahib ? 'Sahib' : esc(isci.vezife || '')} · işə giriş ${fd(isci.ise_giris)}${isci.status === 'Çıxıb' ? ' · çıxıb ' + fd(isci.cixis) : ''} · çıxarış tarixi ${fd(today())}</div></div>
+  $('.topbar').innerHTML = `<div><h2>${esc(isci.ad)}</h2><div class="sub">${sahib ? 'Direktor' : esc(isci.vezife || '')} · işə giriş ${fd(isci.ise_giris)}${isci.status === 'Çıxıb' ? ' · çıxıb ' + fd(isci.cixis) : ''} · çıxarış tarixi ${fd(today())}</div></div>
     <div class="tools no-print">${iscTab('cixaris')}
       <select class="in" id="isc" style="width:auto">${D.isc.map(i => `<option value="${i.id}" ${i.id === isci.id ? 'selected' : ''}>${esc(i.ad)}${i.status === 'Çıxıb' ? ' (çıxıb)' : ''}</option>`).join('')}</select>
       <label class="muted" style="font-size:13px">Tarixdən</label><input class="in" type="date" id="d1" value="${d1}" style="width:auto">
@@ -3567,11 +3567,11 @@ async function pageKassa0() {
     </div>
     <div class="tbl-wrap" style="margin-top:16px"><table class="t">
       <thead><tr><th>Ay</th><th class="n hide-m">Ayın əvvəli</th><th class="n hide-m">İlkin ödənişlər</th><th class="n hide-m">Müştəri ödənişləri</th><th class="n hide-m">Digər mədaxil</th><th class="n">Daxil olan (nağd)</th><th class="n hide-m">POS</th>
-        <th class="n hide-m">Xərc</th><th class="n hide-m">Maaş</th><th class="n hide-m">Sahib</th><th class="n hide-m">Digər məxaric</th><th class="n">Çıxan</th><th class="n">Ayın sonu</th></tr></thead>
+        <th class="n hide-m">Xərc</th><th class="n hide-m">Maaş</th><th class="n hide-m">Direktor</th><th class="n hide-m">Digər məxaric</th><th class="n">Çıxan</th><th class="n">Ayın sonu</th></tr></thead>
       <tbody>${aylar.slice().reverse().map(r => `<tr><td style="white-space:nowrap">${ayAdi(r.ay)}</td><td class="n hide-m">${fmt(bas(r))}</td><td class="n hide-m">${fmt(r.ilkin)}</td><td class="n hide-m">${fmt(r.musteri_odenisi)}</td><td class="n hide-m">${fmt(r.diger_medaxil)}</td><td class="n"><b>${fmt(r.medaxil)}</b></td><td class="n hide-m">${fmt(r.pos)}</td>
         <td class="n hide-m">${fmt(r.rasxod)}</td><td class="n hide-m">${fmt(r.maas)}</td><td class="n hide-m">${fmt(r.sahib)}</td><td class="n hide-m">${fmt(r.diger_mexaric)}</td><td class="n"><b>${fmt(r.mexaric)}</b></td>
         <td class="n ${num(r.ay_sonu_kassa) < 0 ? 'neg' : ''}"><b>${fmt(r.ay_sonu_kassa)}</b></td></tr>`).join('')}</tbody></table></div>
-    <h3 style="margin:22px 0 10px">Digər kassa əməliyyatları <span class="muted" style="font-weight:400;font-size:13px">(kredit, bank, sahibin qoyduğu pul və s.)</span></h3>
+    <h3 style="margin:22px 0 10px">Digər kassa əməliyyatları <span class="muted" style="font-weight:400;font-size:13px">(kredit, bank, direktorun qoyduğu pul və s.)</span></h3>
     <div class="tbl-wrap">${diger.length ? `<table class="t"><thead><tr><th>Tarix</th><th>Növ</th><th>Açıqlama</th><th class="n">Məbləğ</th></tr></thead>
       <tbody>${diger.map(d => `<tr class="${w ? 'click' : ''}" data-d="${d.id}"><td>${fd(d.tarix)}</td><td><span class="badge ${d.nov === 'Mədaxil' ? 'b-green' : 'b-red'}">${d.nov}</span></td><td>${esc(d.aciqlama || '')}</td><td class="n">${fmt(d.mebleg)}</td></tr>`).join('')}</tbody></table>`
       : '<div class="empty">Hələ digər əməliyyat yoxdur</div>'}</div>`;
@@ -3583,7 +3583,7 @@ function digerForm(d) {
     <div class="field"><label class="f">Növ</label><select class="in" name="n"><option ${!d || d.nov === 'Mədaxil' ? 'selected' : ''}>Mədaxil</option><option ${d && d.nov === 'Məxaric' ? 'selected' : ''}>Məxaric</option></select></div>
     <div class="row2"><div class="field"><label class="f">Tarix</label><input class="in" type="date" name="t" value="${d ? d.tarix : today()}" required></div>
     <div class="field"><label class="f">Məbləğ</label><input class="in" type="number" step="0.01" min="0.01" name="m" value="${d ? d.mebleg : ''}" required></div></div>
-    <div class="field"><label class="f">Açıqlama</label><input class="in" name="a" value="${esc(d ? d.aciqlama || '' : '')}" placeholder="məs. Sahib kassaya pul qoydu"></div></form>`,
+    <div class="field"><label class="f">Açıqlama</label><input class="in" name="a" value="${esc(d ? d.aciqlama || '' : '')}" placeholder="məs. Direktor kassaya pul qoydu"></div></form>`,
     `${d ? '<button class="btn danger" id="sil" style="margin-right:auto">Sil</button>' : ''}<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`);
   const f = $('#gf', m);
   $('#ok', m).onclick = async () => {
@@ -3698,7 +3698,7 @@ async function pageHesabat(params) {
         ${row2('Satış (malın dəyəri)', man(A.satis))}${row2('Satış sayı', fmt(A.satis_sayi))}
         ${row2('İlkin ödənişlər', man(A.ilkin))}${row2('Müştəri ödənişləri (kredit)', man(A.musteri_odenisi))}${row2('Digər mədaxil', man(A.diger_medaxil))}
         ${row2('<b>Kassaya daxil olan</b>', '<b>' + man(A.medaxil) + '</b>')}
-        ${row2('Xərclər', man(A.rasxod))}${row2('İşçilərə maaş', man(A.maas))}${row2('Sahib götürmələri', man(A.sahib))}${row2('Digər məxaric', man(A.diger_mexaric))}
+        ${row2('Xərclər', man(A.rasxod))}${row2('İşçilərə maaş', man(A.maas))}${row2('Direktor götürmələri', man(A.sahib))}${row2('Digər məxaric', man(A.diger_mexaric))}
         ${row2('<b>Kassadan çıxan</b>', '<b>' + man(A.mexaric) + '</b>')}
         ${row2('<b>Fərq (daxil − çıxan)</b>', '<b>' + man(xalis) + '</b>', xalis < 0 ? 'neg' : 'pos')}
         ${row2('Ay sonu kassa', man(A.ay_sonu_kassa), num(A.ay_sonu_kassa) < 0 ? 'neg' : '')}
@@ -3721,8 +3721,8 @@ async function pageHesabat(params) {
     ${sec(`Xərclər (${rx.length})`, rx.length ? `<table class="t"><thead><tr><th>Tarix</th><th>Açıqlama</th><th class="hide-m">Kateqoriya</th><th class="n">Məbləğ</th></tr></thead>
       <tbody>${rx.map(r => `<tr><td>${fd(r.tarix)}</td><td>${esc(r.aciqlama || '')}</td><td class="hide-m">${esc(r.kateqoriya)}</td><td class="n">${fmt(r.mebleg)}</td></tr>`).join('')}</tbody>
       <tfoot><tr><td colspan="2">Cəm</td><td class="hide-m"></td><td class="n">${fmt(sum(rx, 'mebleg'))}</td></tr></tfoot></table>` : '<div class="empty">Xərc yoxdur</div>')}
-    ${sec(`İşçi və sahib ödənişləri (${iod.length})`, iod.length ? `<table class="t"><thead><tr><th>Tarix</th><th>Ad</th><th>Növ</th><th class="n">Məbləğ</th></tr></thead>
-      <tbody>${iod.map(o => `<tr><td>${fd(o.tarix)}</td><td>${esc(iMap[o.isci_id] ? iMap[o.isci_id].ad : '')}${iMap[o.isci_id] && iMap[o.isci_id].nov === 'Sahib' ? ' <span class="muted">(sahib)</span>' : ''}</td><td>${o.nov}</td><td class="n">${fmt(o.mebleg)}</td></tr>`).join('')}</tbody>
+    ${sec(`İşçi və direktor ödənişləri (${iod.length})`, iod.length ? `<table class="t"><thead><tr><th>Tarix</th><th>Ad</th><th>Növ</th><th class="n">Məbləğ</th></tr></thead>
+      <tbody>${iod.map(o => `<tr><td>${fd(o.tarix)}</td><td>${esc(iMap[o.isci_id] ? iMap[o.isci_id].ad : '')}${iMap[o.isci_id] && iMap[o.isci_id].nov === 'Sahib' ? ' <span class="muted">(direktor)</span>' : ''}</td><td>${o.nov}</td><td class="n">${fmt(o.mebleg)}</td></tr>`).join('')}</tbody>
       <tfoot><tr><td colspan="3">Cəm</td><td class="n">${fmt(sum(iod, 'mebleg'))}</td></tr></tfoot></table>` : '<div class="empty">Ödəniş yoxdur</div>')}`;
 }
 
@@ -3996,7 +3996,7 @@ async function pageTeqvim(params) {
    MƏNFƏƏT
    ===================================================================== */
 async function pageMenfeet() {
-  shell('menfeet', 'Mənfəət', 'Satış − xərclər − işçi maaşı (sahib götürmələri daxil deyil)', `<button class="btn" onclick="window.print()">${ico('print')}Çap / PDF</button>`);
+  shell('menfeet', 'Mənfəət', 'Satış − xərclər − işçi maaşı (direktor götürmələri daxil deyil)', `<button class="btn" onclick="window.print()">${ico('print')}Çap / PDF</button>`);
   const [aylar, kat, qr] = await Promise.all([
     q(sb.from('v_aylar').select('*').order('ay', { ascending: false })),
     q(sb.from('v_rasxod_kateqoriya').select('*')),
@@ -4356,7 +4356,7 @@ async function excelIxrac() {
     ['Xərclər', ['Tarix', 'Açıqlama', 'Kim verib', 'Kateqoriya', 'Məbləğ'], rx.map(r => [r.tarix, r.aciqlama, r.kim, r.kateqoriya, num(r.mebleg)])],
     ['İşçilər', ['Ad', 'Vəzifə', 'Növ', 'İşə giriş', 'Çıxış', 'Cari maaş', 'Status', 'Veriləcək'], isc.map(i => [i.ad, i.vezife, i.nov, i.ise_giris, i.cixis, num(i.cari_maas), i.status, i.verilecek == null ? '' : num(i.verilecek)])],
     ['İşçi ödənişləri', ['Tarix', 'Ad', 'Növ', 'Məbləğ', 'Qeyd'], iod.map(o => [o.tarix, iM[o.isci_id] && iM[o.isci_id].ad, o.nov, num(o.mebleg), o.qeyd])],
-    ['Kassa', ['Ay', 'İlkin ödənişlər', 'Müştəri ödənişləri', 'Digər mədaxil', 'Daxil olan', 'Xərc', 'Maaş', 'Sahib', 'Digər məxaric', 'Çıxan', 'Ay sonu'], kas.map(k => [k.ay, num(k.ilkin), num(k.musteri_odenisi), num(k.diger_medaxil), num(k.medaxil), num(k.rasxod), num(k.maas), num(k.sahib), num(k.diger_mexaric), num(k.mexaric), num(k.ay_sonu_kassa)])],
+    ['Kassa', ['Ay', 'İlkin ödənişlər', 'Müştəri ödənişləri', 'Digər mədaxil', 'Daxil olan', 'Xərc', 'Maaş', 'Direktor', 'Digər məxaric', 'Çıxan', 'Ay sonu'], kas.map(k => [k.ay, num(k.ilkin), num(k.musteri_odenisi), num(k.diger_medaxil), num(k.medaxil), num(k.rasxod), num(k.maas), num(k.sahib), num(k.diger_mexaric), num(k.mexaric), num(k.ay_sonu_kassa)])],
     ['Məhsullar', ['Ad', 'Kateqoriya', 'Kod', ...qAdlari(), 'Maya', 'Aktiv', 'Satılıb (ədəd)', 'Satış cəmi'], meh.map(x => [x.ad, x.kateqoriya, x.kod, num(x.qiymet), ...[2, 3, 4].map(n => x['qiymet' + n] == null ? '' : num(x['qiymet' + n])), x.maya == null ? '' : num(x.maya), x.aktiv ? 'Bəli' : 'Xeyr', num(x.satilib), num(x.satis_cemi)])],
     ['Sifarişlər', ['Tarix', 'Müştəri', 'Ünvan', 'Telefon', 'Mal', 'Açıqlama', 'Qiymət', 'Vəziyyət'], sif.map(r => [r.tarix, r.musteri, r.unvan, r.telefon, r.mal, r.aciqlama, r.qiymet == null ? '' : num(r.qiymet), r.status])],
   ];
