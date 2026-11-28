@@ -2170,16 +2170,19 @@ async function pageKontragent(params) {
   const ay0 = params.get('ay') || ayBasi(today()), ay = params.get('a') || ay0, son = params.get('b') || (params.get('a') ? ayinSonu(ayBasi(params.get('a'))) : ayinSonu(ay0));
   const tamAy = ay.slice(8) === '01' && son === ayinSonu(ay), dovrYazi = tamAy ? ayAdi(ay) : `${fd(ay)} — ${fd(son)}`;
   const hesab = ist === 'gelen' ? '531 — Təchizatçılar (kreditor borcu)' : '211 — Alıcılar (debitor borcu)';
-  shell('kontragent', 'Kontragentlər', `${hesab} · ${dovrYazi}`, `<div class="seg" id="kist">${[['gelen', 'Təchizatçılar (531)'], ['geden', 'Alıcılar (211)']].map(([k, t]) => `<button data-i="${k}" class="${k === ist ? 'on' : ''}">${t}</button>`).join('')}</div>
+  shell('kontragent', 'Kontragentlər', `${hesab} · ${dovrYazi}`, '');
+  ktBar('');
+  { const pg = $('#page'), d = document.createElement('div'); d.className = 'ust-filtr no-print';
+    d.innerHTML = `<div class="seg" id="kist">${[['gelen', 'Təchizatçılar (531)'], ['geden', 'Alıcılar (211)']].map(([k, t]) => `<button data-i="${k}" class="${k === ist ? 'on' : ''}">${t}</button>`).join('')}</div>
 <select class="in" id="kay" style="width:auto">${tamAy ? '' : '<option value="" selected>Tarix aralığı</option>'}${ayOpt(tamAy ? ay : '')}</select>
     <span class="dovr" style="margin:0"><input class="in" type="date" id="kda" value="${ay}"><span>—</span><input class="in" type="date" id="kdb" value="${son}"></span>
-    <button class="btn" onclick="window.print()">${ico('print')}PDF / Çap</button>`);
+    <button class="btn" onclick="window.print()">${ico('print')}PDF / Çap</button>`;
+    pg.parentElement.insertBefore(d, pg); }
   const go = (k, v) => { const p = new URLSearchParams(params); p.set(k, v); location.hash = '#/kontragent?' + p; };
   const dovr = (x, y, hansi) => { if (!x || !y) return; if (y < x) { if (hansi === 'b') x = ayBasi(y); else y = ayinSonu(ayBasi(x)); } const p = new URLSearchParams(params); p.delete('ay'); p.set('a', x); p.set('b', y); location.hash = '#/kontragent?' + p; };
   $('#kay').onchange = e => { if (e.target.value) dovr(e.target.value, ayinSonu(e.target.value)); };
   $('#kda').onchange = () => dovr($('#kda').value, $('#kdb').value, 'a'); $('#kdb').onchange = () => dovr($('#kda').value, $('#kdb').value, 'b');
   $$('#kist button').forEach(b => b.onclick = () => go('ist', b.dataset.i));
-  ktBar('');
   const qarsi = ist === 'gelen' ? 'geden' : 'gelen';
   const [qm0, od, qq] = await Promise.all([all(() => sb.from('qaimeler').select('id,voen,kontragent,tarix,esas,edv,edvsiz,qaytarma').eq('istiqamet', ist).lte('tarix', son).order('tarix').order('id')),
     all(() => sb.from('v_qaime_odenisleri').select('qaime_id,tarix,mebleg,voen').eq('istiqamet', ist).lte('tarix', son).order('id')),

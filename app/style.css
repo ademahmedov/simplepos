@@ -663,3 +663,12 @@ body.nohes button[onclick*="print"], body.nohes [data-x] { display: none !import
 .ust-seg{display:inline-flex;margin:0 0 16px}
 
 .ay-sira{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}.ay-sira .seg{flex-wrap:wrap}
+
+/* başlıq sətri yerindən oynamasın: başlıq bloku sabit əsasla, alt yazı bir sətir, alət seçimləri sabit en */
+.topbar>div:first-child{flex:1 1 320px;min-width:0}
+.topbar .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .tools select.in,.ust-filtr select.in{width:170px!important;flex:none}
+.topbar .tools input[type=date].in,.ust-filtr input[type=date].in,.dovr input[type=date].in{width:150px;flex:none}
+.ust-filtr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+.ust-filtr .dovr{display:inline-flex;align-items:center;gap:6px}
+.ust-seg{margin:0 0 12px}
