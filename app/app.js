@@ -336,7 +336,7 @@ function shell(active, title, sub, tools, body) {
    <aside class="side"><div class="logo">${LOGO}<div><span>${esc(CFG.FIRMA_ADI)}</span><small>${S.magaza ? esc(S.magaza.ad) : S.admin ? 'Admin' : ''}</small></div></div>
     ${S.coxFirma && S.firmalar.length > 1 && !muhFirma() ? `<div class="firma-sec"><select id="fsec" title="Firmanı dəyiş">${S.firmalar.map(x => `<option value="${x.id}" ${S.magaza && x.id === S.magaza.id ? 'selected' : ''}>${esc(x.ad)}</option>`).join('')}</select></div>` : ''}
     <nav>${S.coxFirma || (!S.magaza && !S.admin) ? `<a href="#/firmalar" class="${active === 'firmalar' ? 'active' : ''}">${ico('bina')}Müəssisələr</a>` : ''}${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? `<div class="sec">${muhFirma() ? 'Firma' : 'Dükan'}</div>` : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? navBolmeler(active) : ''}</nav>
-    <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'sahibkar' ? 'Yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
+    <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'sahibkar' ? 'Direktor · yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
    <div class="mobile-bar"><button id="geri" class="mb-geri" ${active === 'menyu' || (S.rol === 'kuryer' && active === 'yigim') ? 'style="visibility:hidden"' : ''}>‹ Geri</button><b ${S.coxFirma ? 'id="mbfirma" style="cursor:pointer"' : ''}>${LOGO}${esc(firmaAdi())}${S.coxFirma ? ' ▾' : ''}</b><button id="out2">Çıxış</button></div>
    <main class="main">${S.magaza && muhFirma() && S.rol !== 'kuryer' ? mUstPanel(active) : ''}${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
    <div id="page">${body || '<div class="empty"><div class="spinner" style="margin:auto"></div></div>'}</div></main>
@@ -399,7 +399,7 @@ async function pageFirmalar() {
   const list = await q(sb.rpc('firmalarim'));
   S.firmalar = list.map(x => ({ id: x.id, ad: x.ad, rol: x.rol })).sort((a, b) => a.ad.localeCompare(b.ad, 'az'));
   if (list.length > 1 || S.muhasibHesab) S.coxFirma = true;
-  const rolAd = { muhasib: 'Mühasib', sahibkar: 'Yalnız baxış', kuryer: 'Kuryer' };
+  const rolAd = { muhasib: 'Mühasib', sahibkar: 'Direktor (yalnız baxış)', kuryer: 'Kuryer' };
   const abune = x => { const g = gunFerqi(x.abune_bitir);
     return x.dayandirilib ? '<span class="badge b-red">Dayandırılıb</span>' : g < 0 ? '<span class="badge b-red">Abunə bitib</span>'
       : g <= 7 ? `<span class="badge b-amber">Abunə: ${g} gün qalıb</span>` : `<span class="badge b-gray">Abunə: ${fd(x.abune_bitir)}</span>`; };
@@ -522,7 +522,7 @@ async function pageSaticilar(params) {
 /* ---------------- telefon üçün kafel menyu ---------------- */
 function pageMenyu() {
   if (S.rol === 'kuryer') { location.hash = '#/yigim'; return; }
-  shell('menyu', firmaAdi(), canWrite() ? '' : (S.rol === 'sahibkar' ? 'Yalnız baxış' : ''), '');
+  shell('menyu', firmaAdi(), canWrite() ? '' : (S.rol === 'sahibkar' ? 'Direktor · yalnız baxış' : ''), '');
   const ad = Object.fromEntries((muhFirma() ? NAV_M : NAV).map(n => [n[0], n]));
   const kafel = k => { const n = ad[k]; return n ? `<a class="kafel" href="#/${k}">${ico(n[2])}<span>${n[1]}</span></a>` : ''; };
   $('#page').innerHTML = `
@@ -4081,7 +4081,7 @@ async function pageAyarlar(params) {
   const t = BOL.some(x => x[0] === params.get('t')) ? params.get('t') : 'umumi';
   shell('ayarlar', 'Ayarlar', '', '');
   const [A, ist] = await Promise.all([ayarlar(), q(sb.from('uzvler').select('*').eq('magaza_id', S.magaza.id).order('yaradildi'))]);
-  const rolAd = { muhasib: 'Mühasib (yazır)', sahibkar: 'Yalnız baxır', kuryer: 'Kuryer (yalnız pul yığır)', bloklu: 'Bloklanıb' };
+  const rolAd = { muhasib: 'Mühasib (hər şeyi düzəldir)', sahibkar: 'Direktor (yalnız baxır, çıxarış alır)', kuryer: 'Kuryer (yalnız pul yığır)', bloklu: 'Bloklanıb' };
   const dis = w ? '' : 'disabled';
   const sat = (l, v) => `<tr><td class="muted" style="width:200px">${l}</td><td>${v}</td></tr>`;
   const el = [S.sistem.elaqe_telefon && esc(S.sistem.elaqe_telefon), S.sistem.elaqe_whatsapp && `<a href="https://wa.me/${S.sistem.elaqe_whatsapp.replace(/\D/g, '')}" target="_blank">WhatsApp</a>`].filter(Boolean).join(' · ');
