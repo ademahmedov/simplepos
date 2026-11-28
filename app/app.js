@@ -1420,11 +1420,17 @@ async function qaimeKart(r) {
 }
 async function qaimeKartYenile(id) { const r = await q(sb.from('v_qaimeler').select('*').eq('id', id).maybeSingle()); refresh(); if (r) setTimeout(() => qaimeKart(r), 300); }
 
-function qaimeIdxal(ist) {
+const LEGV_RE = /passiv|ləğv edildi/i;
+async function qaimeIdxal(ist) {
   const gelen = ist === 'gelen';
+  // harada qalmışdıq: sonuncu yükləmə vaxtı və bazadakı ən son qaimənin tarixi
+  const [A, son] = await Promise.all([ayarlar(), q(sb.from('qaimeler').select('tarix').eq('istiqamet', ist).order('tarix', { ascending: false }).limit(1))]);
+  const sonT = son[0] && son[0].tarix, sonY = A['son_yukleme_' + ist];
+  const yer = sonT ? `<div class="banner b-amber-bg" style="margin:0 0 12px;font-size:13.5px;line-height:1.6">Ən son yüklənmiş qaimənin tarixi: <b>${fd(sonT)}</b>${sonY ? ` · sonuncu yükləmə: <b>${fd(sonY.slice(0, 10))} ${esc(sonY.slice(11, 16))}</b>` : ''}<br>
+    e-taxes-dən <b>${fd(sonT)}</b> tarixindən (həmin gün daxil) bu günə qədər olanları endirib yükləyin — həmin gün sonradan gələnlər də düşsün. Artıq yüklənmiş qaimələr təkrar yazılmır, statusu dəyişənlər isə bildiriş kimi göstərilir.</div>` : '';
   idxalPencere({
     basliq: gelen ? 'Gələn e-qaimələri yüklə' : 'Gedən e-qaimələri yüklə',
-    izah: `e-taxes.gov.az → E-qaimə → ${gelen ? 'Daxil olan' : 'Göndərilmiş'} qaimələr → "Excel" ilə yüklədiyiniz faylı olduğu kimi seçin (yuxarıdakı filtr sətirləri nəzərə alınmır). Eyni VÖEN + seriya + nömrə artıq varsa, təkrar yaradılmır — məbləği və statusu yenilənir. "Passiv" və "Ləğv edildi" statuslu qaimələr yüklənmir.`,
+    izah: `${yer}e-taxes.gov.az → E-qaimə → ${gelen ? 'Daxil olan' : 'Göndərilmiş'} qaimələr → "Excel" ilə yüklədiyiniz faylı olduğu kimi seçin (yuxarıdakı filtr sətirləri nəzərə alınmır). Eyni VÖEN + seriya + nömrə artıq varsa, təkrar yaradılmır — məbləği və statusu yenilənir. "Passiv" və "Ləğv edildi" statuslu qaimələr yüklənmir.`,
     saheler: [
       { k: 'voen', ad: gelen ? 'Təchizatçının VÖEN-i' : 'Alıcının VÖEN-i', lazim: true, ox: gelen ? ['vöen', 'voen', 'təqdimedəninvöeni', 'təqdimedənvöen', 'satıcınınvöeni', 'göndərəninvöeni'] : ['vöen', 'voen', 'alıcınınvöeni', 'alıcıvöen', 'qəbuledəninvöeni'] },
       { k: 'kontragent', ad: gelen ? 'Təchizatçının adı' : 'Alıcının adı', ox: gelen ? ['adı', 'ad', 'təqdimedəninadı', 'təqdimedən', 'satıcınınadı', 'satıcı'] : ['adı', 'ad', 'alıcınınadı', 'alıcı', 'qəbuledən'] },
@@ -1439,12 +1445,11 @@ function qaimeIdxal(ist) {
       { k: 'qeyd', ad: 'Əsas qeyd', ox: ['əsasqeyd', 'qeyd', 'açıqlama'] }],
     numune: [['1300123451', 'Nümunə MMC', 'MT2611', '0012345', '05-11-2026', 1000, 180, 1000, 1180, 'Təsdiqləndi', 'Material'], ['9876543211', 'Test ASC', 'MT2611', '0012399', '12-11-2026', 2500, 450, 2600, 3050, 'Təsdiqləndi', '']],
     yaz: async (rows, ir) => {
-      const var_ = await all(() => sb.from('qaimeler').select('id,voen,seriya,nomre').eq('istiqamet', ist).order('id'));
-      const acar = x => [x.voen || '', azLow(x.seriya || ''), azLow(x.nomre || '')].join('|');
-      const ix = new Map(var_.map(x => [acar(x), x.id])), gor = new Set();
-      const yeni = [], yen = []; let buraxildi = 0;
+      const var_ = await all(() => sb.from('qaimeler').select('id,voen,seriya,nomre,status,esas,edv,edvsiz,kontragent,tarix').eq('istiqamet', ist).order('id'));
+      const acar = x => [x.voen || '', azLow(x.seriya || ''), azLow(String(x.nomre || '')).replace(/^0+/, '')].join('|');
+      const ix = new Map(var_.map(x => [acar(x), x])), gor = new Set();
+      const yeni = [], yen = [], st = []; let buraxildi = 0, eyni = 0;
       rows.forEach(r => {
-        if (/passiv|ləğv edildi/i.test(r.status || '')) { buraxildi++; return; }
         // məbləğlər: yekun = əsas (ƏDV-yə cəlb edilən) + ƏDV + qalan hissə (cəlb edilməyən, azad, 0%, aksiz, yol vergisi)
         const edv = r2(r.edv || 0); let esas = r2(r.esas || 0);
         if (!esas && edv > 0 && r.umumi) esas = r2(r.umumi);
@@ -1454,14 +1459,21 @@ function qaimeIdxal(ist) {
         const v = { istiqamet: ist, voen: String(r.voen).replace(/\D/g, '') || r.voen, kontragent: r.kontragent, seriya: r.seriya, nomre: r.nomre, tarix: r.tarix,
           esas, edv, edvsiz, status: r.status, qeyd: r.qeyd ? String(r.qeyd).slice(0, 500) : null };
         const k = acar(v); if (gor.has(k)) return; gor.add(k);
-        if (ix.has(k)) yen.push([ix.get(k), v]); else yeni.push(v);
+        const x = ix.get(k);
+        if (!x) { if (LEGV_RE.test(r.status || '')) buraxildi++; else yeni.push(v); return; }
+        const stDeyisib = (r.status || '') !== (x.status || '');
+        const meblegDeyisib = Math.abs(num(x.esas) - esas) > 0.005 || Math.abs(num(x.edv) - edv) > 0.005 || Math.abs(num(x.edvsiz) - edvsiz) > 0.005;
+        if (stDeyisib) st.push([x.id, { status: v.status, kohne_status: x.status, status_deyisib: new Date().toISOString(), status_bax: false, ...(meblegDeyisib ? { esas, edv, edvsiz } : {}) }]);
+        else if (meblegDeyisib) yen.push([x.id, { esas, edv, edvsiz }]);
+        else eyni++;
       });
-      const n = yeni.length + yen.length; let i = 0;
+      const n = yeni.length + yen.length + st.length; let i = 0;
       for (const h of hisse(yeni, 500)) { await q(sb.from('qaimeler').insert(h)); i += h.length; ir(i, n); }
-      for (const [id, v] of yen) { await q(sb.from('qaimeler').update({ esas: v.esas, edv: v.edv, edvsiz: v.edvsiz, status: v.status, kontragent: v.kontragent, tarix: v.tarix }).eq('id', id)); i++; if (i % 10 === 0) ir(i, n); }
-      const k = await kontragentSaxla(rows.map(r => ({ voen: String(r.voen).replace(/\D/g, '') || r.voen, ad: r.kontragent })));
+      for (const [id, v] of [...st, ...yen]) { await q(sb.from('qaimeler').update(v).eq('id', id)); i++; if (i % 10 === 0) ir(i, n); }
+      const k = await kontragentSaxla(rows.filter(r => !LEGV_RE.test(r.status || '')).map(r => ({ voen: String(r.voen).replace(/\D/g, '') || r.voen, ad: r.kontragent })));
+      const A2 = await ayarlar(); await ayarYaz(A2, 'son_yukleme_' + ist, new Date(Date.now() + 4 * 36e5).toISOString().slice(0, 19).replace('T', ' ')); S.cache.ayar = null;
       try { localStorage.setItem('son_yukleme_' + S.magaza.id, new Date().toLocaleString('az-AZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })); } catch (_) {}
-      return `${yeni.length} qaimə əlavə olundu${yen.length ? `, ${yen.length} qaimə yeniləndi` : ''}${buraxildi ? `, ${buraxildi} passiv/ləğv buraxıldı` : ''}${k ? `, ${k} yeni kontragent` : ''}`;
+      return `${yeni.length} yeni qaimə əlavə olundu · ${eyni} qaimə artıq var idi${st.length ? ` · ${st.length} qaimənin statusu dəyişdi (Qaimələr bölməsində bildiriş)` : ''}${yen.length ? ` · ${yen.length} qaimənin məbləği yeniləndi` : ''}${buraxildi ? ` · ${buraxildi} passiv/ləğv qaimə buraxıldı` : ''}${k ? ` · ${k} yeni kontragent` : ''}`;
     },
   });
 }
@@ -2108,7 +2120,11 @@ async function pageQaime(params) {
   const rows = await all(() => { let s = sb.from('v_qaimeler').select('*').gte('tarix', D.a).lte('tarix', D.b); if (ist) s = s.eq('istiqamet', ist); return s.order('tarix', { ascending: false }).order('id', { ascending: false }); });
   const sum = (l, k) => l.reduce((a, r) => a + num(r[k]), 0), g = rows.filter(r => r.istiqamet === 'gelen'), d = rows.filter(r => r.istiqamet === 'geden');
   $('.topbar .sub').textContent = `${rows.length} qaimə · gələn ${man(sum(g, 'cem'))} · gedən ${man(sum(d, 'cem'))}`;
-  $('#page').innerHTML = `${D.html}<div class="hes-link"><span class="muted">Hesabatlar:</span>${[['dinamika', 'Aylıq dinamika'], ['kxulase', 'Kontragent xülasəsi'], ['quzles', 'Qaimələr üzrə üzləşmə'], ['yaslanma', 'Borcların yaşlanması']].map(([k, t]) => `<a class="chip" href="#/hesab?r=${k}">${t}</a>`).join('')}</div>
+  const sdl = await all(() => sb.from('qaimeler').select('id,istiqamet,seriya,nomre,kontragent,tarix,kohne_status,status,status_deyisib,esas,edv,edvsiz').eq('status_bax', false).order('status_deyisib', { ascending: false })).catch(() => []);
+  const sdHtml = sdl.length ? `<div class="card" style="border-left:4px solid #c0392b;margin-bottom:14px;padding:14px 16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><b>${sdl.length} qaimənin statusu e-taxes-də dəyişib</b>${w ? '<button class="btn sm" id="sdbax">Hamısına baxdım</button>' : ''}</div>
+      <table class="t" data-flt="0" style="margin-top:8px"><thead><tr><th>Qaimə</th><th>Kontragent</th><th>Tarix</th><th>Əvvəl</th><th>İndi</th><th>Dəyişdi</th>${w ? '<th></th>' : ''}</tr></thead><tbody>${sdl.map(x => `<tr><td style="white-space:nowrap">${esc(x.seriya || '')} ${esc(x.nomre || '')}</td><td>${esc(qisaAd(x.kontragent))}</td><td>${fd(x.tarix)}</td>
+        <td class="muted">${esc(x.kohne_status || '—')}</td><td><b class="${LEGV_RE.test(x.status || '') ? 'neg' : ''}">${esc(x.status || '')}</b></td><td>${fd(String(x.status_deyisib).slice(0, 10))}</td>${w ? `<td><button class="btn sm" data-sdb="${x.id}">Baxdım</button></td>` : ''}</tr>`).join('')}</tbody></table></div>` : '';
+  $('#page').innerHTML = `${sdHtml}${D.html}<div class="hes-link"><span class="muted">Hesabatlar:</span>${[['dinamika', 'Aylıq dinamika'], ['kxulase', 'Kontragent xülasəsi'], ['quzles', 'Qaimələr üzrə üzləşmə'], ['yaslanma', 'Borcların yaşlanması']].map(([k, t]) => `<a class="chip" href="#/hesab?r=${k}">${t}</a>`).join('')}</div>
     ${rows.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>İstiqamət</th><th>Tarix</th><th>Seriya / №</th><th>VÖEN</th><th>Kontragent</th><th class="n">Əsas</th><th class="n">ƏDV</th><th class="n">Cəm</th><th class="n">Ödənilib</th><th class="n">Qalıq</th><th>Vəziyyət</th><th class="hide-m">e-taxes</th></tr></thead>
       <tbody>${rows.map(r => `<tr class="click" data-q="${r.id}"><td><span class="badge ${r.istiqamet === 'gelen' ? 'b-blue' : 'b-amber'}">${r.istiqamet === 'gelen' ? 'Gələn' : 'Gedən'}</span></td><td class="nw">${fd(r.tarix)}</td><td class="nw">${esc(qaimeNo(r))}</td><td class="muted nw">${esc(r.voen || '')}</td><td class="kname" title="${esc(qisaAd(r.kontragent))}">${esc(qisaAd(r.kontragent))}</td>
         <td class="n">${fmt(r.esas, 2)}</td><td class="n">${fmt(r.edv, 2)}</td><td class="n"><b>${fmt(r.cem, 2)}</b></td><td class="n">${fmt(r.odenilib, 2)}</td><td class="n"><b class="${num(r.qaliq) > 0.005 ? 'neg' : ''}">${fmt(r.qaliq, 2)}</b></td><td class="nw">${odenisBadge(r)}</td><td class="hide-m muted nw">${esc(r.status || '')}</td></tr>`).join('')}</tbody>
@@ -2116,6 +2132,8 @@ async function pageQaime(params) {
       : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Bu dövrdə qaimə yoxdur</div><div class="muted">e-taxes.gov.az-dan qaimələrin siyahısını Excel kimi yükləyib "Gələnləri yüklə" / "Gedənləri yüklə" ilə köçürün.</div></div>`}`;
   D.bagla();
   $$('[data-q]').forEach(tr => tr.onclick = () => qaimeKart(rows.find(r => r.id === +tr.dataset.q)));
+  $$('[data-sdb]').forEach(b => b.onclick = async () => { try { await q(sb.from('qaimeler').update({ status_bax: true }).eq('id', +b.dataset.sdb)); refresh(); } catch (er) { fail(er); } });
+  if ($('#sdbax')) $('#sdbax').onclick = async () => { try { await q(sb.from('qaimeler').update({ status_bax: true }).eq('status_bax', false)); refresh(); } catch (er) { fail(er); } };
 }
 
 /* ---------- Alış aktları ---------- */
@@ -2574,8 +2592,10 @@ async function xeberdarliqlar() {
   const [qm, akt, isci, eh, bh, A] = await Promise.all([all(() => sb.from('v_qaimeler').select('istiqamet,tarix,qaliq,voen,kontragent').order('id')),
     all(() => sb.from('alis_aktlari').select('mebleg,odenilib,tarix').order('id')), all(() => sb.from('emekdaslar').select('id,cixis').order('id')),
     all(() => sb.from('emek_haqqi').select('ay').eq('ay', ayBasi(today())).order('id')), bankHesablari(), ayarlar()]);
+  const sd = await all(() => sb.from('qaimeler').select('id').eq('status_bax', false).order('id')).catch(() => []);
   const X = [], gun = t => Math.round((new Date(today() + 'T00:00:00') - new Date(t + 'T00:00:00')) / 864e5), sum = l => l.reduce((s, x) => s + num(x.qaliq), 0);
   const k30 = qm.filter(x => x.istiqamet === 'gelen' && num(x.qaliq) > 0.005 && gun(x.tarix) > 30), d30 = qm.filter(x => x.istiqamet === 'geden' && num(x.qaliq) > 0.005 && gun(x.tarix) > 30);
+  if (sd.length) X.push(['xeta', `${sd.length} qaimənin statusu e-taxes-də dəyişib`, 'baxın', '#/qaime']);
   if (k30.length) X.push(['xeta', `${k30.length} gələn qaimə 30 gündən çoxdur ödənilməyib`, man(sum(k30)), '#/qaime?ist=gelen']);
   if (d30.length) X.push(['diqqet', `${d30.length} gedən qaimə üzrə alıcılar 30 gündən çoxdur ödəməyib`, man(sum(d30)), '#/hesab?r=yaslanma']);
   const vs = qm.filter(x => !x.voen); if (vs.length) X.push(['diqqet', `${vs.length} qaimədə VÖEN yoxdur`, '', '#/qaime']);
