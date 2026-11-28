@@ -644,3 +644,9 @@ input.ced-in{width:80px;font:inherit;text-align:right;border:2px solid #2f6fed;b
 .sifre-goz:hover{color:var(--ink,#222);background:rgba(0,0,0,.05)}
 .admin-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#2b2118;color:#f5ead8;padding:10px 16px;border-radius:10px;margin-bottom:14px;font-size:13.5px}
 .admin-bar .btn{background:#f5ead8;color:#2b2118;border-color:transparent}
+table.ced2 td.ec{cursor:cell;background:#f7f9fd;min-width:84px}
+table.ced2 td.ec:hover{outline:2px solid #2f6fed;outline-offset:-2px}
+table.ced2 th.ay{background:#e9eef8}
+table.ced2 td.kn{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table.ced2 tr.sel td{background:#eaf1ff}
+table.ced2 th.cb,table.ced2 td.cb{width:28px;text-align:center}
