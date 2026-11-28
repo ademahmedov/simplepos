@@ -32,7 +32,9 @@ function ayAdi(d) { const [y, m] = String(d).split('-'); return `${AYLAR[+m - 1]
 function ayQisa(d) { const [y, m] = String(d).split('-'); return `${AYLAR[+m - 1].slice(0, 3)} ${y.slice(2)}`; }
 function ayBasi(d) { return String(d).slice(0, 7) + '-01'; }
 function aySonu(d) { const [y, m] = String(d).split('-').map(Number); return iso(new Date(y, m, 0)); }
-const canWrite = () => S.rol === 'muhasib' && S.aktiv;
+const icaze = k => !!S.admin || (S.rol && !['bloklu', 'gozleyir'].includes(S.rol) && (S.icazeler && k in S.icazeler ? !!S.icazeler[k] : icazeDef(S.rol, k)));
+const canWrite = () => (icaze('elave') || icaze('duzelis')) && S.aktiv;
+const idareci = () => S.rol === 'admin' || S.rol === 'muhasib';
 const firmaAdi = () => (S.magaza && S.magaza.ad) || CFG.FIRMA_ADI;
 const gunFerqi = d => Math.round((new Date(d + 'T00:00:00') - new Date(today() + 'T00:00:00')) / 864e5);
 
@@ -40,7 +42,7 @@ function toast(msg, ms) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms || 2600);
 }
-function fail(e) { console.error(e); toast('Xəta: ' + (e && (e.message || e.error_description) || e), 5000); }
+function fail(e) { console.error(e); const t = (e && (e.message || e.error_description)) || String(e); toast(/row-level security|permission denied|violates row/i.test(t) ? 'Bu əməliyyat üçün icazəniz yoxdur' : 'Xəta: ' + t, 5000); }
 
 async function q(builder) {
   const { data, error } = await builder;
@@ -165,7 +167,7 @@ function loginView(msg, rejim) {
     `<button type="button" data-rj="${k}" class="${rejim === k || (rejim === 'unut' && k === 'giris') ? 'on' : ''}" style="flex:1">${t}</button>`).join('')}</div>`;
   let form = '';
   if (rejim === 'giris') form = `
-    <div class="field"><label class="f">E-poçt</label><input class="in" type="email" name="e" autocomplete="username" required></div>
+    <div class="field"><label class="f">E-poçt və ya istifadəçi adı</label><input class="in" type="text" name="e" autocomplete="username" autocapitalize="off" required></div>
     <div class="field"><label class="f">Şifrə</label><input class="in" type="password" name="p" autocomplete="current-password" required></div>
     <button class="btn primary" style="width:100%;justify-content:center;padding:11px">Daxil ol</button>
     <div style="text-align:center;margin-top:12px"><a href="#" data-rj="unut" style="font-size:13px">Şifrəni unutmusunuz?</a></div>`;
@@ -267,7 +269,8 @@ function loginView(msg, rejim) {
   } else {
     f.onsubmit = async e => {
       e.preventDefault(); btn().disabled = true;
-      const { error } = await sb.auth.signInWithPassword({ email: f.e.value.trim(), password: f.p.value });
+      const gir = f.e.value.trim().toLowerCase(), email = gir.includes('@') ? gir : gir + ISCI_DOMEN;
+      const { error } = await sb.auth.signInWithPassword({ email, password: f.p.value });
       btn().disabled = false;
       if (error && /Email not confirmed/i.test(error.message || '')) { const em = f.e.value.trim(); await sb.auth.resend({ type: 'signup', email: em });
         if (KOD_TESDIQ) return kodView(em, '<div class="banner b-amber-bg">E-poçtunuz hələ təsdiqlənməyib — yeni kod göndərdik.</div>');
@@ -289,7 +292,7 @@ async function start() {
   try {
     // hamısı paralel: açıq dükanı RLS özü verir (magazalar yalnız açıq dükanı göstərir)
     const [uz, adm, pr, fl, mg] = await Promise.all([
-      q(sb.from('uzvler').select('rol,ad,magaza_id,secili,yaradildi,admin_giris').eq('user_id', S.user.id)),
+      q(sb.from('uzvler').select('rol,ad,magaza_id,secili,yaradildi,admin_giris,icazeler').eq('user_id', S.user.id)),
       q(sb.from('adminler').select('user_id').eq('user_id', S.user.id).maybeSingle()),
       q(sb.from('profiller').select('*').eq('user_id', S.user.id).maybeSingle()).catch(() => null),
       q(sb.rpc('uzvluklerim')).catch(() => []),
@@ -303,7 +306,7 @@ async function start() {
     const me = aktivUz[0];
     S.adminBaxir = !!(me && me.admin_giris);
     if (me) {
-      S.rol = me.rol; S.ad = me.ad || S.user.email;
+      S.rol = me.rol; S.icazeler = me.icazeler || null; S.ad = me.ad || (S.user.email || '').replace(ISCI_DOMEN, '');
       S.magaza = mg.find(x => x.id === me.magaza_id) || await q(sb.from('magazalar').select('*').eq('id', me.magaza_id).single());
       S.qalan = gunFerqi(S.magaza.abune_bitir);
       S.aktiv = !S.magaza.dayandirilib && S.qalan >= 0;
@@ -316,7 +319,7 @@ async function start() {
   else if (S.rol === 'kuryer') get('#/yigim');
   else if (!location.hash || /access_token|type=/.test(location.hash)) get(window.innerWidth <= 760 ? '#/menyu' : (muhFirma() ? '#/cedvel' : '#/panel'));
   route();
-  if (S.profil && !S.profil.meqsed && !S.admin && (S.rol === 'muhasib' || !S.magaza)) setTimeout(meqsedModal, 600);
+  if (S.profil && !S.profil.meqsed && !S.admin && (idareci() || !S.magaza)) setTimeout(meqsedModal, 600);
 }
 function meqsedModal() {
   const m = modal('Proqramdan nə üçün istifadə edirsiniz?', `<p class="muted" style="margin-top:0;font-size:13.5px">Seçiminizə görə nümunələr və bölmələr uyğunlaşdırılacaq. Sonra Ayarlardan dəyişə bilərsiniz.</p>${meqsedKafel()}`,
@@ -325,7 +328,7 @@ function meqsedModal() {
     const k = b.dataset.mq;
     try { await q(sb.rpc('meqsed_sec', { m: k })); S.profil.meqsed = k; closeModal();
       if (k === 'muhasib') { toast('Mühasib rejimi açıldı — firmalarınızı "Müəssisələr" bölməsindən əlavə edin', 4500); await start(); location.hash = '#/firmalar'; }
-      else { if (S.magaza && S.rol === 'muhasib') S.magaza.sahe = k; toast('Yadda saxlanıldı'); route(); }
+      else { if (S.magaza && idareci()) S.magaza.sahe = k; toast('Yadda saxlanıldı'); route(); }
     } catch (er) { fail(er); }
   });
 }
@@ -364,12 +367,13 @@ function navBolmeler(active) {
   return B.map(([b, ks], i) => `${i ? `<div class="sec">${b}</div>` : ''}${ks.map(link).join('')}`).join('');
 }
 function shell(active, title, sub, tools, body) {
+  document.body.classList.toggle('nohes', !!S.magaza && !icaze('hesabat'));
   const navA = (S.rol === 'kuryer' ? NAV.filter(n => n[0] === 'yigim') : NAV).map(([k, t, i]) => `<a href="#/${k}" class="${active === k ? 'active' : ''}">${ico(i)}${t}</a>`).join('');
   app.innerHTML = `<div class="shell">
    <aside class="side"><div class="logo">${LOGO}<div><span>${esc(CFG.FIRMA_ADI)}</span><small>${S.magaza ? esc(S.magaza.ad) : S.admin ? 'Admin' : ''}</small></div></div>
     ${S.coxFirma && S.firmalar.length > 1 && !S.adminBaxir ? `<div class="firma-sec"><select id="fsec" title="Firmanı dəyiş">${S.firmalar.map(x => `<option value="${x.id}" ${S.magaza && x.id === S.magaza.id ? 'selected' : ''}>${esc(x.ad)}</option>`).join('')}</select></div>` : ''}
     <nav>${(S.coxFirma || !S.magaza) && (!S.admin || S.ozFirma) ? `<a href="#/firmalar" class="${active === 'firmalar' ? 'active' : ''}">${ico('bina')}Müəssisələr</a>` : ''}${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? `<div class="sec">${muhFirma() ? 'Firma' : 'Dükan'}</div>` : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? navBolmeler(active) : ''}</nav>
-    <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'sahibkar' ? 'Direktor · yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
+    <div class="who"><b>${esc(S.ad)}</b>${esc((S.user.email || '').replace(ISCI_DOMEN, ''))}<br><span style="font-size:11.5px;opacity:.8">${S.admin && !S.magaza ? 'Super admin' : VEZIFE_AD[S.rol] || ''}</span><br><button id="out">Çıxış</button></div></aside>
    <div class="mobile-bar"><button id="geri" class="mb-geri" ${active === 'menyu' || (S.rol === 'kuryer' && active === 'yigim') ? 'style="visibility:hidden"' : ''}>‹ Geri</button><b ${S.coxFirma ? 'id="mbfirma" style="cursor:pointer"' : ''}>${LOGO}${esc(firmaAdi())}${S.coxFirma ? ' ▾' : ''}</b><button id="out2">Çıxış</button></div>
    <main class="main">${S.adminBaxir ? `<div class="admin-bar no-print"><span>Admin rejimi: <b>${esc(S.magaza.ad)}</b> müəssisəsinə baxırsınız — hər şeyi görə və düzəldə bilərsiniz</span><button class="btn sm" id="admgeri">← Admin panelə qayıt</button></div>` : ''}${S.magaza && muhFirma() && S.rol !== 'kuryer' ? mUstPanel(active) : ''}${abuneBanner()}<div class="topbar"><div><h2>${title}</h2><div class="sub">${sub || ''}</div></div><div class="tools">${tools || ''}</div></div>
    <div id="page">${body || '<div class="empty"><div class="spinner" style="margin:auto"></div></div>'}</div></main>
@@ -396,7 +400,7 @@ function route() {
   const [path, qs] = h.split('?');
   const params = new URLSearchParams(qs || '');
   const [p, id] = path.split('/');
-  const run = { cedvel: () => pageCedvel(params), panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), sat: () => pageSat(params), mpanel: () => { location.replace('#/bugun'); }, gelen: () => { location.replace('#/qaime?ist=gelen'); }, geden: () => { location.replace('#/qaime?ist=geden'); },
+  const run = { heyet: () => pageHeyet(), cedvel: () => pageCedvel(params), panel: pagePanel, satislar: () => pageSatislar(params), musteriler: () => pageMusteriler(params), musteri: () => pageMusteri(id), menyu: () => pageMenyu(), sat: () => pageSat(params), mpanel: () => { location.replace('#/bugun'); }, gelen: () => { location.replace('#/qaime?ist=gelen'); }, geden: () => { location.replace('#/qaime?ist=geden'); },
     bugun: () => pageBugun(), qaime: () => pageQaime(params), akt: () => pageAkt(params), odenis: () => pageOdenis(params), edv: () => pageEdv(params), depozit: () => pageDepozit(params), hesab: () => pageMHesabat(params), xeber: () => pageXeber(),
     gomruk: () => pageGomruk(params), bank: () => pageBank(params), evez: () => pageEvez(params), emek: () => pageEmek(params), mz: () => pageMZ(params), kontragent: () => pageKontragent(params), firmalar: () => pageFirmalar(), yigim: () => pageYigim(params), saticilar: () => pageSaticilar(params), mehsullar: () => pageMehsullar(params), cek: () => pageCek(id), etiket: () => pageEtiket(),
     rasxodlar: () => pageRasxodlar(params), isciler: () => pageIsciler(params), odenisler: () => pageOdenisler(params), cixaris: () => pageCixaris(id, params),
@@ -405,7 +409,7 @@ function route() {
     qebz: () => pageQebz(id), muqavile: () => pageMuqavile(id), admin: () => pageAdmin(params) }[p] || pagePanel;
   if (!S.magaza && !['admin', 'firmalar'].includes(p)) { location.hash = S.admin && !S.muhasibHesab ? '#/admin' : '#/firmalar'; return; }
   if (S.rol === 'kuryer' && !['yigim', 'qebz', 'menyu', 'firmalar'].includes(p)) { location.hash = '#/yigim'; return; }
-  if (S.magaza && muhFirma() && !MUH_SEHIFE.includes(p) && !['jurnal', 'ayarlar', 'menyu', 'firmalar', 'admin'].includes(p)) { location.hash = '#/cedvel'; return; }
+  if (S.magaza && muhFirma() && !MUH_SEHIFE.includes(p) && !['jurnal', 'ayarlar', 'menyu', 'firmalar', 'admin', 'heyet'].includes(p)) { location.hash = '#/cedvel'; return; }
   if (S.magaza && muhFirma()) mTabQeyd(p, location.hash || '#/cedvel');
   if (S.magaza && !muhFirma() && MUH_SEHIFE.includes(p)) { location.hash = '#/panel'; return; }
   if (p === 'admin' && !S.admin) { location.hash = '#/panel'; return; }
@@ -436,15 +440,65 @@ async function firmaSec(id) {
   catch (er) { fail(er); }
   finally { S.deyisir = false; ov.remove(); }
 }
+/* ---------- İşçilər və icazələr: işçini bir dəfə yarat (istifadəçi adı + parol), müəssisələrə bağla ---------- */
+const VEZIFE_AD = { admin: 'Admin', muhasib: 'Mühasib', operator: 'Operator', sahibkar: 'Direktor', kuryer: 'Kuryer', bloklu: 'Bloklanıb', gozleyir: 'Təsdiq gözləyir' };
+const ICAZE_AD = [['elave', 'Əlavə etmək'], ['duzelis', 'Düzəliş etmək'], ['sil', 'Silmək'], ['hesabat', 'Hesabat, çıxarış, Excel / PDF'], ['ayarlar', 'Ayarlar'], ['istifadeciler', 'İstifadəçiləri idarə etmək']];
+const icazeDef = (r, k) => r === 'admin' ? true : r === 'muhasib' ? ['elave', 'duzelis', 'sil', 'hesabat', 'ayarlar'].includes(k) : r === 'operator' ? ['elave', 'duzelis'].includes(k) : r === 'sahibkar' ? k === 'hesabat' : false;
+const ISCI_DOMEN = '@isci.simplepos.az';
+async function pageHeyet() {
+  shell('firmalar', 'İşçilər və icazələr', 'İşçi bir dəfə yaradılır, sonra müəssisələrə bağlanır', `<button class="btn" onclick="location.hash='#/firmalar'">← Müəssisələr</button><button class="btn primary" id="isyeni">${ico('plus')}Yeni işçi</button>`);
+  const [fl, il] = await Promise.all([q(sb.rpc('idare_firmalarim')), q(sb.rpc('isci_siyahi'))]);
+  if (!fl.length) { $('#page').innerHTML = '<div class="card empty">İşçi əlavə etmək üçün ən azı bir müəssisədə admin olmalısınız.</div>'; $('#isyeni').style.display = 'none'; return; }
+  $('#isyeni').onclick = () => hesabForm(null, fl);
+  $('#page').innerHTML = il.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>Ad</th><th>Giriş adı</th><th>Müəssisələr və vəzifə</th><th class="hide-m">Son giriş</th><th></th></tr></thead>
+    <tbody>${il.map(x => `<tr><td><b>${esc(x.ad || '')}</b>${x.isci ? '' : '<div class="cell-sub">öz qeydiyyatı ilə</div>'}</td><td>${esc(x.login || x.email || '')}</td>
+      <td>${(x.uzvluk || []).map(u => `<div style="margin:2px 0">${esc(u.ad)} — <span class="badge ${u.rol === 'admin' ? 'b-amber' : u.rol === 'bloklu' || u.rol === 'gozleyir' ? 'b-red' : 'b-blue'}">${VEZIFE_AD[u.rol] || u.rol}</span>${u.icazeler ? ' <span class="muted" style="font-size:12px">(xüsusi icazələr)</span>' : ''}</div>`).join('') || '<span class="muted">heç bir müəssisəyə bağlı deyil</span>'}</td>
+      <td class="hide-m">${x.son_giris ? fd(String(x.son_giris).slice(0, 10)) : '—'}</td><td><button class="btn sm" data-hd="${x.user_id}">Düzəlt</button></td></tr>`).join('')}</tbody></table></div>`
+    : '<div class="card empty">Hələ işçi yoxdur — "Yeni işçi" ilə yaradın.</div>';
+  $$('[data-hd]').forEach(b => b.onclick = () => hesabForm(il.find(x => x.user_id === b.dataset.hd), fl));
+}
+function hesabForm(x, fl) {
+  const uz = new Map(((x && x.uzvluk) || []).map(u => [u.m, u]));
+  const ilk = (x && x.uzvluk && x.uzvluk[0]) || null, r0 = ilk ? ilk.rol : 'muhasib';
+  const ic0 = k => ilk && ilk.icazeler && k in ilk.icazeler ? !!ilk.icazeler[k] : icazeDef(r0, k);
+  const m = modal(x ? `İşçi: ${esc(x.ad || x.login || x.email)}` : 'Yeni işçi', `<form id="hf">
+    <div class="row2"><div class="field"><label class="f">Ad Soyad</label><input class="in" name="ad" value="${esc((x && x.ad) || '')}" ${x ? 'disabled' : 'required'}></div>
+      <div class="field"><label class="f">İstifadəçi adı (giriş üçün)</label><input class="in" name="login" value="${esc((x && (x.login || x.email)) || '')}" ${x ? 'disabled' : 'required'} placeholder="məs. elvin" autocapitalize="off"></div></div>
+    ${!x || x.isci ? `<div class="field"><label class="f">${x ? 'Yeni parol (dəyişmək istəmirsinizsə boş saxlayın)' : 'Parol (ən azı 6 simvol)'}</label><input class="in" type="password" name="p" ${x ? '' : 'required minlength="6"'} autocomplete="new-password"></div>` : ''}
+    <div class="field"><label class="f">Vəzifə</label><select class="in" name="r">${['admin', 'muhasib', 'operator', 'sahibkar', 'kuryer', 'bloklu'].map(k => `<option value="${k}" ${r0 === k ? 'selected' : ''}>${VEZIFE_AD[k]}</option>`).join('')}</select></div>
+    <div class="field"><label class="f">Nələri edə bilər</label><div id="hic" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:14px">${ICAZE_AD.map(([k, t]) => `<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-ic="${k}" ${ic0(k) ? 'checked' : ''}> ${t}</label>`).join('')}</div>
+      <div class="muted" style="font-size:12px;margin-top:4px">Baxmaq hər vəzifədə var. Vəzifəni dəyişəndə icazələr həmin vəzifəyə görə yenilənir, sonra istəsəniz dəyişin.</div></div>
+    <div class="field"><label class="f">Hansı müəssisələrdə işləyəcək</label><div style="display:flex;flex-direction:column;gap:6px;font-size:14px;max-height:220px;overflow:auto">${fl.map(f => `<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-fm="${f.id}" ${uz.has(f.id) ? 'checked' : ''}> ${esc(f.ad)} <span class="muted" style="font-size:12px">${esc(saheAd(f.sahe))}</span></label>`).join('')}</div></div></form>`,
+    `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="hok">Yadda saxla</button>`, true);
+  const f = $('#hf', m);
+  f.r.onchange = () => $$('[data-ic]', m).forEach(c => { c.checked = icazeDef(f.r.value, c.dataset.ic); });
+  $('#hok', m).onclick = async () => {
+    if (!f.reportValidity()) return;
+    const r = f.r.value, ic = {}; let ferq = false;
+    $$('[data-ic]', m).forEach(c => { ic[c.dataset.ic] = c.checked; if (c.checked !== icazeDef(r, c.dataset.ic)) ferq = true; });
+    const sec = $$('[data-fm]', m).filter(c => c.checked).map(c => +c.dataset.fm);
+    if (!sec.length && !confirm('Heç bir müəssisə seçilməyib — işçi heç nə görməyəcək. Davam edilsin?')) return;
+    $('#hok', m).disabled = true;
+    try {
+      let u = x && x.user_id;
+      if (!x) u = await q(sb.rpc('isci_yarat', { login: f.login.value.trim().toLowerCase(), parol: f.p.value, ad: f.ad.value.trim() }));
+      else if (f.p && f.p.value) await q(sb.rpc('isci_parol', { u, parol: f.p.value }));
+      for (const id of sec) await q(sb.rpc('isci_uzvluk', { u, m: id, r, ic: ferq ? ic : null }));
+      for (const id of fl.map(z => z.id)) if (!sec.includes(id) && uz.has(id)) await q(sb.rpc('isci_uzvluk_sil', { u, m: id }));
+      closeModal(); toast(x ? 'Yadda saxlanıldı' : `İşçi yaradıldı. Giriş: ${f.login.value.trim().toLowerCase()} + parol`, 6000); pageHeyet();
+    } catch (er) { $('#hok', m).disabled = false; fail(er); }
+  };
+}
 async function pageFirmalar() {
   const bas = 'Müəssisələr';
   shell('firmalar', bas, '', `<input class="in" id="fax" placeholder="Axtar: firma adı" style="width:200px">
-    <button class="btn" id="fqos">${ico('users')}Kodla qoşul</button><button class="btn primary" id="fyeni">${ico('plus')}Yeni müəssisə</button>`);
+    <button class="btn" id="fheyet" style="display:none">${ico('users')}İşçilər və icazələr</button><button class="btn" id="fqos">${ico('users')}Kodla qoşul</button><button class="btn primary" id="fyeni">${ico('plus')}Yeni müəssisə</button>`);
   $('#fyeni').onclick = firmaYeniModal; $('#fqos').onclick = firmaQosulModal;
   const list = await q(sb.rpc('firmalarim'));
+  if (list.some(x => x.rol === 'admin')) { $('#fheyet').style.display = ''; $('#fheyet').onclick = () => { location.hash = '#/heyet'; }; }
   S.firmalar = list.map(x => ({ id: x.id, ad: x.ad, rol: x.rol })).sort((a, b) => a.ad.localeCompare(b.ad, 'az'));
   if (list.length > 1 || S.muhasibHesab) S.coxFirma = true;
-  const rolAd = { muhasib: 'Mühasib', sahibkar: 'Direktor (yalnız baxış)', kuryer: 'Kuryer' };
+  const rolAd = VEZIFE_AD;
   const abune = x => { const g = gunFerqi(x.abune_bitir);
     return x.dayandirilib ? '<span class="badge b-red">Dayandırılıb</span>' : g < 0 ? '<span class="badge b-red">Abunə bitib</span>'
       : g <= 7 ? `<span class="badge b-amber">Abunə: ${g} gün qalıb</span>` : `<span class="badge b-gray">Abunə: ${fd(x.abune_bitir)}</span>`; };
@@ -515,7 +569,7 @@ function firmaQosulModal() {
    ===================================================================== */
 async function pageYigim(params) {
   const nov = params.get('n') || 'bugun';
-  const odeyer = S.rol === 'muhasib' || S.rol === 'kuryer';
+  const odeyer = canWrite() || S.rol === 'kuryer';
   shell('yigim', 'Yığım siyahısı', fd(today()), `<div class="seg" id="yn">${[['bugun', 'Bu günə qədər'], ['hefte', 'Bu həftə'], ['hamisi', 'Bütün borclular']].map(([k, t]) => `<button data-n="${k}" class="${nov === k ? 'on' : ''}">${t}</button>`).join('')}</div>`);
   $$('#yn button').forEach(b => b.onclick = () => location.hash = '#/yigim?n=' + b.dataset.n);
   const [qr, mus] = await Promise.all([
@@ -576,7 +630,7 @@ async function pageSaticilar(params) {
 /* ---------------- telefon üçün kafel menyu ---------------- */
 function pageMenyu() {
   if (S.rol === 'kuryer') { location.hash = '#/yigim'; return; }
-  shell('menyu', firmaAdi(), canWrite() ? '' : (S.rol === 'sahibkar' ? 'Direktor · yalnız baxış' : ''), '');
+  shell('menyu', firmaAdi(), canWrite() ? '' : (S.rol === 'sahibkar' ? 'Direktor' : ''), '');
   const ad = Object.fromEntries((muhFirma() ? NAV_M : NAV).map(n => [n[0], n]));
   const kafel = k => { const n = ad[k]; return n ? `<a class="kafel" href="#/${k}">${ico(n[2])}<span>${n[1]}</span></a>` : ''; };
   $('#page').innerHTML = `
@@ -4281,13 +4335,13 @@ async function pageJurnal(params) {
    ===================================================================== */
 async function pageAyarlar(params) {
   params = params || new URLSearchParams();
-  const w = canWrite(), yaz = S.rol === 'muhasib', muh = muhFirma();
+  const w = canWrite() && icaze('ayarlar'), yaz = icaze('istifadeciler'), muh = muhFirma();
   const BOL = [['umumi', 'Abunə və firma'], ['rekv', 'Rekvizitlər'], ...(muh ? [['vergi', 'Vergi və ödənişlər']] : [['satis', 'Satış ayarları']]), ['ist', 'İstifadəçilər'], ...(yaz && !muh ? [['bild', 'Telegram']] : []), ['ehtiyat', 'Ehtiyat nüsxə']];
   const t = BOL.some(x => x[0] === params.get('t')) ? params.get('t') : 'umumi';
   shell('ayarlar', 'Ayarlar', '', '');
   const [A, ist0] = await Promise.all([ayarlar(), q(sb.from('uzvler').select('*').eq('magaza_id', S.magaza.id).order('yaradildi'))]);
   const ist = ist0.filter(i => !i.admin_giris || i.user_id === S.user.id);
-  const rolAd = { gozleyir: '— Təsdiq gözləyir —', muhasib: 'Mühasib (hər şeyi düzəldir)', sahibkar: 'Direktor (yalnız baxır, çıxarış alır)', kuryer: 'Kuryer (yalnız pul yığır)', bloklu: 'Bloklanıb (giriş yoxdur)' };
+  const rolAd = { gozleyir: '— Təsdiq gözləyir —', admin: 'Admin', muhasib: 'Mühasib', operator: 'Operator', sahibkar: 'Direktor', kuryer: 'Kuryer', bloklu: 'Bloklanıb' };
   const dis = w ? '' : 'disabled';
   const sat = (l, v) => `<tr><td class="muted" style="width:200px">${l}</td><td>${v}</td></tr>`;
   const el = [S.sistem.elaqe_telefon && esc(S.sistem.elaqe_telefon), S.sistem.elaqe_whatsapp && `<a href="https://wa.me/${S.sistem.elaqe_whatsapp.replace(/\D/g, '')}" target="_blank">WhatsApp</a>`].filter(Boolean).join(' · ');
@@ -4365,7 +4419,7 @@ async function pageAyarlar(params) {
   if ($('#sf2') && w) $('#sf2').onsubmit = async e => { e.preventDefault(); const f = e.target;
     try { for (const el of f.elements) if (el.name) await ayarYaz(A, el.name, el.value.trim()); S.cache = {}; toast('Yadda saxlanıldı'); } catch (er) { fail(er); } };
   $$('[data-u]').forEach(sel => sel.onchange = async () => {
-    try { await q(sb.from('uzvler').update({ rol: sel.value }).eq('user_id', sel.dataset.u).eq('magaza_id', S.magaza.id)); toast('Hüquq dəyişdirildi'); } catch (er) { fail(er); }
+    try { await q(sb.rpc('isci_uzvluk', { u: sel.dataset.u, m: S.magaza.id, r: sel.value, ic: null })); toast('Vəzifə dəyişdirildi'); } catch (er) { fail(er); }
   });
   if ($('#kodkop')) $('#kodkop').onclick = () => { navigator.clipboard && navigator.clipboard.writeText($('#kod').textContent); toast('Kod kopyalandı'); };
   if ($('#kodyen')) $('#kodyen').onclick = async () => {
@@ -4462,7 +4516,7 @@ async function pageAdminIst() {
   shell('admin', 'Admin panel', 'Saytdan istifadə edənlər', `${ADM_TAB('ist')}<input class="in search" id="axtar" placeholder="Axtar: e-poçt, ad, müəssisə">`);
   admTabBagla();
   const rows = await q(sb.rpc('admin_istifadeciler'));
-  const rolA = { muhasib: 'Mühasib', sahibkar: 'Direktor', kuryer: 'Kuryer', bloklu: 'Bloklanıb', gozleyir: 'Təsdiq gözləyir' };
+  const rolA = VEZIFE_AD;
   const draw = () => {
     const t = azLow($('#axtar').value || '');
     const l = rows.filter(r => !t || azLow([r.email, r.ad, r.telefon, ...(r.firmalar || []).map(f => f.ad)].join(' ')).includes(t));
@@ -5206,14 +5260,14 @@ function tabloFiltr(tb) {
   const ax = $('.flt-axtar input', bar);
   if (ax) { let t0; ax.oninput = () => { clearTimeout(t0); t0 = setTimeout(() => { AXT[acar] = ax.value; PG[acar] = 0; tetbiq(); }, 150); }; }
   $('.flt-tools', bar).innerHTML = (coxSetir ? `<label class="flt-say" title="Bir səhifədə neçə sətir göstərilsin">Göstər <select>${[10, 20, 50, 100, 200, 0].map(n => `<option value="${n}" ${n === SAY() ? 'selected' : ''}>${n || 'Hamısı'}</option>`).join('')}</select></label>` : '') + `<button type="button" class="btn sm" data-x="xls" title="Görünən sətirləri Excel faylına yüklə">${ico('down')}Excel</button><button type="button" class="btn sm" data-x="pdf" title="Yalnız bu cədvəli çap et və ya PDF kimi saxla">${ico('print')}PDF</button>`;
-  $('[data-x=xls]', bar).onclick = () => cedveliExcel(tb);
+  if (!icaze('hesabat')) $$('[data-x]', bar).forEach(b => b.remove()); else $('[data-x=xls]', bar).onclick = () => cedveliExcel(tb);
   const saySel = $('.flt-say select', bar);
   if (saySel) saySel.onchange = () => { try { localStorage.setItem('cedvel_say', saySel.value); } catch (_) {} SAY._v = +saySel.value; PG[acar] = 0; tetbiq(); };
   // səhifə keçidləri cədvəlin altında
   let pager = host.nextElementSibling && host.nextElementSibling.classList.contains('flt-pager') ? host.nextElementSibling : null;
   if (!pager) { pager = document.createElement('div'); pager.className = 'flt-pager no-print'; host.parentElement.insertBefore(pager, host.nextSibling); }
   const metnler = new Map(rows().map(r => [r, azLow(r.innerText)]));
-  $('[data-x=pdf]', bar).onclick = () => cedveliPdf(tb);
+  const xp = $('[data-x=pdf]', bar); if (xp) xp.onclick = () => cedveliPdf(tb);
   function sirala() {
     $$('th.srt', thead).forEach(th => th.classList.remove('asc', 'desc'));
     const sr = SRT[acar]; if (!sr) return;
