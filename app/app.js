@@ -4469,12 +4469,26 @@ async function pageAdminIst() {
     $('#page').innerHTML = `<div class="grid kpis"><div class="card kpi"><div class="lbl">İstifadəçilər</div><div class="val">${rows.length}</div></div>
         <div class="card kpi"><div class="lbl">Son 7 gündə girən</div><div class="val">${rows.filter(r => r.son_giris && gunFerqi(String(r.son_giris).slice(0, 10)) >= -7).length}</div></div>
         <div class="card kpi"><div class="lbl">Müəssisəsi olmayan</div><div class="val">${rows.filter(r => !(r.firmalar || []).length && !r.admin).length}</div></div></div>
-      <div class="tbl-wrap" style="margin-top:16px"><table class="t"><thead><tr><th>İstifadəçi</th><th class="hide-m">Telefon</th><th class="hide-m">Məqsəd</th><th class="hide-m">Qeydiyyat</th><th class="hide-m">Son giriş</th><th>Müəssisələri</th></tr></thead>
+      <div class="tbl-wrap" style="margin-top:16px"><table class="t"><thead><tr><th>İstifadəçi</th><th class="hide-m">Telefon</th><th class="hide-m">Məqsəd</th><th class="hide-m">Qeydiyyat</th><th class="hide-m">Son giriş</th><th>Müəssisələri</th><th></th></tr></thead>
       <tbody>${l.map(r => `<tr><td><div class="cell-main">${esc(r.ad || r.email)}${r.admin ? ' <span class="badge b-amber">Admin</span>' : ''}</div><div class="cell-sub">${esc(r.email)}</div></td>
         <td class="hide-m">${esc(r.telefon || '')}</td><td class="hide-m">${esc(r.meqsed ? saheAd(r.meqsed) : '')}</td><td class="hide-m">${fd(String(r.qeydiyyat).slice(0, 10))}</td>
         <td class="hide-m">${r.son_giris ? fd(String(r.son_giris).slice(0, 10)) : '—'}</td>
-        <td>${(r.firmalar || []).map(f => `<div style="display:flex;gap:8px;align-items:center;margin:2px 0"><button class="btn sm primary" data-ac="${f.id}" data-ad="${esc(f.ad)}">Aç →</button><span>${esc(f.ad)}</span><span class="muted" style="font-size:12px">${rolA[f.rol] || f.rol}</span></div>`).join('') || '<span class="muted">—</span>'}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Tapılmadı</td></tr>'}</tbody></table></div>`;
+        <td>${(r.firmalar || []).map(f => `<div style="display:flex;gap:8px;align-items:center;margin:2px 0"><button class="btn sm primary" data-ac="${f.id}" data-ad="${esc(f.ad)}">Aç →</button><span>${esc(f.ad)}</span><span class="muted" style="font-size:12px">${rolA[f.rol] || f.rol}</span></div>`).join('') || '<span class="muted">—</span>'}</td>
+        <td>${r.user_id !== S.user.id ? `<button class="btn sm danger" data-isil="${r.user_id}">Sil</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Tapılmadı</td></tr>'}</tbody></table></div>`;
     $$('[data-ac]').forEach(b => b.onclick = () => { b.disabled = true; adminFirmaAc(+b.dataset.ac, b.dataset.ad); });
+    $$('[data-isil]').forEach(b => b.onclick = () => {
+      const r = rows.find(x => x.user_id === b.dataset.isil), fl = r.firmalar || [];
+      const m = modal('İstifadəçini sil', `<p style="margin-top:0">Hesab silinəcək: <b>${esc(r.email)}</b>${r.ad ? ` (${esc(r.ad)})` : ''}. Bu şəxs bir daha bu e-poçt və şifrə ilə daxil ola bilməyəcək — eyni e-poçtla yenidən qeydiyyatdan keçə bilər.</p>
+        ${fl.length ? `<div style="font-size:13.5px;margin-bottom:8px">Bağlı olduğu müəssisələr: ${fl.map(f => `<b>${esc(f.ad)}</b> (${rolA[f.rol] || f.rol})`).join(', ')}</div>
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:13.5px"><input type="checkbox" id="fsil"> <span>Yalnız bu şəxsin olan müəssisələri də <b>bütün məlumatları ilə</b> sil (başqa üzvü olan müəssisələrə toxunulmur)</span></label>` : ''}
+        <div class="banner b-red-bg" style="margin-top:12px;font-size:13px">Bu əməliyyat geri qaytarılmır.</div>`,
+        `<button class="btn" data-close>Ləğv et</button><button class="btn danger" id="silok">Hesabı sil</button>`);
+      $('#silok', m).onclick = async () => { const fs = $('#fsil', m) && $('#fsil', m).checked;
+        if (!confirm(`${r.email} ${fs ? 'və onun müəssisələri ' : ''}həmişəlik silinsin?`)) return;
+        $('#silok', m).disabled = true;
+        try { const n = await q(sb.rpc('admin_istifadeci_sil', { u: r.user_id, firmalar_da: !!fs })); closeModal(); toast(`${r.email} silindi${n ? ` · ${n} müəssisə silindi` : ''}`); pageAdminIst(); }
+        catch (er) { $('#silok', m).disabled = false; fail(er); } };
+    });
   };
   $('#axtar').oninput = draw; draw();
 }
@@ -4558,7 +4572,11 @@ async function pageAdmin(params) {
         <div class="field"><label class="f">Qeyd (yalnız siz görürsünüz)</label><input class="in" name="q" value="${esc(r.admin_qeyd || '')}" placeholder="məs. 3 ay ödəyib, kartla"></div></form>
         <h4 style="margin:12px 0 6px">Ödənişlər</h4>${ro.length ? `<table class="t"><tbody>${ro.map(o => `<tr><td>${fd(o.tarix)}</td><td class="n">${fmt(o.mebleg)} ₼</td><td>${o.aylar} ay</td><td class="muted">${esc(o.qeyd || '')}</td><td class="n"><button class="btn sm danger" data-os="${o.id}">Sil</button></td></tr>`).join('')}</tbody></table>` : '<div class="muted">Hələ ödəniş yoxdur</div>'}
         ${num(r.satis_sayi) === 0 ? `<div class="banner b-amber-bg" style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:10px">Bu dükan boşdur — tanıtım üçün nümunə məlumatla doldurmaq olar.<button class="btn sm" id="demo">Demo məlumatla doldur</button></div>` : ''}`,
-        `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`, true);
+        `<button class="btn danger" id="fsilbtn" style="margin-right:auto">Müəssisəni sil</button><button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`, true);
+      $('#fsilbtn', md).onclick = async () => {
+        const yaz = prompt(`"${r.ad}" müəssisəsi BÜTÜN məlumatları ilə (satışlar, qaimələr, ödənişlər, istifadəçi bağlantıları) həmişəlik silinəcək. Təsdiq üçün müəssisənin adını yazın:`);
+        if (yaz == null) return; if (yaz.trim() !== r.ad.trim()) return toast('Ad düz yazılmayıb — silinmədi');
+        try { await q(sb.rpc('admin_firma_sil', { m: r.id })); closeModal(); toast(`${r.ad} silindi`); pageAdmin(new URLSearchParams()); } catch (er) { fail(er); } };
       $$('[data-os]', md).forEach(x => x.onclick = async () => { if (!confirm('Bu ödəniş qeydi silinsin? (bitmə tarixi dəyişmir)')) return;
         try { await q(sb.from('abune_odenisleri').delete().eq('id', +x.dataset.os)); closeModal(); pageAdmin(); } catch (er) { fail(er); } });
       if ($('#demo', md)) $('#demo', md).onclick = async () => { if (!confirm(`"${r.ad}" dükanı 10 məhsul, 30 müştəri, ~45 satış, ödəniş və xərclərlə doldurulsun?`)) return;
