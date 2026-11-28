@@ -335,7 +335,7 @@ function shell(active, title, sub, tools, body) {
   const navA = (S.rol === 'kuryer' ? NAV.filter(n => n[0] === 'yigim') : NAV).map(([k, t, i]) => `<a href="#/${k}" class="${active === k ? 'active' : ''}">${ico(i)}${t}</a>`).join('');
   app.innerHTML = `<div class="shell">
    <aside class="side"><div class="logo">${LOGO}<div><span>${esc(CFG.FIRMA_ADI)}</span><small>${S.magaza ? esc(S.magaza.ad) : S.admin ? 'Admin' : ''}</small></div></div>
-    ${S.coxFirma && S.firmalar.length > 1 && !muhFirma() ? `<div class="firma-sec"><select id="fsec" title="Firmanı dəyiş">${S.firmalar.map(x => `<option value="${x.id}" ${S.magaza && x.id === S.magaza.id ? 'selected' : ''}>${esc(x.ad)}</option>`).join('')}</select></div>` : ''}
+    ${S.coxFirma && S.firmalar.length > 1 && !S.adminBaxir ? `<div class="firma-sec"><select id="fsec" title="Firmanı dəyiş">${S.firmalar.map(x => `<option value="${x.id}" ${S.magaza && x.id === S.magaza.id ? 'selected' : ''}>${esc(x.ad)}</option>`).join('')}</select></div>` : ''}
     <nav>${S.coxFirma || (!S.magaza && !S.admin) ? `<a href="#/firmalar" class="${active === 'firmalar' ? 'active' : ''}">${ico('bina')}Müəssisələr</a>` : ''}${S.rol === 'kuryer' ? navA : ''}${S.admin ? `<a href="#/admin" class="${active === 'admin' ? 'active' : ''}">${ico('panel')}Admin panel</a>${S.magaza ? `<div class="sec">${muhFirma() ? 'Firma' : 'Dükan'}</div>` : ''}` : ''}${S.magaza && S.rol !== 'kuryer' ? navBolmeler(active) : ''}</nav>
     <div class="who"><b>${esc(S.ad)}</b>${esc(S.user.email)}<br><span style="font-size:11.5px;opacity:.8">${S.rol === 'sahibkar' ? 'Direktor · yalnız baxış' : S.rol === 'kuryer' ? 'Kuryer' : ''}</span><br><button id="out">Çıxış</button></div></aside>
    <div class="mobile-bar"><button id="geri" class="mb-geri" ${active === 'menyu' || (S.rol === 'kuryer' && active === 'yigim') ? 'style="visibility:hidden"' : ''}>‹ Geri</button><b ${S.coxFirma ? 'id="mbfirma" style="cursor:pointer"' : ''}>${LOGO}${esc(firmaAdi())}${S.coxFirma ? ' ▾' : ''}</b><button id="out2">Çıxış</button></div>
@@ -427,11 +427,7 @@ async function pageFirmalar() {
     <div class="fk-alt">${abune(x)}<span class="btn sm ${x.secili ? '' : 'primary'}">${x.secili ? 'Davam et' : 'Aç'} →</span></div></div>`;
   const cem = k => list.reduce((a, x) => a + num(x[k]), 0);
   $('.topbar .sub').textContent = list.length ? `${list.length} müəssisə` : '';
-  $('#page').innerHTML = list.length ? `${list.length > 1 ? `<div class="grid kpis" style="margin-bottom:16px">
-      <div class="card kpi"><div class="lbl">Ümumi qalıq borc</div><div class="val">${man(cem('borc'))}</div><div class="cmp">${fmt(cem('musteri'))} müştəri</div></div>
-      <div class="card kpi"><div class="lbl">Gecikən borc</div><div class="val neg">${man(cem('gecikmis_borc'))}</div><div class="cmp">${fmt(cem('gecikan'))} müştəri</div></div>
-      <div class="card kpi"><div class="lbl">Bu ay yığılıb</div><div class="val">${man(cem('bu_ay'))}</div><div class="cmp">bütün firmalar</div></div>
-      <div class="card kpi"><div class="lbl">Bu gün yığılıb</div><div class="val">${man(cem('bu_gun'))}</div><div class="cmp">${fd(today())}</div></div></div>` : ''}
+  $('#page').innerHTML = list.length ? `
     <div class="firma-grid">${list.map(kart).join('')}</div>`
     : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Hələ müəssisəniz yoxdur</div>
        <div class="muted" style="margin-bottom:14px">"Yeni müəssisə" ilə öz müəssisənizi yaradın (${esc(S.sistem.sinaq_gun || '14')} gün pulsuz, sonra abunə). Başqa müəssisədə işləyirsinizsə, onun verdiyi dəvət kodu ilə qoşulma sorğusu göndərin.</div>
