@@ -2265,14 +2265,13 @@ function evezIdxal() {
 const AY_QISA = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
 const ayYazi = a => `${AY_QISA[+a.slice(5, 7) - 1]} ${a.slice(0, 4)}`;
 async function pageCedvel(params) {
-  const ay = (params.get('ay') || today().slice(0, 7)).slice(0, 7), f = params.get('f') || 'qaliq', w = canWrite();
+  const ay = (params.get('ay') || today().slice(0, 7)).slice(0, 7), f = 'odenen', w = canWrite();
   const ayB = ay + '-01', ayS = ayinSonu(ayB);
   const aylar = Array.from({ length: 24 }, (_, i) => { const d = new Date(today().slice(0, 7) + '-01T00:00:00'); d.setMonth(d.getMonth() + 1 - i); return iso(d).slice(0, 7); });
   shell('cedvel', 'Əvəzləşmə', 'Gələn qaimələrin aylar üzrə ödənişi', `<select class="in" id="cay" style="width:auto">${aylar.map(a => `<option value="${a}" ${a === ay ? 'selected' : ''}>${ayYazi(a)}</option>`).join('')}</select>
-    ${w ? `<button class="btn" id="code2">₼ Ödəniş et</button>` : ''}<button class="btn primary" id="cgot">${ico('down')}Əvəzləşən qaimələri götür</button>`);
+    <button class="btn primary" id="cgot">${ico('down')}Əvəzləşən qaimələri götür</button>`);
   const go = (k, v) => { const p = new URLSearchParams(params); p.set(k, v); location.hash = '#/cedvel?' + p; };
   $('#cay').onchange = e => go('ay', e.target.value);
-  if ($('#code2')) $('#code2').onclick = () => topluOdenis('gelen');
   const [qm, od] = await Promise.all([
     all(() => sb.from('qaimeler').select('id,voen,kontragent,seriya,nomre,tarix,esas,edv,edvsiz').eq('istiqamet', 'gelen').lte('tarix', ayS).order('tarix').order('id')),
     all(() => sb.from('v_qaime_odenisleri').select('id,qaime_id,tarix,mebleg,edv,qeyd').eq('istiqamet', 'gelen').order('tarix').order('id'))]);
@@ -2294,11 +2293,11 @@ async function pageCedvel(params) {
     <td class="n"><b class="${x.qE + x.qD > 0.004 ? 'neg' : ''}">${v(x.qE + x.qD) || '0'}</b></td><td class="no-print"><button class="btn sm" data-tar="${x.id}" title="Ödəniş tarixçəsi">Tarixçə</button></td></tr>`;
   const ciz = () => {
     const l = filtrli(), S_ = k => r2(l.reduce((a, x) => a + x[k], 0));
-    $('#page').innerHTML = `<div class="ced-ust"><div class="seg" id="cf">${[['qaliq', 'Qalığı olanlar'], ['odenen', `${ayYazi(ay)}-da ödənilənlər`], ['hamisi', 'Hamısı']].map(([k, t]) => `<button data-f="${k}" class="${f === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+    $('#page').innerHTML = `<div class="ced-ust"><b>${ayYazi(ay)}-da ödənilmiş qaimələr</b>
         <input class="in" id="cax" placeholder="Axtar: kontragent, VÖEN, nömrə…" value="${esc(axtar)}" style="max-width:280px"></div>
       <div class="tbl-wrap"><table class="t ced2" data-flt="0"><thead><tr><th>Tarix</th><th>Qaimə</th><th>Kontragent</th><th class="n">Qaimənin məbləği</th><th class="n">Əvvəl ödənilib</th>
           <th class="n ay">${ayYazi(ay)}<br><small>əsas</small></th><th class="n ay">${ayYazi(ay)}<br><small>ƏDV</small></th><th class="n">Qalıq</th><th class="no-print"></th></tr></thead>
-        <tbody>${l.slice(0, goster).map(setir).join('') || `<tr><td colspan="10" class="empty">Qaimə yoxdur</td></tr>`}</tbody>
+        <tbody>${l.slice(0, goster).map(setir).join('') || `<tr><td colspan="9" class="empty">Bu ayda ödənilmiş qaimə yoxdur</td></tr>`}</tbody>
         <tfoot><tr><td colspan="3">Cəmi — ${l.length} qaimə</td><td class="n">${fmt(S_('E') + S_('D'), 2)}</td><td class="n">${fmt(S_('pE') + S_('pD'), 2)}</td><td class="n" id="cbe">${fmt(S_('bE'), 2)}</td><td class="n" id="cbd">${fmt(S_('bD'), 2)}</td><td class="n" id="cq">${fmt(S_('qE') + S_('qD'), 2)}</td><td></td></tr></tfoot></table></div>
       ${l.length > goster ? `<div style="text-align:center;margin:10px"><button class="btn" id="cdaha">Daha çox göstər (${l.length - goster} qalıb)</button></div>` : ''}
       <div class="ced-alt" id="calt" style="display:none"></div>
