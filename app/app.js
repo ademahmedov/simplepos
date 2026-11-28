@@ -2168,11 +2168,19 @@ async function pageKontragent(params) {
   const ist = params.get('ist') === 'geden' ? 'geden' : 'gelen', ay = params.get('ay') || ayBasi(today()), son = ayinSonu(ay), f = params.get('f') || 'hamisi';
   const hesab = ist === 'gelen' ? '531 — Təchizatçılar (kreditor borcu)' : '211 — Alıcılar (debitor borcu)';
   shell('kontragent', 'Kontragentlər', `${hesab} · ${ayAdi(ay)}`, `<div class="seg" id="kist">${[['gelen', 'Təchizatçılar (531)'], ['geden', 'Alıcılar (211)']].map(([k, t]) => `<button data-i="${k}" class="${k === ist ? 'on' : ''}">${t}</button>`).join('')}</div>
-    <select class="in" id="kay" style="width:auto">${ayOpt(ay)}</select><button class="btn" onclick="window.print()">${ico('print')}PDF / Çap</button>`);
+<button class="btn" onclick="window.print()">${ico('print')}PDF / Çap</button>`);
   const go = (k, v) => { const p = new URLSearchParams(params); p.set(k, v); location.hash = '#/kontragent?' + p; };
   $$('#kist button').forEach(b => b.onclick = () => go('ist', b.dataset.i));
   ktBar('');
-  $('#kay').onchange = e => go('ay', e.target.value);
+  { // ay düymələri: son 12 ay, köhnə aylar üçün seçim
+    const pg = $('#page'), d = document.createElement('div'); d.className = 'ay-sira no-print';
+    const son12 = aylarSiyahi(12).reverse(), qisa = a => ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'İyn', 'İyl', 'Avq', 'Sen', 'Okt', 'Noy', 'Dek'][+a.slice(5, 7) - 1];
+    d.innerHTML = `<div class="seg">${son12.map((a, i) => `<button data-ay="${a}" class="${a === ay ? 'on' : ''}" title="${ayAdi(a)}">${qisa(a)}${i === 0 || a.slice(5, 7) === '01' ? ' ' + a.slice(2, 4) : ''}</button>`).join('')}</div>
+      <select class="in" id="kay" style="width:auto;padding:6px 8px"><option value="">Başqa ay…</option>${aylarSiyahi(36).slice(12).map(a => `<option value="${a}" ${a === ay ? 'selected' : ''}>${ayAdi(a)}</option>`).join('')}</select>`;
+    pg.parentElement.insertBefore(d, pg);
+    $$('[data-ay]', d).forEach(b => b.onclick = () => go('ay', b.dataset.ay));
+    $('#kay', d).onchange = e => { if (e.target.value) go('ay', e.target.value); };
+  }
   const qarsi = ist === 'gelen' ? 'geden' : 'gelen';
   const [qm0, od, qq] = await Promise.all([all(() => sb.from('qaimeler').select('id,voen,kontragent,tarix,esas,edv,edvsiz,qaytarma').eq('istiqamet', ist).lte('tarix', son).order('tarix').order('id')),
     all(() => sb.from('v_qaime_odenisleri').select('qaime_id,tarix,mebleg,voen').eq('istiqamet', ist).lte('tarix', son).order('id')),
@@ -2197,11 +2205,33 @@ async function pageKontragent(params) {
     <div class="ced-ust no-print"><div class="seg" id="kf">${[['hamisi', 'Hamısı'], ['borc', 'Yalnız borcu qalanlar']].map(([k, t]) => `<button data-f="${k}" class="${k === f ? 'on' : ''}">${t}</button>`).join('')}</div>
       <span class="muted" style="font-size:13px">${L.length} kontragent</span></div>
     ${L.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>№</th><th>VÖEN</th><th>Kontragent</th><th class="n">Əvvələ qalıq</th><th class="n">${ist === 'gelen' ? 'Bu ay gələn qaimələr' : 'Bu ay gedən qaimələr'}</th>${varQay ? '<th class="n">Qaytarılan</th>' : ''}<th class="n">${ist === 'gelen' ? 'Bu ay ödənilən' : 'Bu ay alınan'}</th><th class="n">Yekun borc</th></tr></thead>
-      <tbody>${L.map((o, i) => `<tr><td class="muted">${i + 1}</td><td class="muted">${esc(o.voen)}</td><td>${esc(qisaAd(o.ad))}</td><td class="n">${v(o.ilk)}</td><td class="n">${v(o.gel)}</td>${varQay ? `<td class="n">${v(o.qay)}</td>` : ''}<td class="n">${v(o.od)}</td><td class="n"><b class="${o.son > 0.004 ? 'neg' : ''}">${v(o.son)}</b></td></tr>`).join('')}</tbody>
+      <tbody>${L.map((o, i) => `<tr class="click" data-kv="${esc(o.voen)}"><td class="muted">${i + 1}</td><td class="muted">${esc(o.voen)}</td><td>${esc(qisaAd(o.ad))}</td><td class="n">${v(o.ilk)}</td><td class="n">${v(o.gel)}</td>${varQay ? `<td class="n">${v(o.qay)}</td>` : ''}<td class="n">${v(o.od)}</td><td class="n"><b class="${o.son > 0.004 ? 'neg' : ''}">${v(o.son)}</b></td></tr>`).join('')}</tbody>
       <tfoot><tr><td></td><td></td><td>Cəmi</td><td class="n">${fmt(S_('ilk'), 2)}</td><td class="n">${fmt(S_('gel'), 2)}</td>${varQay ? `<td class="n">${fmt(S_('qay'), 2)}</td>` : ''}<td class="n">${fmt(S_('od'), 2)}</td><td class="n">${fmt(S_('son'), 2)}</td></tr></tfoot></table></div>
       <p class="muted no-print" style="font-size:12.5px">Yekun borc = əvvələ qalıq + bu ay ${ist === 'gelen' ? 'gələn' : 'gedən'} qaimələr${varQay ? ' − qaytarılan' : ''} − bu ay ${ist === 'gelen' ? 'ödənilən' : 'alınan'}. ${ist === 'gelen' ? 'Ödənişlər "Əvəzləşmə" bölməsindən götürülür.' : ''} Mənfi rəqəm artıq ödənişi (avansı) göstərir.</p>`
       : `<div class="card empty">${ist === 'gelen' ? 'Gələn qaimə yoxdur — "Vergidən qaimə yüklə" ilə yükləyin.' : 'Gedən qaimə yoxdur.'}</div>`}`;
   $$('#kf button').forEach(b => b.onclick = () => go('f', b.dataset.f));
+  $$('[data-kv]').forEach(tr => tr.onclick = () => { const o = L.find(z => z.voen === tr.dataset.kv); kontragentAyAy(ist, o.voen, o.ad, ay); });
+}
+// Bir kontragentin ay-ay hərəkəti: hər qaimə öz ayında
+async function kontragentAyAy(ist, voen, ad, secAy) {
+  const qarsi = ist === 'gelen' ? 'geden' : 'gelen', V = voen === '—' ? null : voen;
+  const filt = (t, i) => { let x = sb.from(t).select('*').eq('istiqamet', i); return V ? x.eq('voen', V) : x.is('voen', null); };
+  const [qm0, od, qq] = await Promise.all([all(() => filt('qaimeler', ist).order('tarix').order('id')), all(() => filt('v_qaime_odenisleri', ist).order('id')),
+    all(() => filt('qaimeler', qarsi).eq('qaytarma', true).order('id'))]);
+  const qm = qm0.filter(x => !x.qaytarma), M = new Map(), c = x => num(x.esas) + num(x.edv) + num(x.edvsiz);
+  const ayX = t => String(t).slice(0, 7) + '-01', al = a => { let o = M.get(a); if (!o) M.set(a, o = { ay: a, say: 0, gel: 0, qay: 0, od: 0 }); return o; };
+  qm.forEach(x => { const o = al(ayX(x.tarix)); o.say++; o.gel += c(x); });
+  qq.forEach(x => { al(ayX(x.tarix)).qay += c(x); });
+  od.forEach(p => { al(ayX(p.tarix)).od += num(p.mebleg); });
+  const aylar = [...M.keys()].sort(); if (!aylar.length) return toast('Hərəkət yoxdur');
+  // boş aylar da görünsün
+  const tam = []; for (let d = new Date(aylar[0] + 'T00:00:00'); iso(d) <= aylar[aylar.length - 1]; d.setMonth(d.getMonth() + 1)) tam.push(iso(d).slice(0, 7) + '-01');
+  let q0 = 0; const R = tam.map(a => { const o = M.get(a) || { ay: a, say: 0, gel: 0, qay: 0, od: 0 }; const r = { ...o, ilk: r2(q0) }; q0 = r2(q0 + o.gel - o.qay - o.od); r.son = q0; return r; });
+  const varQ = R.some(r => r.qay > 0.004), v = n => Math.abs(n) < 0.005 ? '—' : fmt(n, 2), T = k => r2(R.reduce((s, r) => s + r[k], 0));
+  modal(`${esc(qisaAd(ad))} <span class="muted" style="font-weight:400;font-size:14px">· ${esc(voen)} · ${ist === 'gelen' ? '531' : '211'}</span>`, `<div class="tbl-wrap"><table class="t" data-flt="0"><thead><tr><th>Ay</th><th class="n">Qaimə</th><th class="n">Əvvələ qalıq</th><th class="n">${ist === 'gelen' ? 'Gələn qaimələr' : 'Gedən qaimələr'}</th>${varQ ? '<th class="n">Qaytarılan</th>' : ''}<th class="n">${ist === 'gelen' ? 'Ödənilən' : 'Alınan'}</th><th class="n">Son qalıq</th></tr></thead>
+    <tbody>${R.map(r => `<tr style="${r.ay === secAy ? 'background:#fdf3df;font-weight:600' : ''}"><td class="nw">${ayAdi(r.ay)}</td><td class="n">${r.say || '—'}</td><td class="n">${v(r.ilk)}</td><td class="n">${v(r.gel)}</td>${varQ ? `<td class="n">${v(r.qay)}</td>` : ''}<td class="n">${v(r.od)}</td><td class="n"><b class="${r.son > 0.004 ? 'neg' : ''}">${v(r.son)}</b></td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>Cəmi</td><td class="n">${T('say')}</td><td></td><td class="n">${fmt(T('gel'), 2)}</td>${varQ ? `<td class="n">${fmt(T('qay'), 2)}</td>` : ''}<td class="n">${fmt(T('od'), 2)}</td><td class="n"><b>${fmt(q0, 2)}</b></td></tr></tfoot></table></div>`,
+    `<button class="btn" data-close>Bağla</button>`, true);
 }
 function kontragentForm(x) {
   const m = modal(x ? 'Kontragenti düzəlt' : 'Yeni kontragent', `<form id="kf">

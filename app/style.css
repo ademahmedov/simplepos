@@ -661,3 +661,5 @@ body.nohes button[onclick*="print"], body.nohes [data-x] { display: none !import
 .btn.danger-f{background:var(--red,#c0392b);border-color:var(--red,#c0392b);color:#fff}
 
 .ust-seg{display:inline-flex;margin:0 0 16px}
+
+.ay-sira{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}.ay-sira .seg{flex-wrap:wrap}
