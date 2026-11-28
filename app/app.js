@@ -1436,8 +1436,33 @@ async function topluOdenis(ist, voen0) {
       <div class="field"><label class="f">Bank hesabı</label><select class="in" name="h"><option value="">— seçilməyib —</option>${bh.filter(h => h.aktiv !== false).map(h => `<option value="${h.id}">${esc(h.bank)}${h.hesab_no ? ' · ' + esc(h.hesab_no.slice(-4)) : ''}</option>`).join('')}</select></div>
       <div class="field"><label class="f">Qeyd</label><input class="in" name="q" placeholder="məs. ödəniş tapşırığı №"></div></div>
     <div id="tlist"></div></form>`,
-    `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="tok">Ödənişi yaz</button>`, true);
+    `<button class="btn" id="tbpdf" style="margin-right:0">${ico('down')}Bank üçün siyahı (PDF)</button><button class="btn" id="tbxls" style="margin-right:auto">Excel</button><button class="btn" data-close>Ləğv et</button><button class="btn primary" id="tok">Ödənişi yaz</button>`, true);
   const f = $('#tf', m); let secim = new Set(), list = [], plan = [];
+  const elave = async tip => {
+    paylas(); const P = plan.filter(p => p.a > 0); if (!P.length) return toast('Ödəniləcək qaimə seçilməyib');
+    const A = await ayarlar(), k = list[0], bizAd = A.firma_adi || firmaAdi(), bizV = A.firma_voen || '';
+    const sat = P.map((p, i) => [i + 1, p.x.seriya || '', p.x.nomre || '', fd(p.x.tarix), r2(num(p.x.cem)), p.a, p.e]);
+    const cA = r2(P.reduce((t, p) => t + p.a, 0)), cE = r2(P.reduce((t, p) => t + p.e, 0));
+    const tey = `${P.length} qaimə üzrə ödəniş (${P.slice(0, 3).map(p => qaimeNo(p.x)).join(', ')}${P.length > 3 ? ' və s.' : ''}), siyahı əlavədədir`;
+    const bas = ['№', 'Seriya', 'Nömrə', 'Qaimə tarixi', 'Qaimənin məbləği', 'Ödənilən məbləğ', 'o cümlədən ƏDV'];
+    const fayl = `Qaimələr - ${qisaAd(k.kontragent)} - ${f.t.value}`.replace(/[\\/:*?"<>|]/g, '');
+    if (tip === 'xls') {
+      const blob = xlsxYarat([{ ad: 'Qaimələr', rows: [[`Ödəyici: ${bizAd}${bizV ? ', VÖEN ' + bizV : ''}`], [`Alan: ${k.kontragent || ''}, VÖEN ${k.voen || ''}`], [`Ödəniş tarixi: ${fd(f.t.value)}`, '', '', '', '', `Məbləğ: ${fmt(cA, 2)} ₼`], [], bas, ...sat, ['', '', '', 'Cəmi', r2(P.reduce((t, p) => t + num(p.x.cem), 0)), cA, cE]] }]);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fayl + '.xlsx'; document.body.appendChild(a); a.click(); a.remove(); return toast('Excel faylı yükləndi');
+    }
+    const w = window.open('', '_blank'); if (!w) return toast('Brauzer yeni pəncərəni bloklayıb — icazə verin', 5000);
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(fayl)}</title><style>body{font:13px/1.45 Arial,sans-serif;color:#111;margin:28px}h2{font-size:16px;text-align:center;margin:0 0 16px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #444;padding:5px 7px}th{background:#eee;font-size:12px}td.n,th.n{text-align:right;white-space:nowrap}.r{display:flex;justify-content:space-between;gap:20px}.imza{margin-top:40px;display:flex;justify-content:space-between}@page{size:A4;margin:14mm}</style></head><body>
+      <h2>Ödəniş tapşırığına əlavə<br><span style="font-weight:normal;font-size:13px">Ödənişin aid olduğu elektron qaimə-fakturaların siyahısı</span></h2>
+      <div class="r"><div><b>Ödəyici:</b> ${esc(bizAd)}${bizV ? '<br><b>VÖEN:</b> ' + esc(bizV) : ''}</div><div style="text-align:right"><b>Ödəniş tarixi:</b> ${fd(f.t.value)}<br><b>Ödəniş məbləği:</b> ${fmt(cA, 2)} ₼</div></div>
+      <div style="margin-top:8px"><b>Alan:</b> ${esc(k.kontragent || '')}<br><b>VÖEN:</b> ${esc(k.voen || '')}</div>
+      <table><thead><tr>${bas.map((b, i) => `<th class="${i > 3 ? 'n' : ''}">${b}</th>`).join('')}</tr></thead><tbody>${sat.map(r => `<tr><td>${r[0]}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${r[3]}</td><td class="n">${fmt(r[4], 2)}</td><td class="n"><b>${fmt(r[5], 2)}</b></td><td class="n">${fmt(r[6], 2)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="5"><b>Cəmi: ${P.length} qaimə</b></td><td class="n"><b>${fmt(cA, 2)}</b></td><td class="n"><b>${fmt(cE, 2)}</b></td></tr></tfoot></table>
+      <div class="imza"><div>Direktor: ______________ ${esc(A.direktor || '')}</div><div>M.Y.</div></div>
+      <script>onload=()=>setTimeout(()=>print(),200)<\/script></body></html>`);
+    w.document.close();
+    try { await navigator.clipboard.writeText(tey); toast('Siyahı açıldı — "PDF kimi saxla" seçin. Təyinat mətni kopyalandı', 6000); } catch (e) { toast('Siyahı açıldı — "PDF kimi saxla" seçin', 5000); }
+  };
+  $('#tbpdf', m).onclick = () => elave('pdf'); $('#tbxls', m).onclick = () => elave('xls');
   const yukle = () => { list = qm.filter(x => x.voen === f.k.value); secim = new Set(list.map(x => x.id)); f.m.value = r2(list.reduce((a, x) => a + x.qal, 0)); paylas(); };
   const paylas = () => {
     let qalan = r2(idxalEded(f.m.value) || 0); plan = [];
