@@ -131,6 +131,32 @@ async function sistemOxu() {
   try { const r = await q(sb.from('sistem').select('*')); S.sistem = Object.fromEntries(r.map(x => [x.acar, x.deyer || ''])); } catch (_) {}
   return S.sistem;
 }
+// Qeydiyyatdan sonra e-poçta gələn kodla təsdiq
+function kodView(email, msg) {
+  app.innerHTML = `<div class="login-wrap"><form class="login-card" id="kf">
+    <div class="login-logo">${LOGO}</div><h1>${esc(CFG.FIRMA_ADI)}</h1><p>E-poçtun təsdiqi</p>
+    <div class="muted" style="font-size:13.5px;line-height:1.55;margin:6px 0 14px"><b>${esc(email)}</b> ünvanına təsdiq kodu göndərildi. Kodu aşağıya yazın (məktub görünmürsə "Spam" qovluğuna baxın).</div>
+    <div id="kmsg">${msg || ''}</div>
+    <div class="field"><label class="f">Təsdiq kodu</label><input class="in" name="t" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required style="font-size:22px;letter-spacing:6px;text-align:center;font-weight:700" placeholder="••••••"></div>
+    <button class="btn primary" id="kok" style="width:100%;justify-content:center;padding:11px">Təsdiqlə və daxil ol</button>
+    <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:13px"><a href="#" id="kyen">Kodu yenidən göndər</a><a href="#" id="kgeri">← Girişə qayıt</a></div>
+    <p class="muted" style="font-size:12px;margin:12px 0 0;text-align:center">Məktubda kod əvəzinə link varsa, linkə basmaq da kifayətdir — sonra burada daxil olun.</p></form></div>`;
+  const f = $('#kf'), xeta = t => { $('#kmsg').innerHTML = `<div class="banner b-red-bg">${esc(t)}</div>`; }, ok = t => { $('#kmsg').innerHTML = `<div class="banner" style="background:#e8f5ec;color:#1e6b3a">${esc(t)}</div>`; };
+  setTimeout(() => f.t.focus(), 50);
+  f.onsubmit = async e => {
+    e.preventDefault(); const t = f.t.value.replace(/\s/g, ''); if (t.length < 6) return xeta('Kodu tam yazın.');
+    $('#kok').disabled = true;
+    let { error } = await sb.auth.verifyOtp({ email, token: t, type: 'signup' });
+    if (error) ({ error } = await sb.auth.verifyOtp({ email, token: t, type: 'email' }));
+    $('#kok').disabled = false;
+    if (error) return xeta(/expired|invalid/i.test(error.message || '') ? 'Kod yanlışdır və ya vaxtı keçib. "Kodu yenidən göndər" basın.' : authXeta(error));
+    history.replaceState(null, '', SAYT()); start();
+  };
+  let gozle = 0;
+  $('#kyen').onclick = async e => { e.preventDefault(); if (Date.now() < gozle) return xeta(`Yenidən göndərmək üçün ${Math.ceil((gozle - Date.now()) / 1000)} saniyə gözləyin.`);
+    const { error } = await sb.auth.resend({ type: 'signup', email }); if (error) return xeta(authXeta(error)); gozle = Date.now() + 60000; ok('Yeni kod göndərildi.'); };
+  $('#kgeri').onclick = e => { e.preventDefault(); loginView(''); };
+}
 function loginView(msg, rejim) {
   rejim = rejim || 'giris';
   const sinaq = S.sistem.sinaq_gun || '14';
@@ -216,7 +242,7 @@ function loginView(msg, rejim) {
       if (error) return err(authXeta(error));
       if (r && r.session) return start();
       if (r && r.user && Array.isArray(r.user.identities) && r.user.identities.length === 0) return err('Bu e-poçt artıq qeydiyyatdan keçib.');
-      ok('Qeydiyyat alındı. E-poçtunuza təsdiq linki göndərildi — linkə basıb sonra daxil olun.');
+      kodView(f.e.value.trim());
     };
   } else if (rejim === 'unut') {
     f.onsubmit = async e => {
@@ -241,6 +267,7 @@ function loginView(msg, rejim) {
       e.preventDefault(); btn().disabled = true;
       const { error } = await sb.auth.signInWithPassword({ email: f.e.value.trim(), password: f.p.value });
       btn().disabled = false;
+      if (error && /Email not confirmed/i.test(error.message || '')) { const em = f.e.value.trim(); await sb.auth.resend({ type: 'signup', email: em }); return kodView(em, '<div class="banner b-amber-bg">E-poçtunuz hələ təsdiqlənməyib — yeni kod göndərdik.</div>'); }
       if (error) return err(authXeta(error));
       try { await sb.rpc('admin_cix'); } catch (_) {}   // admin həmişə admin paneldən başlasın
       history.replaceState(null, '', SAYT()); start();
