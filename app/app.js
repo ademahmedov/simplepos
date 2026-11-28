@@ -1443,12 +1443,13 @@ async function qaimeIdxal(ist) {
       { k: 'yekun', ad: 'Yekun məbləğ', tip: 'eded', ox: ['yekunməbləğ', 'yekun', 'cəmiməbləğ', 'cəmi'] },
       { k: 'status', ad: 'Status', ox: ['vəziyyəti', 'status', 'vəziyyət', 'qaiməninstatusu'] },
       { k: 'qeyd', ad: 'Əsas qeyd', ox: ['əsasqeyd', 'qeyd', 'açıqlama'] }],
+    xam: true,
     numune: [['1300123451', 'Nümunə MMC', 'MT2611', '0012345', '05-11-2026', 1000, 180, 1000, 1180, 'Təsdiqləndi', 'Material'], ['9876543211', 'Test ASC', 'MT2611', '0012399', '12-11-2026', 2500, 450, 2600, 3050, 'Təsdiqləndi', '']],
     yaz: async (rows, ir) => {
-      const var_ = await all(() => sb.from('qaimeler').select('id,voen,seriya,nomre,status,esas,edv,edvsiz,kontragent,tarix').eq('istiqamet', ist).order('id'));
+      const var_ = await all(() => sb.from('qaimeler').select('id,voen,seriya,nomre,status,esas,edv,edvsiz,kontragent,tarix,xam').eq('istiqamet', ist).order('id'));
       const acar = x => [x.voen || '', azLow(x.seriya || ''), azLow(String(x.nomre || '')).replace(/^0+/, '')].join('|');
       const ix = new Map(var_.map(x => [acar(x), x])), gor = new Set();
-      const yeni = [], yen = [], st = []; let buraxildi = 0, eyni = 0;
+      const yeni = [], yen = [], st = [], xamYaz = []; let buraxildi = 0, eyni = 0;
       rows.forEach(r => {
         // məbləğlər: yekun = əsas (ƏDV-yə cəlb edilən) + ƏDV + qalan hissə (cəlb edilməyən, azad, 0%, aksiz, yol vergisi)
         const edv = r2(r.edv || 0); let esas = r2(r.esas || 0);
@@ -1457,23 +1458,27 @@ async function qaimeIdxal(ist) {
         const edvsiz = Math.max(0, r2(yekun - esas - edv));
         if (esas + edv > yekun + 0.01) esas = Math.max(0, r2(yekun - edv));
         const v = { istiqamet: ist, voen: String(r.voen).replace(/\D/g, '') || r.voen, kontragent: r.kontragent, seriya: r.seriya, nomre: r.nomre, tarix: r.tarix,
-          esas, edv, edvsiz, status: r.status, qeyd: r.qeyd ? String(r.qeyd).slice(0, 500) : null };
+          esas, edv, edvsiz, status: r.status, qeyd: r.qeyd ? String(r.qeyd).slice(0, 500) : null, xam: r.__xam || null };
         const k = acar(v); if (gor.has(k)) return; gor.add(k);
         const x = ix.get(k);
         if (!x) { if (LEGV_RE.test(r.status || '')) buraxildi++; else yeni.push(v); return; }
         const stDeyisib = (r.status || '') !== (x.status || '');
         const meblegDeyisib = Math.abs(num(x.esas) - esas) > 0.005 || Math.abs(num(x.edv) - edv) > 0.005 || Math.abs(num(x.edvsiz) - edvsiz) > 0.005;
-        if (stDeyisib) st.push([x.id, { status: v.status, kohne_status: x.status, status_deyisib: new Date().toISOString(), status_bax: false, ...(meblegDeyisib ? { esas, edv, edvsiz } : {}) }]);
-        else if (meblegDeyisib) yen.push([x.id, { esas, edv, edvsiz }]);
-        else eyni++;
+        if (stDeyisib) st.push([x.id, { status: v.status, kohne_status: x.status, status_deyisib: new Date().toISOString(), status_bax: false, xam: v.xam, ...(meblegDeyisib ? { esas, edv, edvsiz } : {}) }]);
+        else if (meblegDeyisib) yen.push([x.id, { esas, edv, edvsiz, xam: v.xam }]);
+        else { eyni++; if (!x.xam && v.xam) xamYaz.push({ id: x.id, xam: v.xam }); }
       });
       const n = yeni.length + yen.length + st.length; let i = 0;
       for (const h of hisse(yeni, 500)) { await q(sb.from('qaimeler').insert(h)); i += h.length; ir(i, n); }
       for (const [id, v] of [...st, ...yen]) { await q(sb.from('qaimeler').update(v).eq('id', id)); i++; if (i % 10 === 0) ir(i, n); }
+      for (const h of hisse(xamYaz, 300)) await q(sb.rpc('qaime_xam_yaz', { j: h }));
+      const yenMebleg = yen.length;
       const k = await kontragentSaxla(rows.filter(r => !LEGV_RE.test(r.status || '')).map(r => ({ voen: String(r.voen).replace(/\D/g, '') || r.voen, ad: r.kontragent })));
-      const A2 = await ayarlar(); await ayarYaz(A2, 'son_yukleme_' + ist, new Date(Date.now() + 4 * 36e5).toISOString().slice(0, 19).replace('T', ' ')); S.cache.ayar = null;
+      const sira = []; rows.forEach(r => Object.keys(r.__xam || {}).forEach(h => { if (!sira.includes(h)) sira.push(h); }));
+      const A2 = await ayarlar(); if (sira.length) await ayarYaz(A2, 'xam_sira_' + ist, JSON.stringify(sira));
+      await ayarYaz(A2, 'son_yukleme_' + ist, new Date(Date.now() + 4 * 36e5).toISOString().slice(0, 19).replace('T', ' ')); S.cache.ayar = null;
       try { localStorage.setItem('son_yukleme_' + S.magaza.id, new Date().toLocaleString('az-AZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })); } catch (_) {}
-      return `${yeni.length} yeni qaimə əlavə olundu · ${eyni} qaimə artıq var idi${st.length ? ` · ${st.length} qaimənin statusu dəyişdi (Qaimələr bölməsində bildiriş)` : ''}${yen.length ? ` · ${yen.length} qaimənin məbləği yeniləndi` : ''}${buraxildi ? ` · ${buraxildi} passiv/ləğv qaimə buraxıldı` : ''}${k ? ` · ${k} yeni kontragent` : ''}`;
+      return `${yeni.length} yeni qaimə əlavə olundu · ${eyni} qaimə artıq var idi${st.length ? ` · ${st.length} qaimənin statusu dəyişdi (Qaimələr bölməsində bildiriş)` : ''}${yenMebleg ? ` · ${yenMebleg} qaimənin məbləği yeniləndi` : ''}${buraxildi ? ` · ${buraxildi} passiv/ləğv qaimə buraxıldı` : ''}${k ? ` · ${k} yeni kontragent` : ''}`;
     },
   });
 }
@@ -2111,11 +2116,12 @@ async function pageBugun() {
 
 /* ---------- Qaimələr (gələn + gedən bir yerdə) ---------- */
 async function pageQaime(params) {
-  const ist = params.get('ist') || '', w = canWrite();
+  const ist = params.get('ist') || '', w = canWrite(), gor = params.get('v') === 'tam' ? 'tam' : '';
   const D = dovrPanel(params, '#/qaime');
-  shell('qaime', 'Qaimələr', 'Elektron qaimə-fakturalar', `<div class="seg" id="qist">${[['', 'Hamısı'], ['gelen', 'Gələn'], ['geden', 'Gedən']].map(([k, t]) => `<button data-i="${k}" class="${ist === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+  shell('qaime', 'Qaimələr', 'Elektron qaimə-fakturalar', `<div class="seg" id="qgor">${[['', 'Sadə'], ['tam', 'e-taxes görünüşü']].map(([k, t]) => `<button data-v="${k}" class="${gor === k ? 'on' : ''}" title="${k ? 'Yüklənmiş Excel-in bütün sütunları' : 'Əsas sütunlar'}">${t}</button>`).join('')}</div><div class="seg" id="qist">${[['', 'Hamısı'], ['gelen', 'Gələn'], ['geden', 'Gedən']].map(([k, t]) => `<button data-i="${k}" class="${ist === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     ${w ? `<button class="btn" id="qy1">${ico('up')}Gələnləri yüklə</button><button class="btn" id="qy2">${ico('up')}Gedənləri yüklə</button><button class="btn" id="qyeni">${ico('plus')}Yeni qaimə</button><button class="btn primary" id="qode">₼ Ödəniş et</button>` : ''}`);
   $$('#qist button').forEach(b => b.onclick = () => { const p = new URLSearchParams(params); if (b.dataset.i) p.set('ist', b.dataset.i); else p.delete('ist'); location.hash = '#/qaime?' + p; });
+  $$('#qgor button').forEach(b => b.onclick = () => { const p = new URLSearchParams(params); if (b.dataset.v) p.set('v', b.dataset.v); else p.delete('v'); location.hash = '#/qaime?' + p; });
   if ($('#qy1')) { $('#qy1').onclick = () => qaimeIdxal('gelen'); $('#qy2').onclick = () => qaimeIdxal('geden'); $('#qyeni').onclick = () => qaimeForm(ist || 'gelen', null); $('#qode').onclick = () => topluOdenis(ist || 'gelen'); }
   const rows = await all(() => { let s = sb.from('v_qaimeler').select('*').gte('tarix', D.a).lte('tarix', D.b); if (ist) s = s.eq('istiqamet', ist); return s.order('tarix', { ascending: false }).order('id', { ascending: false }); });
   const sum = (l, k) => l.reduce((a, r) => a + num(r[k]), 0), g = rows.filter(r => r.istiqamet === 'gelen'), d = rows.filter(r => r.istiqamet === 'geden');
@@ -2132,6 +2138,20 @@ async function pageQaime(params) {
       : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Bu dövrdə qaimə yoxdur</div><div class="muted">e-taxes.gov.az-dan qaimələrin siyahısını Excel kimi yükləyib "Gələnləri yüklə" / "Gedənləri yüklə" ilə köçürün.</div></div>`}`;
   D.bagla();
   $$('[data-q]').forEach(tr => tr.onclick = () => qaimeKart(rows.find(r => r.id === +tr.dataset.q)));
+  if (gor === 'tam' && rows.length && $('#page .tbl-wrap')) {
+    const xr = await all(() => { let z = sb.from('qaimeler').select('id,xam').gte('tarix', D.a).lte('tarix', D.b); if (ist) z = z.eq('istiqamet', ist); return z.order('id'); });
+    const XM = new Map(xr.map(x => [x.id, x.xam || {}])), kol = [];
+    const Ax = await ayarlar(); let sira = []; try { sira = [...JSON.parse(Ax.xam_sira_gelen || '[]'), ...JSON.parse(Ax.xam_sira_geden || '[]')]; } catch (_) {}
+    sira.forEach(k => { if (k !== '№' && !kol.includes(k) && xr.some(x => x.xam && k in x.xam)) kol.push(k); });
+    xr.forEach(x => Object.keys(x.xam || {}).forEach(k => { if (k !== '№' && !kol.includes(k)) kol.push(k); }));
+    const say = v => typeof v === 'number' ? fmt(v, Math.abs(v % 1) > 0 ? 2 : 0) : esc(v);
+    const isNum = k => xr.some(x => x.xam && typeof x.xam[k] === 'number');
+    $$('#page .flt-bar, #page .flt-pager').forEach(x => x.remove());
+    $('#page .tbl-wrap').outerHTML = kol.length ? `<div class="tbl-wrap"><table class="t xam-t"><thead><tr>${kol.map(k => `<th class="${isNum(k) ? 'n' : ''}">${esc(k)}</th>`).join('')}<th class="n">Ödənilib</th><th class="n">Qalıq</th></tr></thead>
+      <tbody>${rows.map(r => { const x = XM.get(r.id) || {}; return `<tr class="click" data-q="${r.id}">${kol.map(k => `<td class="${typeof x[k] === 'number' ? 'n' : ''}">${x[k] == null ? '' : say(x[k])}</td>`).join('')}<td class="n">${fmt(r.odenilib, 2)}</td><td class="n"><b class="${num(r.qaliq) > 0.005 ? 'neg' : ''}">${fmt(r.qaliq, 2)}</b></td></tr>`; }).join('')}</tbody></table></div>`
+      : '<div class="card empty">Bu qaimələr bütün sütunlar saxlanmazdan əvvəl yüklənib. e-taxes faylını yenidən yükləyin — təkrar qaimə yaranmayacaq, sadəcə bütün sütunlar əlavə olunacaq.</div>';
+    $$('[data-q]').forEach(tr => tr.onclick = () => qaimeKart(rows.find(r => r.id === +tr.dataset.q)));
+  }
   $$('[data-sdb]').forEach(b => b.onclick = async () => { try { await q(sb.from('qaimeler').update({ status_bax: true }).eq('id', +b.dataset.sdb)); refresh(); } catch (er) { fail(er); } });
   if ($('#sdbax')) $('#sdbax').onclick = async () => { try { await q(sb.from('qaimeler').update({ status_bax: true }).eq('status_bax', false)); refresh(); } catch (er) { fail(er); } };
 }
@@ -4650,7 +4670,7 @@ function idxalTarix(v) {
   return 'X';
 }
 // sahələr: [{ k, ad, lazim, tip: 'metn'|'eded'|'tarix', ox: ['başlıq adları'] }]
-function idxalPencere({ basliq, izah, saheler, numune, yaz, ust }) {
+function idxalPencere({ basliq, izah, saheler, numune, yaz, ust, xam }) {
   const m = modal(basliq, `<div id="ix1">
       <p class="muted" style="margin-top:0;font-size:13.5px">${izah}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -4706,6 +4726,7 @@ function idxalPencere({ basliq, izah, saheler, numune, yaz, ust }) {
           if (sh.lazim && v == null && !er.length) er.push(`${sh.ad} boşdur`);
           o[sh.k] = v;
         });
+        if (xam) { o.__xam = {}; bas.forEach((h, hi) => { const v = r[hi]; if (h && v != null && String(v).trim() !== '') o.__xam[h] = v; }); }
         if (er.length) xer.push(`Sətir ${ri + 2}: ${er.join('; ')}`); else cedvel.push(o);
       });
       const yox = saheler.filter((sh, j) => sh.lazim && map[j] < 0);

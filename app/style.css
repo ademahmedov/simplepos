@@ -651,3 +651,4 @@ table.ced2 td.kn{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-sp
 table.ced2 tr.sel td{background:#eaf1ff}
 table.ced2 th.cb,table.ced2 td.cb{width:28px;text-align:center}
 table.ced2 td.ay{background:#f7f9fd}
+.xam-t td,.xam-t th{white-space:nowrap;font-size:12.5px}
