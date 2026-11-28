@@ -659,3 +659,5 @@ body.nohes button[onclick*="print"], body.nohes [data-x] { display: none !import
 .modal.dlg{max-width:430px;width:100%;box-shadow:0 18px 50px rgba(20,14,8,.35)}
 .dlg-t{font-size:15px;line-height:1.5;white-space:pre-line}
 .btn.danger-f{background:var(--red,#c0392b);border-color:var(--red,#c0392b);color:#fff}
+
+.ust-seg{display:inline-flex;margin:0 0 16px}

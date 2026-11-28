@@ -2150,20 +2150,27 @@ async function pageMalXidmet(params) {
   $$('#mxf button').forEach(b => b.onclick = () => { location.hash = `#/kontragent?t=nov&f=${b.dataset.f}`; });
   $$('[data-nv]').forEach(s => s.onchange = async () => { try { await kontragentNovYaz(s.dataset.nv, s.dataset.ad, s.value); toast('Yadda saxlanıldı'); refresh(); } catch (er) { fail(er); } });
 }
+// Kontragentlər: Borclar / Mal-Xidmət keçidi hər iki görünüşdə eyni yerdə — başlığın altında, solda
+function ktBar(on) {
+  const pg = $('#page'); if (!pg) return;
+  const d = document.createElement('div'); d.className = 'seg ust-seg no-print'; d.id = 'kt';
+  d.innerHTML = [['', 'Borclar (531 / 211)'], ['nov', 'Mal / Xidmət']].map(([k, t]) => `<button data-t="${k}" class="${k === on ? 'on' : ''}">${t}</button>`).join('');
+  pg.parentElement.insertBefore(d, pg);
+  $$('button', d).forEach(b => b.onclick = () => { location.hash = '#/kontragent' + (b.dataset.t ? '?t=' + b.dataset.t : ''); });
+}
 async function pageKontragent(params) {
   params = params || new URLSearchParams();
   if (params.get('t') === 'nov') {
-    shell('kontragent', 'Kontragentlər', 'Gələn qaimələr: mal və xidmət', `<div class="seg" id="kt">${[['', 'Borclar (531 / 211)'], ['nov', 'Mal / Xidmət']].map(([k, t]) => `<button data-t="${k}" class="${k === 'nov' ? 'on' : ''}">${t}</button>`).join('')}</div>`);
-    $$('#kt button').forEach(b => b.onclick = () => { location.hash = '#/kontragent' + (b.dataset.t ? '?t=' + b.dataset.t : ''); });
+    shell('kontragent', 'Kontragentlər', 'Gələn qaimələr: mal və xidmət', ''); ktBar('nov');
     return pageMalXidmet(params);
   }
   const ist = params.get('ist') === 'geden' ? 'geden' : 'gelen', ay = params.get('ay') || ayBasi(today()), son = ayinSonu(ay), f = params.get('f') || 'hamisi';
   const hesab = ist === 'gelen' ? '531 — Təchizatçılar (kreditor borcu)' : '211 — Alıcılar (debitor borcu)';
-  shell('kontragent', 'Kontragentlər', `${hesab} · ${ayAdi(ay)}`, `<div class="seg" id="kt">${[['', 'Borclar (531 / 211)'], ['nov', 'Mal / Xidmət']].map(([k, t]) => `<button data-t="${k}" class="${!k ? 'on' : ''}">${t}</button>`).join('')}</div><div class="seg" id="kist">${[['gelen', 'Təchizatçılar (531)'], ['geden', 'Alıcılar (211)']].map(([k, t]) => `<button data-i="${k}" class="${k === ist ? 'on' : ''}">${t}</button>`).join('')}</div>
+  shell('kontragent', 'Kontragentlər', `${hesab} · ${ayAdi(ay)}`, `<div class="seg" id="kist">${[['gelen', 'Təchizatçılar (531)'], ['geden', 'Alıcılar (211)']].map(([k, t]) => `<button data-i="${k}" class="${k === ist ? 'on' : ''}">${t}</button>`).join('')}</div>
     <select class="in" id="kay" style="width:auto">${ayOpt(ay)}</select><button class="btn" onclick="window.print()">${ico('print')}PDF / Çap</button>`);
   const go = (k, v) => { const p = new URLSearchParams(params); p.set(k, v); location.hash = '#/kontragent?' + p; };
   $$('#kist button').forEach(b => b.onclick = () => go('ist', b.dataset.i));
-  $$('#kt button').forEach(b => b.onclick = () => { location.hash = '#/kontragent' + (b.dataset.t ? '?t=' + b.dataset.t : ''); });
+  ktBar('');
   $('#kay').onchange = e => go('ay', e.target.value);
   const [qm, od] = await Promise.all([all(() => sb.from('qaimeler').select('id,voen,kontragent,tarix,esas,edv,edvsiz').eq('istiqamet', ist).lte('tarix', son).order('tarix').order('id')),
     all(() => sb.from('v_qaime_odenisleri').select('qaime_id,tarix,mebleg,voen').eq('istiqamet', ist).lte('tarix', son).order('id'))]);
