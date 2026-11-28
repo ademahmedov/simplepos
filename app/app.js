@@ -2165,22 +2165,21 @@ async function pageKontragent(params) {
     shell('kontragent', 'Kontragentlər', 'Gələn qaimələr: mal və xidmət', ''); ktBar('nov');
     return pageMalXidmet(params);
   }
-  const ist = params.get('ist') === 'geden' ? 'geden' : 'gelen', ay = params.get('ay') || ayBasi(today()), son = ayinSonu(ay), f = params.get('f') || 'hamisi';
+  const ist = params.get('ist') === 'geden' ? 'geden' : 'gelen', f = params.get('f') || 'hamisi';
+  // dövr: a — b (təqvimlə). Ay seçəndə ayın 1-i — sonu olur
+  const ay0 = params.get('ay') || ayBasi(today()), ay = params.get('a') || ay0, son = params.get('b') || (params.get('a') ? ayinSonu(ayBasi(params.get('a'))) : ayinSonu(ay0));
+  const tamAy = ay.slice(8) === '01' && son === ayinSonu(ay), dovrYazi = tamAy ? ayAdi(ay) : `${fd(ay)} — ${fd(son)}`;
   const hesab = ist === 'gelen' ? '531 — Təchizatçılar (kreditor borcu)' : '211 — Alıcılar (debitor borcu)';
-  shell('kontragent', 'Kontragentlər', `${hesab} · ${ayAdi(ay)}`, `<div class="seg" id="kist">${[['gelen', 'Təchizatçılar (531)'], ['geden', 'Alıcılar (211)']].map(([k, t]) => `<button data-i="${k}" class="${k === ist ? 'on' : ''}">${t}</button>`).join('')}</div>
-<button class="btn" onclick="window.print()">${ico('print')}PDF / Çap</button>`);
+  shell('kontragent', 'Kontragentlər', `${hesab} · ${dovrYazi}`, `<div class="seg" id="kist">${[['gelen', 'Təchizatçılar (531)'], ['geden', 'Alıcılar (211)']].map(([k, t]) => `<button data-i="${k}" class="${k === ist ? 'on' : ''}">${t}</button>`).join('')}</div>
+<select class="in" id="kay" style="width:auto">${tamAy ? '' : '<option value="" selected>Tarix aralığı</option>'}${ayOpt(tamAy ? ay : '')}</select>
+    <span class="dovr" style="margin:0"><input class="in" type="date" id="kda" value="${ay}"><span>—</span><input class="in" type="date" id="kdb" value="${son}"></span>
+    <button class="btn" onclick="window.print()">${ico('print')}PDF / Çap</button>`);
   const go = (k, v) => { const p = new URLSearchParams(params); p.set(k, v); location.hash = '#/kontragent?' + p; };
+  const dovr = (x, y, hansi) => { if (!x || !y) return; if (y < x) { if (hansi === 'b') x = ayBasi(y); else y = ayinSonu(ayBasi(x)); } const p = new URLSearchParams(params); p.delete('ay'); p.set('a', x); p.set('b', y); location.hash = '#/kontragent?' + p; };
+  $('#kay').onchange = e => { if (e.target.value) dovr(e.target.value, ayinSonu(e.target.value)); };
+  $('#kda').onchange = () => dovr($('#kda').value, $('#kdb').value, 'a'); $('#kdb').onchange = () => dovr($('#kda').value, $('#kdb').value, 'b');
   $$('#kist button').forEach(b => b.onclick = () => go('ist', b.dataset.i));
   ktBar('');
-  { // ay düymələri: son 12 ay, köhnə aylar üçün seçim
-    const pg = $('#page'), d = document.createElement('div'); d.className = 'ay-sira no-print';
-    const son12 = aylarSiyahi(12).reverse(), qisa = a => ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'İyn', 'İyl', 'Avq', 'Sen', 'Okt', 'Noy', 'Dek'][+a.slice(5, 7) - 1];
-    d.innerHTML = `<div class="seg">${son12.map((a, i) => `<button data-ay="${a}" class="${a === ay ? 'on' : ''}" title="${ayAdi(a)}">${qisa(a)}${i === 0 || a.slice(5, 7) === '01' ? ' ' + a.slice(2, 4) : ''}</button>`).join('')}</div>
-      <select class="in" id="kay" style="width:auto;padding:6px 8px"><option value="">Başqa ay…</option>${aylarSiyahi(36).slice(12).map(a => `<option value="${a}" ${a === ay ? 'selected' : ''}>${ayAdi(a)}</option>`).join('')}</select>`;
-    pg.parentElement.insertBefore(d, pg);
-    $$('[data-ay]', d).forEach(b => b.onclick = () => go('ay', b.dataset.ay));
-    $('#kay', d).onchange = e => { if (e.target.value) go('ay', e.target.value); };
-  }
   const qarsi = ist === 'gelen' ? 'geden' : 'gelen';
   const [qm0, od, qq] = await Promise.all([all(() => sb.from('qaimeler').select('id,voen,kontragent,tarix,esas,edv,edvsiz,qaytarma').eq('istiqamet', ist).lte('tarix', son).order('tarix').order('id')),
     all(() => sb.from('v_qaime_odenisleri').select('qaime_id,tarix,mebleg,voen').eq('istiqamet', ist).lte('tarix', son).order('id')),
@@ -2201,16 +2200,16 @@ async function pageKontragent(params) {
   const S_ = k => r2(L.reduce((s, o) => s + o[k], 0)), v = n => Math.abs(n) < 0.005 ? '—' : fmt(n, 2);
   const A = await ayarlar();
   $('#page').innerHTML = `<div class="print-only" style="margin-bottom:10px"><div style="font-size:17px;font-weight:700">${esc(A.firma_adi || S.magaza.ad)}</div>
-      <div style="font-size:14px;font-weight:600;margin-top:4px">${hesab} — ${ayAdi(ay)}</div></div>
+      <div style="font-size:14px;font-weight:600;margin-top:4px">${hesab} — ${dovrYazi}</div></div>
     <div class="ced-ust no-print"><div class="seg" id="kf">${[['hamisi', 'Hamısı'], ['borc', 'Yalnız borcu qalanlar']].map(([k, t]) => `<button data-f="${k}" class="${k === f ? 'on' : ''}">${t}</button>`).join('')}</div>
       <span class="muted" style="font-size:13px">${L.length} kontragent</span></div>
-    ${L.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>№</th><th>VÖEN</th><th>Kontragent</th><th class="n">Əvvələ qalıq</th><th class="n">${ist === 'gelen' ? 'Bu ay gələn qaimələr' : 'Bu ay gedən qaimələr'}</th>${varQay ? '<th class="n">Qaytarılan</th>' : ''}<th class="n">${ist === 'gelen' ? 'Bu ay ödənilən' : 'Bu ay alınan'}</th><th class="n">Yekun borc</th></tr></thead>
+    ${L.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>№</th><th>VÖEN</th><th>Kontragent</th><th class="n">Əvvələ qalıq</th><th class="n">${ist === 'gelen' ? 'Gələn qaimələr' : 'Gedən qaimələr'}</th>${varQay ? '<th class="n">Qaytarılan</th>' : ''}<th class="n">${ist === 'gelen' ? 'Ödənilən' : 'Alınan'}</th><th class="n">Yekun borc</th></tr></thead>
       <tbody>${L.map((o, i) => `<tr class="click" data-kv="${esc(o.voen)}"><td class="muted">${i + 1}</td><td class="muted">${esc(o.voen)}</td><td>${esc(qisaAd(o.ad))}</td><td class="n">${v(o.ilk)}</td><td class="n">${v(o.gel)}</td>${varQay ? `<td class="n">${v(o.qay)}</td>` : ''}<td class="n">${v(o.od)}</td><td class="n"><b class="${o.son > 0.004 ? 'neg' : ''}">${v(o.son)}</b></td></tr>`).join('')}</tbody>
       <tfoot><tr><td></td><td></td><td>Cəmi</td><td class="n">${fmt(S_('ilk'), 2)}</td><td class="n">${fmt(S_('gel'), 2)}</td>${varQay ? `<td class="n">${fmt(S_('qay'), 2)}</td>` : ''}<td class="n">${fmt(S_('od'), 2)}</td><td class="n">${fmt(S_('son'), 2)}</td></tr></tfoot></table></div>
-      <p class="muted no-print" style="font-size:12.5px">Yekun borc = əvvələ qalıq + bu ay ${ist === 'gelen' ? 'gələn' : 'gedən'} qaimələr${varQay ? ' − qaytarılan' : ''} − bu ay ${ist === 'gelen' ? 'ödənilən' : 'alınan'}. ${ist === 'gelen' ? 'Ödənişlər "Əvəzləşmə" bölməsindən götürülür.' : ''} Mənfi rəqəm artıq ödənişi (avansı) göstərir.</p>`
+      <p class="muted no-print" style="font-size:12.5px">Yekun borc = əvvələ qalıq + dövrdə ${ist === 'gelen' ? 'gələn' : 'gedən'} qaimələr${varQay ? ' − qaytarılan' : ''} − dövrdə ${ist === 'gelen' ? 'ödənilən' : 'alınan'}. ${ist === 'gelen' ? 'Ödənişlər "Əvəzləşmə" bölməsindən götürülür.' : ''} Mənfi rəqəm artıq ödənişi (avansı) göstərir.</p>`
       : `<div class="card empty">${ist === 'gelen' ? 'Gələn qaimə yoxdur — "Vergidən qaimə yüklə" ilə yükləyin.' : 'Gedən qaimə yoxdur.'}</div>`}`;
   $$('#kf button').forEach(b => b.onclick = () => go('f', b.dataset.f));
-  $$('[data-kv]').forEach(tr => tr.onclick = () => { const o = L.find(z => z.voen === tr.dataset.kv); kontragentAyAy(ist, o.voen, o.ad, ay); });
+  $$('[data-kv]').forEach(tr => tr.onclick = () => { const o = L.find(z => z.voen === tr.dataset.kv); kontragentAyAy(ist, o.voen, o.ad, ayBasi(ay)); });
 }
 // Bir kontragentin ay-ay hərəkəti: hər qaimə öz ayında
 async function kontragentAyAy(ist, voen, ad, secAy) {
