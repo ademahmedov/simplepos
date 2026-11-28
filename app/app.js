@@ -113,6 +113,25 @@ function modal(title, body, foot, wide) {
   $$('[data-close]', root).forEach(b => b.onclick = closeModal);
   return $('.modal', root);
 }
+// Sayt daxilində təsdiq / sual pəncərəsi (brauzerin confirm/prompt əvəzinə)
+function sorus(msg, o = {}) {
+  return new Promise(res => {
+    let root = document.getElementById('dlg-root'); if (!root) { root = document.createElement('div'); root.id = 'dlg-root'; document.body.appendChild(root); }
+    const sil = o.danger != null ? o.danger : /silin|ləğv|həmişəlik/i.test(msg);
+    root.innerHTML = `<div class="overlay dlg-ov"><div class="modal dlg"><div class="mb" style="padding-top:20px"><div class="dlg-t">${esc(msg)}</div>
+      ${o.input != null ? `<input class="in" id="dlgi" style="margin-top:12px" value="${esc(o.input)}" autocomplete="off">` : ''}</div>
+      <div class="mf"><button class="btn" id="dlgx">${o.legv || 'Xeyr'}</button><button class="btn ${sil ? 'danger-f' : 'primary'}" id="dlgo">${o.ok || (sil ? 'Bəli, sil' : 'Bəli')}</button></div></div></div>`;
+    const inp = document.getElementById('dlgi');
+    const bit = v => { document.removeEventListener('keydown', kb, true); root.innerHTML = ''; res(v); };
+    const kb = e => { if (e.key === 'Escape') { e.stopPropagation(); bit(o.input != null ? null : false); } else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); bit(o.input != null ? inp.value : true); } };
+    document.addEventListener('keydown', kb, true);
+    document.getElementById('dlgx').onclick = () => bit(o.input != null ? null : false);
+    document.getElementById('dlgo').onclick = () => bit(o.input != null ? inp.value : true);
+    $('.dlg-ov', root).addEventListener('mousedown', e => { if (e.target.classList.contains('dlg-ov')) bit(o.input != null ? null : false); });
+    setTimeout(() => (inp || document.getElementById('dlgo')).focus(), 30);
+  });
+}
+const tesdiq = (msg, o) => sorus(msg, o);
 function closeModal() { $('#modal-root').innerHTML = ''; }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
@@ -477,7 +496,7 @@ function hesabForm(x, fl) {
     const r = f.r.value, ic = {}; let ferq = false;
     $$('[data-ic]', m).forEach(c => { ic[c.dataset.ic] = c.checked; if (c.checked !== icazeDef(r, c.dataset.ic)) ferq = true; });
     const sec = $$('[data-fm]', m).filter(c => c.checked).map(c => +c.dataset.fm);
-    if (!sec.length && !confirm('Heç bir müəssisə seçilməyib — işçi heç nə görməyəcək. Davam edilsin?')) return;
+    if (!sec.length && !await tesdiq('Heç bir müəssisə seçilməyib — işçi heç nə görməyəcək. Davam edilsin?')) return;
     $('#hok', m).disabled = true;
     try {
       let u = x && x.user_id;
@@ -823,12 +842,12 @@ async function satisModal(id) {
   if (pf) pf.onsubmit = async e => {
     e.preventDefault();
     const mb = num(pf.m.value);
-    if (mb > num(s.qaliq) + 0.001 && !confirm(`Məbləğ qalıq borcdan (${fmt(s.qaliq)}) çoxdur. Yenə də yazılsın?`)) return;
+    if (mb > num(s.qaliq) + 0.001 && !await tesdiq(`Məbləğ qalıq borcdan (${fmt(s.qaliq)}) çoxdur. Yenə də yazılsın?`)) return;
     $('button', pf).disabled = true;
     try {
       const np = await q(sb.from('satis_odenisleri').insert({ satis_id: id, tarix: pf.t.value, mebleg: mb, usul: pf.u.value, qeyd: pf.q.value.trim() || null }).select().single());
       toast('Ödəniş yazıldı'); S.cache = {};
-      if (confirm('Ödəniş yazıldı. Müştəri üçün qəbz çap edilsin?')) location.hash = '#/qebz/' + np.id; else { refresh(); satisModal(id); }
+      if (await tesdiq('Ödəniş yazıldı. Müştəri üçün qəbz çap edilsin?')) location.hash = '#/qebz/' + np.id; else { refresh(); satisModal(id); }
     } catch (er) { fail(er); $('button', pf).disabled = false; }
   };
   if ($('#qyt', m)) $('#qyt', m).onclick = () => qaytarmaModal(s).catch(fail);
@@ -837,15 +856,15 @@ async function satisModal(id) {
     $('#qytlist', m).innerHTML = `<span class="muted">Qaytarmalar:</span> ${qs.map(x => `<span class="badge b-amber" title="${esc(x.qeyd || '')}">${fd(x.tarix)}: −${fmt(x.mebleg)}${num(x.geri_pul) ? ` (nağd ${fmt(x.geri_pul)})` : ''}${x.mallar ? ' · ' + esc(x.mallar) : ''}</span>`).join(' ')}`;
   }).catch(() => {});
   if ($('#cyaz', m)) $('#cyaz', m).onclick = async () => {
-    if (!confirm(`${man(yeniCer)} gecikmə cəriməsi müştərinin borcuna əlavə edilsin?`)) return;
+    if (!await tesdiq(`${man(yeniCer)} gecikmə cəriməsi müştərinin borcuna əlavə edilsin?`)) return;
     try { await q(sb.from('satis_cerimeleri').insert({ satis_id: id, tarix: today(), mebleg: yeniCer, qeyd: `${ch.gun} gün gecikmə, gecikən ${fmt(ch.gecikmis)} ₼` })); toast('Cərimə borca əlavə olundu'); refresh(); satisModal(id); } catch (er) { fail(er); }
   };
   $$('[data-csil]', m).forEach(b => b.onclick = async e => {
-    e.preventDefault(); if (!confirm('Bu cərimə silinsin?')) return;
+    e.preventDefault(); if (!await tesdiq('Bu cərimə silinsin?')) return;
     try { await q(sb.from('satis_cerimeleri').delete().eq('id', +b.dataset.csil)); toast('Cərimə silindi'); refresh(); satisModal(id); } catch (er) { fail(er); }
   });
   $$('[data-del]', m).forEach(b => b.onclick = async () => {
-    if (!confirm('Bu ödəniş silinsin?')) return;
+    if (!await tesdiq('Bu ödəniş silinsin?')) return;
     try { await q(sb.from('satis_odenisleri').delete().eq('id', +b.dataset.del)); toast('Ödəniş silindi'); refresh(); satisModal(id); } catch (er) { fail(er); }
   });
   if ($('#ed', m)) $('#ed', m).onclick = () => satisDuzelt(Object.assign({}, s, { ayliq: qr && qr.ayliq, ilk_odenis: qr && qr.ilk_odenis, maya: qr && qr.maya }));
@@ -888,7 +907,7 @@ async function satisDuzelt(s, birbasa) {
     } catch (er) { fail(er); }
   };
   $('#sil', m).onclick = async () => {
-    if (!confirm(`${s.satis_no} satışı və onun bütün ödənişləri silinsin? Bu geri qaytarılmır.`)) return;
+    if (!await tesdiq(`${s.satis_no} satışı və onun bütün ödənişləri silinsin? Bu geri qaytarılmır.`)) return;
     try { await q(sb.from('satislar').delete().eq('id', s.id)); closeModal(); toast('Satış silindi'); refresh(); } catch (er) { fail(er); }
   };
 }
@@ -981,7 +1000,7 @@ async function yeniSatis(musteriId, pref) {
       if (pref && pref.sifarisId) await q(sb.from('sifarisler').update({ status: 'Təhvil verildi' }).eq('id', pref.sifarisId));
       if (pref && pref.onSaved) { closeModal(); S.cache = {}; return pref.onSaved(ns); }
       closeModal(); toast(`Satış yazıldı: ${ns.satis_no}`); S.cache = {};
-      if (confirm(`Satış yazıldı: ${ns.satis_no}. Müştəri üçün çek çap edilsin?`)) location.hash = '#/cek/' + ns.id; else refresh();
+      if (await tesdiq(`Satış yazıldı: ${ns.satis_no}. Müştəri üçün çek çap edilsin?`)) location.hash = '#/cek/' + ns.id; else refresh();
     } catch (er) { fail(er); btn.disabled = false; }
   };
 }
@@ -1405,7 +1424,7 @@ function qaimeForm(ist, r) {
     } catch (er) { fail(er); }
   };
   if ($('#sil', m)) $('#sil', m).onclick = async () => {
-    if (!confirm(`Qaimə ${qaimeNo(r)} və onun ödənişləri silinsin?`)) return;
+    if (!await tesdiq(`Qaimə ${qaimeNo(r)} və onun ödənişləri silinsin?`)) return;
     try { await q(sb.from('qaimeler').delete().eq('id', r.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); }
   };
 }
@@ -1522,7 +1541,7 @@ async function qaimeKart(r) {
   if ($('#qed', m)) $('#qed', m).onclick = () => { closeModal(); qaimeForm(r.istiqamet, r); };
   if ($('#qnov', m)) $('#qnov', m).onchange = async e => { try { await q(sb.from('qaimeler').update({ nov: e.target.value || null }).eq('id', r.id)); toast('Növ yadda saxlanıldı'); } catch (er) { fail(er); } };
   $$('[data-os]', m).forEach(b => b.onclick = async () => {
-    if (!confirm('Ödəniş silinsin?')) return;
+    if (!await tesdiq('Ödəniş silinsin?')) return;
     try { await q(sb.from('qaime_odenisleri').delete().eq('id', +b.dataset.os)); toast('Silindi'); closeModal(); qaimeKartYenile(r.id); } catch (er) { fail(er); }
   });
   if ($('#oyaz', m)) $('#oyaz', m).onclick = async () => {
@@ -1644,7 +1663,7 @@ function gomrukForm(nov, r) {
       mebleg_valyuta: f.mv.value === '' ? null : r2(f.mv.value), mezenne: f.mz.value === '' ? null : num(f.mz.value), gomruk_deyeri: r2(f.gd.value), rusum: r2(f.ru.value), edv: r2(f.e.value), diger: r2(f.d.value), qeyd: f.q.value.trim() || null };
     try { if (r) await q(sb.from('gomruk').update(v).eq('id', r.id)); else await q(sb.from('gomruk').insert(v)); closeModal(); toast('Yadda saxlanıldı'); refresh(); } catch (er) { fail(er); }
   };
-  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!confirm('Bəyannamə silinsin?')) return;
+  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!await tesdiq('Bəyannamə silinsin?')) return;
     try { await q(sb.from('gomruk').delete().eq('id', r.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); } };
 }
 
@@ -1700,7 +1719,7 @@ function bankHesabForm(h) {
     if (h) v.aktiv = f.a.checked;
     try { if (h) await q(sb.from('bank_hesablari').update(v).eq('id', h.id)); else await q(sb.from('bank_hesablari').insert(v)); S.cache.bh = null; closeModal(); toast('Yadda saxlanıldı'); refresh(); } catch (er) { fail(er); }
   };
-  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!confirm('Hesab və onun əməliyyatları silinsin?')) return;
+  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!await tesdiq('Hesab və onun əməliyyatları silinsin?')) return;
     try { await q(sb.from('bank_hesablari').delete().eq('id', h.id)); S.cache.bh = null; closeModal(); location.hash = '#/bank'; } catch (er) { fail(er); } };
 }
 async function bankEmForm(e, hesabId) {
@@ -1723,7 +1742,7 @@ async function bankEmForm(e, hesabId) {
     const v = { hesab_id: +f.h.value, nov: f.n.value, tarix: f.t.value, mebleg: r2(f.m.value), kateqoriya: f.k.value, voen: f.v.value.trim() || null, kontragent: f.ka.value.trim() || null, teyinat: f.ty.value.trim() || null };
     try { if (e) await q(sb.from('bank_emeliyyatlari').update(v).eq('id', e.id)); else await q(sb.from('bank_emeliyyatlari').insert(v)); closeModal(); toast('Yadda saxlanıldı'); refresh(); } catch (er) { fail(er); }
   };
-  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!confirm('Əməliyyat silinsin?')) return;
+  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!await tesdiq('Əməliyyat silinsin?')) return;
     try { await q(sb.from('bank_emeliyyatlari').delete().eq('id', e.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); } };
 }
 // Bank çıxarışı (Kapital Bank və s.): əməliyyatları yükləyir, təyinatdakı qaimə nömrələrinə görə ödənişləri qaimələrə özü bağlayır
@@ -1991,7 +2010,7 @@ async function pageEmek(params) {
   const aktiv = isci.filter(x => (!x.ise_qebul || x.ise_qebul <= son) && (!x.cixis || x.cixis >= ay));
   if ($('#ehes')) $('#ehes').onclick = async () => {
     if (!aktiv.length) return toast('Bu ay üçün əməkdaş yoxdur');
-    if (rows.length && !confirm('Bu ayın hesablaması yenidən aparılsın? Əl ilə dəyişdikləriniz də yenilənəcək.')) return;
+    if (rows.length && !await tesdiq('Bu ayın hesablaması yenidən aparılsın? Əl ilə dəyişdikləriniz də yenilənəcək.')) return;
     try {
       const v = aktiv.map(x => { const R = emekHesabla(x.maas, il, x.esas_is);
         return { emekdas_id: x.id, ay, hesablanan: r2(x.maas), gelir_vergisi: R.gv, dsmf_isci: R.dsmf_i, issizlik_isci: R.iss_i, tibbi_isci: R.tib_i, dsmf_isveren: R.dsmf_v, issizlik_isveren: R.iss_v, tibbi_isveren: R.tib_v }; });
@@ -2034,7 +2053,7 @@ function emekdasForm(x) {
     const v = { ad: f.ad.value.trim(), fin: f.fin.value.trim().toUpperCase() || null, vezife: f.v.value.trim() || null, maas: r2(f.m.value), ise_qebul: f.q.value || null, cixis: f.c.value || null, esas_is: f.e.checked };
     try { if (x) await q(sb.from('emekdaslar').update(v).eq('id', x.id)); else await q(sb.from('emekdaslar').insert(v)); closeModal(); toast('Yadda saxlanıldı'); refresh(); } catch (er) { fail(er); }
   };
-  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!confirm(`${x.ad} və onun hesablamaları silinsin?`)) return;
+  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!await tesdiq(`${x.ad} və onun hesablamaları silinsin?`)) return;
     try { await q(sb.from('emekdaslar').delete().eq('id', x.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); } };
 }
 function emekSetirForm(r, ad) {
@@ -2185,7 +2204,7 @@ function kontragentForm(x) {
     const v = { voen: f.v.value.trim() || null, ad: f.a.value.trim(), telefon: f.t.value.trim() || null, hesab: f.h.value.trim() || null, unvan: f.u.value.trim() || null, qeyd: f.q.value.trim() || null };
     try { if (x) await q(sb.from('kontragentler').update(v).eq('id', x.id)); else await q(sb.from('kontragentler').insert(v)); closeModal(); toast('Yadda saxlanıldı'); refresh(); } catch (er) { fail(er); }
   };
-  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!confirm('Kontragent silinsin? (qaimələrə toxunulmur)')) return;
+  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!await tesdiq('Kontragent silinsin? (qaimələrə toxunulmur)')) return;
     try { await q(sb.from('kontragentler').delete().eq('id', x.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); } };
 }
 
@@ -2359,7 +2378,7 @@ function aktForm(r) {
       mebleg: r2(f.m.value), odenilib: r2(f.o.value), odenis_tarix: f.ot.value || (num(f.o.value) > 0 ? today() : null), qeyd: f.q.value.trim() || null };
     try { if (r) await q(sb.from('alis_aktlari').update(v).eq('id', r.id)); else await q(sb.from('alis_aktlari').insert(v)); closeModal(); toast('Yadda saxlanıldı'); refresh(); } catch (er) { fail(er); }
   };
-  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!confirm('Akt silinsin?')) return; try { await q(sb.from('alis_aktlari').delete().eq('id', r.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); } };
+  if ($('#sil', m)) $('#sil', m).onclick = async () => { if (!await tesdiq('Akt silinsin?')) return; try { await q(sb.from('alis_aktlari').delete().eq('id', r.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); } };
 }
 function aktIdxal() {
   idxalPencere({
@@ -2613,7 +2632,7 @@ async function pageOdenis(params) {
   $$('[data-bg]').forEach(b => b.onclick = async () => {
     const x = be.find(z => z.id === +b.dataset.bg), y = qm.find(z => z.id === +$(`[data-bq="${x.id}"]`).value);
     const mb = Math.min(num(x.mebleg), num(y.qaliq)), edv = r2(num(y.cem) ? mb * num(y.edv) / num(y.cem) : 0);
-    if (num(x.mebleg) > num(y.qaliq) + 0.005 && !confirm(`Əməliyyat (${fmt(x.mebleg, 2)}) qaimənin qalığından (${fmt(y.qaliq, 2)}) çoxdur. Yalnız ${fmt(mb, 2)} bağlansın, qalanı bank əməliyyatı kimi qalsın?`)) return;
+    if (num(x.mebleg) > num(y.qaliq) + 0.005 && !await tesdiq(`Əməliyyat (${fmt(x.mebleg, 2)}) qaimənin qalığından (${fmt(y.qaliq, 2)}) çoxdur. Yalnız ${fmt(mb, 2)} bağlansın, qalanı bank əməliyyatı kimi qalsın?`)) return;
     try {
       await q(sb.from('qaime_odenisleri').insert({ qaime_id: y.id, tarix: x.tarix, mebleg: r2(mb), edv, hesab_id: x.hesab_id, qeyd: x.teyinat }));
       const art = r2(num(x.mebleg) - mb);
@@ -2990,7 +3009,7 @@ function odenisAl(m, sales) {
     if (!f.reportValidity()) return;
     const pl = plan(), mb = num(f.mb.value);
     const hed = f.s && f.s.value !== 'auto' ? num(pl[0].s.qaliq) : cem;
-    if (mb > hed + 0.001 && !confirm(`Məbləğ qalıq borcdan (${fmt(hed)}) çoxdur. Yenə də yazılsın?`)) return;
+    if (mb > hed + 0.001 && !await tesdiq(`Məbləğ qalıq borcdan (${fmt(hed)}) çoxdur. Yenə də yazılsın?`)) return;
     $('#ok', md).disabled = true;
     try {
       const ids = [];
@@ -2999,7 +3018,7 @@ function odenisAl(m, sales) {
         ids.push(np.id);
       }
       closeModal(); S.cache = {}; toast(`${fmt(mb)} ₼ ödəniş yazıldı`);
-      if (confirm('Ödəniş yazıldı. Müştəri üçün qəbz çap edilsin?')) location.hash = '#/qebz/' + ids.join(','); else refresh();
+      if (await tesdiq('Ödəniş yazıldı. Müştəri üçün qəbz çap edilsin?')) location.hash = '#/qebz/' + ids.join(','); else refresh();
     } catch (er) { fail(er); $('#ok', md).disabled = false; }
   };
   setTimeout(() => f.mb.focus(), 50);
@@ -3067,7 +3086,7 @@ function mehsulForm(r, kats) {
   setTimeout(() => f.ad.focus(), 50);
   f.kod.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); f.qy.focus(); } };   // oxuyucunun Enter-i formu göndərməsin
   $('#kcam', m).onclick = () => kameraOxu(k => { f.kod.value = k; f.qy.focus(); });
-  if ($('#kyar', m)) $('#kyar', m).onclick = () => { if (f.kod.value.trim() && !confirm('Mövcud barkod dəyişdirilsin?')) return; f.kod.value = daxiliBarkod(r.id); };
+  if ($('#kyar', m)) $('#kyar', m).onclick = async () => { if (f.kod.value.trim() && !await tesdiq('Mövcud barkod dəyişdirilsin?')) return; f.kod.value = daxiliBarkod(r.id); };
   if ($('#ketk', m)) $('#ketk', m).onclick = () => etiketPencere([r.id]).catch(fail);
   if (r && $('#hrk', m)) Promise.all([
     q(sb.from('anbar_hereketleri').select('*').eq('mehsul_id', r.id).order('tarix', { ascending: false }).limit(15)),
@@ -3084,7 +3103,7 @@ function mehsulForm(r, kats) {
     const kodT = f.kod.value.trim();
     if (kodT && kats !== undefined) {
       try { const eyni = await q(sb.from('mehsullar').select('id,ad').eq('kod', kodT)); const b = eyni.find(x => !r || x.id !== r.id);
-        if (b && !confirm(`Bu barkod artıq "${b.ad}" məhsulundadır. Yenə də yadda saxlanılsın?`)) return; } catch (_) {}
+        if (b && !await tesdiq(`Bu barkod artıq "${b.ad}" məhsulundadır. Yenə də yadda saxlanılsın?`)) return; } catch (_) {}
     }
     const v = { ad: f.ad.value.trim(), kateqoriya: f.kat.value.trim() || null, kod: kodT || null, qiymet: num(f.qy.value),
                 qiymet2: f.q2.value === '' ? null : num(f.q2.value), qiymet3: f.q3.value === '' ? null : num(f.q3.value), qiymet4: f.q4.value === '' ? null : num(f.q4.value),
@@ -3099,11 +3118,11 @@ function mehsulForm(r, kats) {
   };
   if ($('#sil', m)) $('#sil', m).onclick = async () => {
     if (num(r.satilib) > 0) {
-      if (!confirm('Bu məhsul satışlarda istifadə olunub, ona görə silinmir — passiv edilsin? (satışda görünməyəcək, köhnə satışlar dəyişməyəcək)')) return;
+      if (!await tesdiq('Bu məhsul satışlarda istifadə olunub, ona görə silinmir — passiv edilsin? (satışda görünməyəcək, köhnə satışlar dəyişməyəcək)')) return;
       try { await q(sb.from('mehsullar').update({ aktiv: false }).eq('id', r.id)); closeModal(); toast('Passiv edildi'); refresh(); } catch (er) { fail(er); }
       return;
     }
-    if (!confirm(`"${r.ad}" silinsin?`)) return;
+    if (!await tesdiq(`"${r.ad}" silinsin?`)) return;
     try { await q(sb.from('mehsullar').delete().eq('id', r.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); }
   };
 }
@@ -3208,7 +3227,7 @@ async function qaytarmaModal(s) {
     const qm = hesabla(false), mb = num(f.mb.value), gp = num(f.gp.value);
     if (!(mb > 0) && !qm.some(x => x > 0)) return toast('Qaytarılan malı və ya məbləği yazın');
     if (mb > num(s.deyer)) return toast('Çıxılan məbləğ satışın dəyərindən çox ola bilməz');
-    if (!confirm(`${s.satis_no}: dəyərdən ${man(mb)} çıxılsın${gp > 0 ? `, müştəriyə ${man(gp)} nağd qaytarılsın` : ''}?`)) return;
+    if (!await tesdiq(`${s.satis_no}: dəyərdən ${man(mb)} çıxılsın${gp > 0 ? `, müştəriyə ${man(gp)} nağd qaytarılsın` : ''}?`)) return;
     $('#ok', m).disabled = true;
     try {
       const mallarMetn = mallar.map((x, i) => qm[i] > 0 ? `${x.ad} ×${qm[i]}` : '').filter(Boolean).join(', ');
@@ -3518,7 +3537,7 @@ async function rasxodForm(r, ay) {
     } catch (er) { fail(er); $('#ok', m).disabled = false; }
   };
   if ($('#sil', m)) $('#sil', m).onclick = async () => {
-    if (!confirm('Bu xərc silinsin?')) return;
+    if (!await tesdiq('Bu xərc silinsin?')) return;
     try { await q(sb.from('rasxodlar').delete().eq('id', r.id)); closeModal(); toast('Xərc silindi'); refresh(); } catch (er) { fail(er); }
   };
 }
@@ -3632,12 +3651,12 @@ async function isciForm(i) {
     catch (er) { fail(er); }
   };
   $$('[data-dd]', m).forEach(b => b.onclick = async () => {
-    if (!confirm('Bu maaş dəyişikliyi silinsin?')) return;
+    if (!await tesdiq('Bu maaş dəyişikliyi silinsin?')) return;
     try { await q(sb.from('maas_deyisiklikleri').delete().eq('id', +b.dataset.dd)); S.cache = {}; isciForm((await isciMelumati()).isc.find(x => x.id === i.id)); } catch (er) { fail(er); }
   });
   if ($('#sil', m)) $('#sil', m).onclick = async () => {
     if (D.ode.some(o => o.isci_id === i.id)) { toast('Bu işçinin ödənişləri var — silmək olmaz. Əvəzinə çıxış tarixi yazın.', 5000); return; }
-    if (!confirm(`${i.ad} silinsin?`)) return;
+    if (!await tesdiq(`${i.ad} silinsin?`)) return;
     try { await q(sb.from('isciler').delete().eq('id', i.id)); closeModal(); toast('Silindi'); location.hash = '#/isciler'; refresh(); } catch (er) { fail(er); }
   };
 }
@@ -3726,7 +3745,7 @@ async function odenisForm(o, isciId) {
     } catch (er) { fail(er); $('#ok', m).disabled = false; }
   };
   if ($('#sil', m)) $('#sil', m).onclick = async () => {
-    if (!confirm('Bu ödəniş silinsin?')) return;
+    if (!await tesdiq('Bu ödəniş silinsin?')) return;
     try { await q(sb.from('isci_odenisleri').delete().eq('id', o.id)); closeModal(); toast('Ödəniş silindi'); refresh(); } catch (er) { fail(er); }
   };
 }
@@ -3881,7 +3900,7 @@ function digerForm(d) {
     catch (er) { fail(er); }
   };
   if ($('#sil', m)) $('#sil', m).onclick = async () => {
-    if (!confirm('Bu əməliyyat silinsin?')) return;
+    if (!await tesdiq('Bu əməliyyat silinsin?')) return;
     try { await q(sb.from('kassa_diger').delete().eq('id', d.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); }
   };
 }
@@ -3938,7 +3957,7 @@ function sifarisForm(r) {
     catch (er) { fail(er); }
   };
   if ($('#sil', m)) $('#sil', m).onclick = async () => {
-    if (!confirm('Bu sifariş silinsin?')) return;
+    if (!await tesdiq('Bu sifariş silinsin?')) return;
     try { await q(sb.from('sifarisler').delete().eq('id', r.id)); closeModal(); toast('Silindi'); refresh(); } catch (er) { fail(er); }
   };
   if ($('#sat', m)) $('#sat', m).onclick = () => {
@@ -4423,8 +4442,8 @@ async function pageAyarlar(params) {
   $('#page').innerHTML = `<div class="ay-lay"><nav class="ay-nav">${BOL.map(([k, n]) => `<a href="#/ayarlar?t=${k}" class="${k === t ? 'on' : ''}">${n}</a>`).join('')}</nav><div class="ay-ic">${icerik[t]}</div></div>`;
   // --- hadisələr
   if ($('#mgf')) {
-    $('#mgf').sahe.onchange = e => {
-      if (confirm(`Sahə "${saheAd(e.target.value)}" olaraq dəyişdirilsin?${e.target.value === 'muhasibat' ? ' Menyuda qaimə, ƏDV və əmək haqqı bölmələri açılacaq.' : ''}`)) $('#mgf').requestSubmit();
+    $('#mgf').sahe.onchange = async e => {
+      if (await tesdiq(`Sahə "${saheAd(e.target.value)}" olaraq dəyişdirilsin?${e.target.value === 'muhasibat' ? ' Menyuda qaimə, ƏDV və əmək haqqı bölmələri açılacaq.' : ''}`)) $('#mgf').requestSubmit();
       else e.target.value = S.magaza.sahe || 'mebel';
     };
     $('#mgf').onsubmit = async e => {
@@ -4448,7 +4467,7 @@ async function pageAyarlar(params) {
   });
   if ($('#kodkop')) $('#kodkop').onclick = () => { navigator.clipboard && navigator.clipboard.writeText($('#kod').textContent); toast('Kod kopyalandı'); };
   if ($('#kodyen')) $('#kodyen').onclick = async () => {
-    if (!confirm('Köhnə kod işləməyəcək. Yeni kod yaradılsın?')) return;
+    if (!await tesdiq('Köhnə kod işləməyəcək. Yeni kod yaradılsın?')) return;
     try { const k = await q(sb.rpc('devet_yenile')); S.magaza.devet_kodu = k; $('#kod').textContent = k; toast('Yeni kod: ' + k); } catch (er) { fail(er); }
   };
   if ($('#xls')) $('#xls').onclick = () => (muh ? muhExcel() : excelIxrac()).catch(fail);
@@ -4563,7 +4582,7 @@ async function pageAdminIst() {
         <div class="banner b-red-bg" style="margin-top:12px;font-size:13px">Bu əməliyyat geri qaytarılmır.</div>`,
         `<button class="btn" data-close>Ləğv et</button><button class="btn danger" id="silok">Hesabı sil</button>`);
       $('#silok', m).onclick = async () => { const fs = $('#fsil', m) && $('#fsil', m).checked;
-        if (!confirm(`${r.email} ${fs ? 'və onun müəssisələri ' : ''}həmişəlik silinsin?`)) return;
+        if (!await tesdiq(`${r.email} ${fs ? 'və onun müəssisələri ' : ''}həmişəlik silinsin?`)) return;
         $('#silok', m).disabled = true;
         try { const n = await q(sb.rpc('admin_istifadeci_sil', { u: r.user_id, firmalar_da: !!fs })); closeModal(); toast(`${r.email} silindi${n ? ` · ${n} müəssisə silindi` : ''}`); pageAdminIst(); }
         catch (er) { $('#silok', m).disabled = false; fail(er); } };
@@ -4626,7 +4645,7 @@ async function pageAdmin(params) {
     });
     $$('[data-uz]').forEach(b => b.onclick = async () => {
       const r = rows.find(x => x.id === +b.dataset.uz), ay = +b.dataset.ay;
-      if (!confirm(`${r.ad} — abunə ${ay === 12 ? '1 il' : '1 ay'} uzadılsın?`)) return;
+      if (!await tesdiq(`${r.ad} — abunə ${ay === 12 ? '1 il' : '1 ay'} uzadılsın?`)) return;
       try { const d = await q(sb.rpc('admin_uzat', { m: r.id, aylar: ay })); toast(`${r.ad}: ${fd(d)} tarixinə qədər`); pageAdmin(); } catch (er) { fail(er); }
     });
     $$('[data-od]').forEach(b => b.onclick = () => {
@@ -4653,12 +4672,12 @@ async function pageAdmin(params) {
         ${num(r.satis_sayi) === 0 ? `<div class="banner b-amber-bg" style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:10px">Bu dükan boşdur — tanıtım üçün nümunə məlumatla doldurmaq olar.<button class="btn sm" id="demo">Demo məlumatla doldur</button></div>` : ''}`,
         `<button class="btn danger" id="fsilbtn" style="margin-right:auto">Müəssisəni sil</button><button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yadda saxla</button>`, true);
       $('#fsilbtn', md).onclick = async () => {
-        const yaz = prompt(`"${r.ad}" müəssisəsi BÜTÜN məlumatları ilə (satışlar, qaimələr, ödənişlər, istifadəçi bağlantıları) həmişəlik silinəcək. Təsdiq üçün müəssisənin adını yazın:`);
+        const yaz = await sorus(`"${r.ad}" müəssisəsi BÜTÜN məlumatları ilə (satışlar, qaimələr, ödənişlər, istifadəçi bağlantıları) həmişəlik silinəcək. Təsdiq üçün müəssisənin adını yazın:`, { input: '', ok: 'Sil', danger: true, legv: 'Ləğv et' });
         if (yaz == null) return; if (yaz.trim() !== r.ad.trim()) return toast('Ad düz yazılmayıb — silinmədi');
         try { await q(sb.rpc('admin_firma_sil', { m: r.id })); closeModal(); toast(`${r.ad} silindi`); pageAdmin(new URLSearchParams()); } catch (er) { fail(er); } };
-      $$('[data-os]', md).forEach(x => x.onclick = async () => { if (!confirm('Bu ödəniş qeydi silinsin? (bitmə tarixi dəyişmir)')) return;
+      $$('[data-os]', md).forEach(x => x.onclick = async () => { if (!await tesdiq('Bu ödəniş qeydi silinsin? (bitmə tarixi dəyişmir)')) return;
         try { await q(sb.from('abune_odenisleri').delete().eq('id', +x.dataset.os)); closeModal(); pageAdmin(); } catch (er) { fail(er); } });
-      if ($('#demo', md)) $('#demo', md).onclick = async () => { if (!confirm(`"${r.ad}" dükanı 10 məhsul, 30 müştəri, ~45 satış, ödəniş və xərclərlə doldurulsun?`)) return;
+      if ($('#demo', md)) $('#demo', md).onclick = async () => { if (!await tesdiq(`"${r.ad}" dükanı 10 məhsul, 30 müştəri, ~45 satış, ödəniş və xərclərlə doldurulsun?`)) return;
         try { toast(await q(sb.rpc('admin_demo_doldur', { m: r.id }))); closeModal(); pageAdmin(); } catch (er) { fail(er); } };
       $('#ok', md).onclick = async () => {
         const f = $('#af', md); if (!f.reportValidity()) return;
