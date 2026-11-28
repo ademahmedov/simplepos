@@ -265,9 +265,8 @@ async function start() {
       q(sb.from('magazalar').select('*')).catch(() => []),
     ]);
     S.admin = !!adm; S.profil = pr; S.muhasibHesab = !!(pr && pr.nov === 'muhasib');
-    const aktivUz = uz.filter(x => x.rol !== 'bloklu' && (!x.admin_giris || x.secili)).sort((a, b) => (b.secili - a.secili) || String(a.yaradildi).localeCompare(String(b.yaradildi)) || a.magaza_id - b.magaza_id);
-    if (!aktivUz.length && uz.length && !S.admin && !S.muhasibHesab) { await sb.auth.signOut(); return loginView('Bu hesab bloklanıb. Dükanınızın mühasibinə müraciət edin.'); }
-    S.coxFirma = S.muhasibHesab || aktivUz.filter(x => !x.admin_giris).length > 1;
+    const aktivUz = uz.filter(x => !['bloklu', 'gozleyir'].includes(x.rol) && (!x.admin_giris || x.secili)).sort((a, b) => (b.secili - a.secili) || String(a.yaradildi).localeCompare(String(b.yaradildi)) || a.magaza_id - b.magaza_id);
+    S.coxFirma = true;   // hər istifadəçi öz müəssisələrini açıb idarə edə bilər
     S.firmalar = S.coxFirma ? fl : [];
     const me = aktivUz[0];
     S.adminBaxir = !!(me && me.admin_giris);
@@ -417,7 +416,9 @@ async function pageFirmalar() {
   const abune = x => { const g = gunFerqi(x.abune_bitir);
     return x.dayandirilib ? '<span class="badge b-red">Dayandırılıb</span>' : g < 0 ? '<span class="badge b-red">Abunə bitib</span>'
       : g <= 7 ? `<span class="badge b-amber">Abunə: ${g} gün qalıb</span>` : `<span class="badge b-gray">Abunə: ${fd(x.abune_bitir)}</span>`; };
-  const kart = x => `<div class="firma-kart ${x.secili ? 'cari' : ''}" data-f="${x.id}" data-ad="${esc(azLow(x.ad))}">
+  const kart = x => x.rol === 'gozleyir' ? `<div class="firma-kart" style="opacity:.75;cursor:default" data-ad="${esc(azLow(x.ad))}"><div class="fk-bas"><div><b>${esc(x.ad)}</b><div class="cell-sub">${esc(saheAd(x.sahe))}</div></div><span class="badge b-amber">Təsdiq gözləyir</span></div>
+    <div class="muted" style="font-size:13px;padding:10px 0">Qoşulma sorğunuz göndərilib. Müəssisənin mühasibi təsdiqləyəndən sonra burada açılacaq.</div></div>`
+  : `<div class="firma-kart ${x.secili ? 'cari' : ''}" data-f="${x.id}" data-ad="${esc(azLow(x.ad))}">
     <div class="fk-bas"><div><b>${esc(x.ad)}</b><div class="cell-sub">${esc(saheAd(x.sahe))} · ${rolAd[x.rol] || esc(x.rol)}</div></div>${x.secili ? '<span class="badge b-green">Açıqdır</span>' : ''}</div>
     ${x.sahe === 'muhasibat' ? `<div class="fk-say"><div><span>Bu ay qaimə</span><b>${fmt(x.q_say)}</b></div><div><span>Təchizatçılara borc</span><b class="${num(x.kreditor) ? 'neg' : ''}">${man(x.kreditor)}</b></div>
       <div><span>Alıcıların borcu</span><b>${man(x.debitor)}</b></div><div><span></span><b></b></div></div>`
@@ -425,47 +426,58 @@ async function pageFirmalar() {
       <div><span>Gecikən</span><b class="${num(x.gecikan) ? 'neg' : ''}">${fmt(x.gecikan)} nəfər · ${man(x.gecikmis_borc)}</b></div><div><span>Bu ay yığılıb</span><b>${man(x.bu_ay)}</b></div></div>`}
     <div class="fk-alt">${abune(x)}<span class="btn sm ${x.secili ? '' : 'primary'}">${x.secili ? 'Davam et' : 'Aç'} →</span></div></div>`;
   const cem = k => list.reduce((a, x) => a + num(x[k]), 0);
-  $('.topbar .sub').textContent = list.length ? `${list.length} firma` : '';
+  $('.topbar .sub').textContent = list.length ? `${list.length} müəssisə` : '';
   $('#page').innerHTML = list.length ? `${list.length > 1 ? `<div class="grid kpis" style="margin-bottom:16px">
       <div class="card kpi"><div class="lbl">Ümumi qalıq borc</div><div class="val">${man(cem('borc'))}</div><div class="cmp">${fmt(cem('musteri'))} müştəri</div></div>
       <div class="card kpi"><div class="lbl">Gecikən borc</div><div class="val neg">${man(cem('gecikmis_borc'))}</div><div class="cmp">${fmt(cem('gecikan'))} müştəri</div></div>
       <div class="card kpi"><div class="lbl">Bu ay yığılıb</div><div class="val">${man(cem('bu_ay'))}</div><div class="cmp">bütün firmalar</div></div>
       <div class="card kpi"><div class="lbl">Bu gün yığılıb</div><div class="val">${man(cem('bu_gun'))}</div><div class="cmp">${fd(today())}</div></div></div>` : ''}
     <div class="firma-grid">${list.map(kart).join('')}</div>`
-    : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Hələ firma yoxdur</div>
-       <div class="muted" style="margin-bottom:14px">Uçotunu apardığınız ilk firmanı əlavə edin və ya dükanın verdiyi dəvət kodu ilə qoşulun.</div>
+    : `<div class="card empty" style="padding:40px 20px"><div style="font-size:17px;font-weight:600;margin-bottom:6px">Hələ müəssisəniz yoxdur</div>
+       <div class="muted" style="margin-bottom:14px">"Yeni müəssisə" ilə öz müəssisənizi yaradın (${esc(S.sistem.sinaq_gun || '14')} gün pulsuz, sonra abunə). Başqa müəssisədə işləyirsinizsə, onun verdiyi dəvət kodu ilə qoşulma sorğusu göndərin.</div>
        <button class="btn primary" id="fyeni2">${ico('plus')}Yeni müəssisə</button> <button class="btn" id="fqos2">Kodla qoşul</button></div>`;
   if ($('#fyeni2')) { $('#fyeni2').onclick = firmaYeniModal; $('#fqos2').onclick = firmaQosulModal; }
   $$('[data-f]').forEach(d => d.onclick = () => firmaSec(+d.dataset.f));
-  $('#fax').oninput = e => { const t = azLow(e.target.value); $$('[data-f]').forEach(d => d.style.display = !t || d.dataset.ad.includes(t) ? '' : 'none'); };
+  $('#fax').oninput = e => { const t = azLow(e.target.value); $$('.firma-kart').forEach(d => d.style.display = !t || d.dataset.ad.includes(t) ? '' : 'none'); };
 }
 function firmaYeniModal() {
-  const sinaq = S.sistem.sinaq_gun || '14';
-  const m = modal('Yeni firma', `<form id="nf">
-    <div class="field"><label class="f">Firmanın (dükanın) adı</label><input class="in" name="ad" required placeholder="məs. Kamran Elektronika"></div>
-    <div class="row2"><div class="field"><label class="f">Sahə</label><select class="in" name="sahe">${saheOpt(S.muhasibHesab ? 'muhasibat' : ((S.magaza && S.magaza.sahe) || 'mebel'))}</select></div>
+  const sinaq = S.sistem.sinaq_gun || '14', qiy = S.sistem.qiymet || '';
+  const m = modal('Yeni müəssisə', `<form id="nf">
+    <div class="field"><label class="f">Müəssisənin adı *</label><input class="in" name="ad" required placeholder="məs. Kamran Elektronika MMC"></div>
+    <div class="row2"><div class="field"><label class="f">Fəaliyyət sahəsi *</label><select class="in" name="sahe">${saheOpt(S.muhasibHesab ? 'muhasibat' : ((S.magaza && S.magaza.sahe) || 'mebel'))}</select></div>
+      <div class="field"><label class="f">Hüquqi forma</label><select class="in" name="hf"><option value="">—</option><option>Hüquqi şəxs</option><option>Fərdi sahibkar</option></select></div></div>
+    <div class="row2"><div class="field"><label class="f">VÖEN</label><input class="in" name="voen" inputmode="numeric" maxlength="10" placeholder="10 rəqəm"></div>
       <div class="field"><label class="f">Telefon</label><input class="in" name="tel" type="tel" placeholder="050 000 00 00"></div></div>
-    <p class="muted" style="font-size:13px;margin:0">Yeni firma ${esc(sinaq)} gün pulsuz işləyir, abunəsi ayrıca hesablanır. Siz onun mühasibi olacaqsınız; dükan sahibini sonra Ayarlardakı dəvət kodu ilə əlavə edə bilərsiniz.</p></form>`,
-    `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yarat</button>`);
+    <div class="row2"><div class="field"><label class="f">Direktor (rəhbər)</label><input class="in" name="dir" placeholder="Ad Soyad"></div>
+      <div class="field"><label class="f">Ünvan</label><input class="in" name="unvan"></div></div>
+    <div class="banner b-amber-bg" style="margin:4px 0 0;font-size:13px">Hər müəssisənin abunəsi ayrıca hesablanır: ilk ${esc(sinaq)} gün pulsuzdur${qiy ? `, sonra ${esc(qiy)}` : ', sonra abunə ödənilməlidir'}. Siz bu müəssisənin mühasibi olacaqsınız; başqalarını sonra Ayarlar → İstifadəçilər bölməsindən təsdiqləyib əlavə edə bilərsiniz.</div></form>`,
+    `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Yarat</button>`, true);
   const f = $('#nf', m); setTimeout(() => f.ad.focus(), 50);
   $('#ok', m).onclick = async () => {
     if (!f.reportValidity()) return;
+    const voen = f.voen.value.replace(/\D/g, '');
+    if (voen && voen.length !== 10) return toast('VÖEN 10 rəqəmdən ibarət olmalıdır');
     $('#ok', m).disabled = true;
-    try { const id = await q(sb.rpc('firma_yarat', { ad: f.ad.value.trim(), telefon: f.tel.value.trim() || null, sahe: f.sahe.value }));
-      closeModal(); toast('Firma yaradıldı'); S.magaza = null; await firmaSec(id);
+    try {
+      const id = await q(sb.rpc('firma_yarat', { ad: f.ad.value.trim(), telefon: f.tel.value.trim() || null, sahe: f.sahe.value }));
+      // yeni müəssisə seçili olur — rekvizitləri onun ayarlarına yaz
+      const R = { firma_adi: f.ad.value.trim(), firma_voen: voen, firma_telefon: f.tel.value.trim(), firma_unvan: f.unvan.value.trim(), direktor: f.dir.value.trim(), huquqi_forma: f.hf.value };
+      const yaz = Object.entries(R).filter(([, v]) => v);
+      for (const [k, v] of yaz) { const r = await q(sb.from('ayarlar').update({ deyer: v }).eq('magaza_id', id).eq('acar', k).select('acar')); if (!r.length) await q(sb.from('ayarlar').insert({ magaza_id: id, acar: k, deyer: v })); }
+      closeModal(); toast('Müəssisə yaradıldı'); S.magaza = null; await firmaSec(id);
     } catch (er) { fail(er); $('#ok', m).disabled = false; }
   };
 }
 function firmaQosulModal() {
   const m = modal('Dəvət kodu ilə qoşul', `<form id="qf">
-    <p class="muted" style="font-size:13px;margin-top:0">Kodu dükanın mühasibi Ayarlar → İstifadəçilər bölməsindən verir. Qoşulandan sonra əvvəlcə yalnız baxa bilərsiniz; yazmaq üçün dükanın mühasibi sizə "Mühasib" hüququ verməlidir.</p>
+    <p class="muted" style="font-size:13px;margin-top:0">Kodu müəssisənin mühasibi verir. Kodu yazandan sonra sorğunuz müəssisəyə gedir; mühasib təsdiqləyib sizə rol verəndən sonra müəssisə burada açılacaq.</p>
     <div class="field"><label class="f">Dəvət kodu</label><input class="in" name="kod" maxlength="6" required style="text-transform:uppercase;letter-spacing:3px;font-weight:600" placeholder="ABC123"></div></form>`,
     `<button class="btn" data-close>Ləğv et</button><button class="btn primary" id="ok">Qoşul</button>`);
   const f = $('#qf', m); setTimeout(() => f.kod.focus(), 50);
   $('#ok', m).onclick = async () => {
     if (!f.reportValidity()) return;
     try { const ad = await q(sb.rpc('firma_qosul', { kod: f.kod.value.trim().toUpperCase() }));
-      closeModal(); toast(`"${ad}" əlavə olundu`, 3500); pageFirmalar().catch(fail);
+      closeModal(); toast(`"${ad}" müəssisəsinə qoşulma sorğusu göndərildi — təsdiqlənəndən sonra açılacaq`, 5000); pageFirmalar().catch(fail);
     } catch (er) { fail(er); }
   };
 }
@@ -4096,7 +4108,7 @@ async function pageAyarlar(params) {
   shell('ayarlar', 'Ayarlar', '', '');
   const [A, ist0] = await Promise.all([ayarlar(), q(sb.from('uzvler').select('*').eq('magaza_id', S.magaza.id).order('yaradildi'))]);
   const ist = ist0.filter(i => !i.admin_giris || i.user_id === S.user.id);
-  const rolAd = { muhasib: 'Mühasib (hər şeyi düzəldir)', sahibkar: 'Direktor (yalnız baxır, çıxarış alır)', kuryer: 'Kuryer (yalnız pul yığır)', bloklu: 'Bloklanıb' };
+  const rolAd = { gozleyir: '— Təsdiq gözləyir —', muhasib: 'Mühasib (hər şeyi düzəldir)', sahibkar: 'Direktor (yalnız baxır, çıxarış alır)', kuryer: 'Kuryer (yalnız pul yığır)', bloklu: 'Bloklanıb (giriş yoxdur)' };
   const dis = w ? '' : 'disabled';
   const sat = (l, v) => `<tr><td class="muted" style="width:200px">${l}</td><td>${v}</td></tr>`;
   const el = [S.sistem.elaqe_telefon && esc(S.sistem.elaqe_telefon), S.sistem.elaqe_whatsapp && `<a href="https://wa.me/${S.sistem.elaqe_whatsapp.replace(/\D/g, '')}" target="_blank">WhatsApp</a>`].filter(Boolean).join(' · ');
@@ -4131,9 +4143,9 @@ async function pageAyarlar(params) {
         <div class="field"><label class="f">Müqavilənin şərtləri</label><textarea class="in" name="muqavile_sertleri" rows="4" ${dis}>${esc(A.muqavile_sertleri || '')}</textarea></div>
         ${w ? '<button class="btn primary">Yadda saxla</button>' : ''}</form></div>`,
     ist: `<div class="card" style="padding:0"><h3 style="padding:18px 20px 0">İstifadəçilər</h3>
-        <table class="t" data-flt="0"><tbody>${ist.map(i => `<tr><td><div class="cell-main">${esc(i.ad || i.email || '')}</div><div class="cell-sub">${esc(i.email || '')}${i.user_id === S.user.id ? ' · siz' : ''}</div></td>
+        <table class="t" data-flt="0"><tbody>${ist.map(i => `<tr><td><div class="cell-main">${esc(i.ad || i.email || '')}</div><div class="cell-sub">${esc(i.email || '')}${i.user_id === S.user.id ? ' · siz' : ''}</div>${i.rol === 'gozleyir' ? '<span class="badge b-amber">Qoşulmaq istəyir — rol seçib təsdiqləyin və ya bloklayın</span>' : ''}</td>
           <td style="width:220px">${yaz && i.user_id !== S.user.id ? `<select class="in" data-u="${i.user_id}">${Object.entries(rolAd).map(([k, v]) => `<option value="${k}" ${i.rol === k ? 'selected' : ''}>${v}</option>`).join('')}</select>` : `<span class="badge ${i.rol === 'muhasib' ? 'b-blue' : i.rol === 'bloklu' ? 'b-red' : 'b-gray'}">${rolAd[i.rol] || i.rol}</span>`}</td></tr>`).join('')}</tbody></table>
-        ${yaz ? `<div style="padding:12px 20px 18px"><b style="font-size:14px">Dəvət kodu</b><div class="muted" style="font-size:13px;margin:4px 0 8px">Yeni istifadəçi girişdə <b>Qeydiyyat → "Dəvət kodu"</b> seçib bu kodu yazır, mühasib isə "Müəssisələr → Kodla qoşul" ilə qoşulur. Yeni üzv əvvəlcə yalnız baxır — hüququnu yuxarıdan dəyişin.</div>
+        ${yaz ? `<div style="padding:12px 20px 18px"><b style="font-size:14px">Dəvət kodu</b><div class="muted" style="font-size:13px;margin:4px 0 8px">Kodu yalnız etibar etdiyiniz şəxsə verin. O, qeydiyyatda və ya "Müəssisələr → Kodla qoşul" ilə bu kodu yazanda siyahıda <b>"Təsdiq gözləyir"</b> kimi görünür və siz rol seçənə qədər heç nə görə bilmir. Kod başqasının əlinə keçibsə, "Yeni kod" basın.</div>
           <div style="display:flex;align-items:center;gap:10px"><span class="dkod" id="kod">${esc(S.magaza.devet_kodu)}</span><button class="btn sm" id="kodkop">Kopyala</button><button class="btn sm" id="kodyen">Yeni kod</button></div></div>` : ''}</div>`,
     bild: '<div class="card" id="tg"><h3>Telegram xülasəsi</h3><div class="muted">Yüklənir…</div></div>',
     vergi: muh ? `<div class="card"><h3>Vergi və ödənişlər</h3><p class="muted" style="font-size:13px">"Əmək haqqı → Ödəniləcək məbləğlər" bölməsi buradakı məlumatlarla hesablanır.</p>
@@ -4271,7 +4283,7 @@ async function pageAdminIst() {
   shell('admin', 'Admin panel', 'Saytdan istifadə edənlər', `${ADM_TAB('ist')}<input class="in search" id="axtar" placeholder="Axtar: e-poçt, ad, müəssisə">`);
   admTabBagla();
   const rows = await q(sb.rpc('admin_istifadeciler'));
-  const rolA = { muhasib: 'Mühasib', sahibkar: 'Direktor', kuryer: 'Kuryer', bloklu: 'Bloklanıb' };
+  const rolA = { muhasib: 'Mühasib', sahibkar: 'Direktor', kuryer: 'Kuryer', bloklu: 'Bloklanıb', gozleyir: 'Təsdiq gözləyir' };
   const draw = () => {
     const t = azLow($('#axtar').value || '');
     const l = rows.filter(r => !t || azLow([r.email, r.ad, r.telefon, ...(r.firmalar || []).map(f => f.ad)].join(' ')).includes(t));
