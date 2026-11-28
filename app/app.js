@@ -316,8 +316,11 @@ const NAV = [
 const MOBNAV = ['menyu', 'panel', 'satislar', 'musteriler', 'mehsullar'];
 
 const NAVQISA = { menyu: 'Menyu', panel: 'Panel', satislar: 'Satış', musteriler: 'Müştəri', mehsullar: 'Məhsul', rasxodlar: 'Xərc', isciler: 'İşçi' };
-const NAVBOLME = [['Satış', ['panel', 'sat', 'satislar', 'musteriler', 'mehsullar']], ['Xərclər və işçilər', ['rasxodlar', 'isciler', 'odenisler', 'cixaris']], ['Kassa və hesabatlar', ['kassa', 'yigim', 'sifarisler', 'hesabat', 'teqvim', 'menfeet', 'saticilar']], ['İdarəetmə', ['jurnal', 'ayarlar']]];
+const NAVBOLME = [['Satış', ['panel', 'sat', 'satislar', 'musteriler', 'mehsullar']], ['Xərclər və işçilər', ['rasxodlar', 'isciler']], ['Kassa və hesabatlar', ['kassa', 'yigim', 'sifarisler', 'hesabat', 'teqvim', 'menfeet', 'saticilar']], ['İdarəetmə', ['jurnal', 'ayarlar']]];
 
+// İşçilər bölməsinin tabları: işçilər, onlara edilən ödənişlər, çıxarış
+const iscTab = a => `<div class="seg" id="isctab">${[['isciler', 'İşçilər'], ['odenisler', 'Ödənişlər'], ['cixaris', 'Çıxarış']].map(([k, t]) => `<button data-h="${k}" class="${k === a ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+const iscTabBagla = () => $$('#isctab button').forEach(b => b.onclick = () => { location.hash = '#/' + b.dataset.h; });
 function navBolmeler(active) {
   const N = muhFirma() ? NAV_M : NAV, B = muhFirma() ? NAVBOLME_M : NAVBOLME;
   const link = k => { const n = N.find(x => x[0] === k); return n ? `<a href="#/${k}" class="${active === k ? 'active' : ''}">${ico(n[2])}${n[1]}</a>` : ''; };
@@ -3270,9 +3273,9 @@ function buDovrdeGoturdu(isci, D) {
    ===================================================================== */
 async function pageIsciler(params) {
   const fil = params.get('f') || 'isleyen';
-  shell('isciler', 'İşçilər', '', `<div class="seg" id="fil">${[['isleyen', 'İşləyənlər'], ['hamisi', 'Hamısı']].map(([k, t]) => `<button data-f="${k}" class="${fil === k ? 'on' : ''}">${t}</button>`).join('')}</div>
-    <a class="btn" href="#/odenisler">Ödənişlər</a>
+  shell('isciler', 'İşçilər', '', `${iscTab('isciler')}<div class="seg" id="fil">${[['isleyen', 'İşləyənlər'], ['hamisi', 'Hamısı']].map(([k, t]) => `<button data-f="${k}" class="${fil === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     ${canWrite() ? `<button class="btn green" id="ode">${ico('plus')}Ödəniş yaz</button><button class="btn primary" id="yeni">${ico('plus')}Yeni işçi</button>` : ''}`);
+  iscTabBagla();
   $$('#fil button').forEach(b => b.onclick = () => location.hash = '#/isciler?f=' + b.dataset.f);
   if ($('#yeni')) $('#yeni').onclick = () => isciForm(null);
   if ($('#ode')) $('#ode').onclick = () => odenisForm(null);
@@ -3362,11 +3365,12 @@ async function pageOdenisler(params) {
   const D = await isciMelumati();
   const aylar = await q(sb.from('v_aylar').select('ay').order('ay', { ascending: false }));
   const setHash = (k, v) => { const p = new URLSearchParams({ ay, i: isciId }); p.set(k, v); location.hash = '#/odenisler?' + p.toString(); };
-  shell('odenisler', 'İşçi ödənişləri', '', `
+  shell('isciler', 'İşçi ödənişləri', '', `${iscTab('odenisler')}
     <select class="in" id="isc" style="width:auto"><option value="">Bütün işçilər</option>${D.isc.map(i => `<option value="${i.id}" ${String(i.id) === isciId ? 'selected' : ''}>${esc(i.ad)}${i.status === 'Çıxıb' ? ' (çıxıb)' : ''}</option>`).join('')}</select>
     <select class="in" id="ay" style="width:auto"><option value="hamisi">Bütün aylar</option>${aylar.map(a => `<option value="${a.ay}" ${a.ay === ay ? 'selected' : ''}>${ayAdi(a.ay)}</option>`).join('')}</select>
     ${canWrite() ? `<button class="btn green" id="yeni">${ico('plus')}Ödəniş yaz</button>` : ''}
     <button class="btn" onclick="window.print()">${ico('print')}Çap</button>`);
+  iscTabBagla();
   if (ay === 'hamisi') $('#ay').value = 'hamisi';
   $('#ay').onchange = e => setHash('ay', e.target.value);
   $('#isc').onchange = e => setHash('i', e.target.value);
@@ -3446,7 +3450,7 @@ async function pageCixaris(id, params) {
   const D = await isciMelumati();
   const isci = D.isc.find(i => String(i.id) === String(id)) || D.isc.find(i => i.status === 'İşləyir' && i.nov === 'İşçi');
   const d1 = params.get('d1') || '', d2 = params.get('d2') || '';
-  shell('cixaris', 'İşçi çıxarışı', '', '');
+  shell('isciler', 'İşçi çıxarışı', '', iscTab('cixaris')); iscTabBagla();
   if (!isci) { $('#page').innerHTML = '<div class="card empty">İşçi yoxdur</div>'; return; }
   const ev = hesabHereketi(isci, D);
   const evvel = ev.filter(e => d1 && e.t < d1);
@@ -3456,7 +3460,7 @@ async function pageCixaris(id, params) {
   const son = acilis + hes - ver;
   const sahib = isci.nov === 'Sahib';
   $('.topbar').innerHTML = `<div><h2>${esc(isci.ad)}</h2><div class="sub">${sahib ? 'Sahib' : esc(isci.vezife || '')} · işə giriş ${fd(isci.ise_giris)}${isci.status === 'Çıxıb' ? ' · çıxıb ' + fd(isci.cixis) : ''} · çıxarış tarixi ${fd(today())}</div></div>
-    <div class="tools no-print">
+    <div class="tools no-print">${iscTab('cixaris')}
       <select class="in" id="isc" style="width:auto">${D.isc.map(i => `<option value="${i.id}" ${i.id === isci.id ? 'selected' : ''}>${esc(i.ad)}${i.status === 'Çıxıb' ? ' (çıxıb)' : ''}</option>`).join('')}</select>
       <label class="muted" style="font-size:13px">Tarixdən</label><input class="in" type="date" id="d1" value="${d1}" style="width:auto">
       <label class="muted" style="font-size:13px">Tarixədək</label><input class="in" type="date" id="d2" value="${d2}" style="width:auto">
@@ -3464,6 +3468,7 @@ async function pageCixaris(id, params) {
       ${canWrite() ? `<button class="btn green" id="ode">${ico('plus')}Ödəniş</button><button class="btn" id="ed">Düzəlt</button>` : ''}
       <button class="btn primary" onclick="window.print()">${ico('print')}PDF / Çap</button></div>`;
   const go = (iid, a, b) => { const p = new URLSearchParams(); if (a) p.set('d1', a); if (b) p.set('d2', b); location.hash = `#/cixaris/${iid}` + (p.toString() ? '?' + p : ''); };
+  iscTabBagla();
   $('#isc').onchange = e => go(e.target.value, d1, d2);
   $('#d1').onchange = e => go(isci.id, e.target.value, $('#d2').value);
   $('#d2').onchange = e => go(isci.id, $('#d1').value, e.target.value);
@@ -3484,7 +3489,7 @@ async function pageCixaris(id, params) {
     <div class="tbl-wrap" style="margin-top:16px"><table class="t">
       <thead><tr><th>Tarix</th><th>Əməliyyat</th><th class="n">Hesablandı</th><th class="n">Verildi / tutuldu</th><th class="n">Qalıq</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="5" class="empty">Bu dövrdə əməliyyat yoxdur</td></tr>'}</tbody>
-      <tfoot><tr><td colspan="2">Cəm</td><td class="n">${fmt(hes)}</td><td class="n">${fmt(ver)}</td><td class="n">${fmt(son)}</td></tr></tfoot></table></div>`;
+      <tfoot><tr><td colspan="2">Cəm</td><td class="n">${fmt(hes)}</td><td class="n">${fmt(ver)}</td><td class="n sabit">${fmt(son)}</td></tr></tfoot></table></div>`;
 }
 
 /* =====================================================================
